@@ -11,7 +11,7 @@ var rename_key = objects.REN("key1", "title");
 
 var change_property = objects.access(
 	["key1"],
-	"./values.js", "REP",
+	"values", "REP",
 	"Hello World!", "My Program");
 
 change_property = objects.atomic_rebase(rename_key, change_property);

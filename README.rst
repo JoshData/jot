@@ -50,6 +50,8 @@ Now you can apply A and B sequentially.
 Installation
 ------------
 
+The code is written for the Node platform.
+
 Dependencies:
 
 npm install deep-equal
@@ -120,17 +122,31 @@ Here's example code that follows the example in the introduction:
 		key2: 10,
 	};
 	
+	// create an operation that renames the
+	// "key1" property to "title" but preserves
+	// the value "Hello World!".
 	var rename_key = objects.REN("key1", "title");
 	
+	// create an operation that applies the REP
+	// operation on key1's value, replacing the
+	// old string "Hello World!" with the new
+	// string "My Program".
 	var change_property = objects.access(
 		["key1"],
-		"./values.js", "REP",
+		"values", "REP",
 		"Hello World!", "My Program");
 	
+	// Rebase change_property so that we can compose
+	// it with rename_key.
 	change_property = objects.atomic_rebase(rename_key, change_property);
 	
+	// Apply the operations sequentially now to 
+	// combine the effects of both simultaneous
+	// operations.
 	objects.apply(rename_key, doc)
 	objects.apply(change_property, doc)
+	
+	// And show the new value of the document.
 	console.log(doc);
 
 To run:
@@ -148,7 +164,7 @@ care of that.
 	
 An initial document (doc) is created. Changes are *simultaneously* made to
 doc. It's up to you to record those changes. Here, one user renames the key1
-property. That rename is encoded by the objects.ren function.
+property. That rename is encoded by the objects.REN function.
 
 The second user changes the value of the property. To illustrate how to
 change values nested deep within objects, we use the objects.access method

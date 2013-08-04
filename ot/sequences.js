@@ -10,6 +10,7 @@
     delete.
 
 	{
+	 module_name: "sequences.js",
 	 type: "slice",
 	 pos: ...an index...
 	 old_value: ...a value...,
@@ -25,6 +26,7 @@
     Moves a subsequence from one position to another.
 
 	{
+	 module_name: "sequences.js",
 	 type: "move",
 	 pos: ...an index...,
 	 count: ...a length...,
@@ -37,9 +39,9 @@
     arrays only.
 
 	{
+	 module_name: "sequences.js",
 	 type: "apply",
 	 pos: ...an index...,
-	 package_name: ...package name that defines other operation...,
 	 op: ...operation data...,
 	}
 	
@@ -50,11 +52,12 @@ var deepEqual = require("deep-equal");
 // constructors
 
 exports.NO_OP = function() {
-	return { "type": "no-op" };
+	return { "type": "no-op" }; // module_name is not required on no-ops
 }
 
 exports.SLICE = function (pos, old_value, new_value, global_order) {
 	return { // don't simplify here -- breaks tests
+		module_name: "sequences.js",
 		type: "slice",
 		pos: pos,
 		old_value: old_value,
@@ -75,6 +78,7 @@ exports.DEL = function (pos, old_value, global_order) {
 
 exports.MOVE = function (pos, count, new_pos) {
 	return { // don't simplify here -- breaks tests
+		module_name: "sequences.js",
 		type: "move",
 		pos: pos,
 		count: count,
@@ -82,16 +86,17 @@ exports.MOVE = function (pos, count, new_pos) {
 	};
 }
 
-exports.APPLY = function (pos, package_name, op) {
+exports.APPLY = function (pos, op) {
+	if (op.type == "no-op") return op; // don't embed because it never knows its package name
 	return { // don't simplify here -- breaks tests
+		module_name: "sequences.js",
 		type: "apply",
 		pos: pos,
-		package_name: package_name,
 		op: op
 	};
 }
 
-// operations
+// utilities
 
 function concat2(item1, item2) {
 	if (item1 instanceof String)
@@ -108,6 +113,13 @@ function concat4(item1, item2, item3, item4) {
 		return item1 + item2 + item3 + item4;
 	return item1.concat(item2).concat(item3).concat(item4);
 }
+
+function load_module(module_name) {
+	// this function is in both objects and sequences
+	return require(__dirname + "/" + module_name);
+}
+
+// operations
 
 exports.apply = function (op, value) {
 	/* Applies the operation to a value. */
@@ -128,7 +140,7 @@ exports.apply = function (op, value) {
 	
 	if (op.type == "apply") {
 		// modifies value in-place
-		var lib = require(op.package_name);
+		var lib = load_module(op.op.module_name);
 		value[op.pos] = lib.apply(op.op, value[op.pos]);
 		return value;
 	}
@@ -148,7 +160,7 @@ exports.simplify = function (op) {
 		return exports.NO_OP();
 	
 	if (op.type == "apply") {
-		var lib = require(op.package_name);
+		var lib = load_module(op.op.module_name);
 		var op2 = lib.simplify(op.op);
 		if (op2.type == "no-op")
 			return exports.NO_OP();
@@ -169,8 +181,8 @@ exports.invert = function (op) {
 		return exports.MOVE(op.new_pos, op.count, op.pos + op.count);
 
 	if (op.type == "apply") {
-		var lib = require(op.package_name);
-		return exports.APPLY(op.pos, op.package_name, lib.invert(op.op));
+		var lib = load_module(op.op.module_name);
+		return exports.APPLY(op.pos, lib.invert(op.op));
 	}
 }
 
@@ -219,11 +231,11 @@ exports.atomic_compose = function (a, b) {
 	if (a.type == "move" && b.type == "move" && a.new_pos == b.pos && a.count == b.count)
 		return exports.MOVE(a.pos, b.new_pos, a.count)
 
-	if (a.type == "apply" && b.type == "apply" && a.pos == b.pos && a.package_name == b.package_name) {
-		var lib = require(a.package_name);
+	if (a.type == "apply" && b.type == "apply" && a.pos == b.pos && a.op.module_name == b.op.module_name) {
+		var lib = load_module(a.op.module_name);
 		var op2 = lib.atomic_compose(a.op, b.op);
 		if (op2)
-			return exports.APPLY(a.pos, a.package_name, op2);
+			return exports.APPLY(a.pos, a.op.module_name, op2);
 	}
 	
 	return null; // no atomic composition is possible
@@ -302,11 +314,11 @@ exports.atomic_rebase = function (a, b) {
 		if (a.pos != b.pos)
 			return b;
 			
-		if (a.package_name == b.package_name) {
-			var lib = require(a.package_name);
+		if (a.op.module_name == b.op.module_name) {
+			var lib = load_module(a.op.module_name);
 			var op2 = lib.atomic_rebase(a.op, b.op);
 			if (op2)
-				return exports.APPLY(b.pos, b.package_name, op2);
+				return exports.APPLY(b.pos, b.op.module_name, op2);
 		}
 	}
 	
@@ -330,7 +342,7 @@ exports.atomic_rebase = function (a, b) {
 			return null;
 		if (b.pos < a.pos)
 			return b;
-		return exports.APPLY(b.pos + (a.new_value.length-a.old_value.lenght), b.package_name, b.op);
+		return exports.APPLY(b.pos + (a.new_value.length-a.old_value.lenght), b.op.module_name, b.op);
 	}
 	
 	if (a.type == "move" && b.type == "slice") {
@@ -341,7 +353,7 @@ exports.atomic_rebase = function (a, b) {
 	}
 	
 	if (a.type == "move" && b.type == "apply")
-		return exports.APPLY(map_index(b.pos), b.package_name, b.op);
+		return exports.APPLY(map_index(b.pos), b.op.module_name, b.op);
 	
 	if (a.type == "apply" && b.type == "slice") {
 		// operations intersect

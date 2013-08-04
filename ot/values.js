@@ -10,6 +10,7 @@
 	The replace operation has the following form:
 	
 	{
+	 module_name: "values.js",
 	 type: "rep",
 	 old_value: ...a value...,
 	 new_value: ...a value...,
@@ -43,6 +44,7 @@
 	The map operation has the following form:
 	
 	{
+	 module_name: "values.js",
 	 type: "map",
 	 operator: "add" | "mult" | "xor"
 	 value: ...a value...,
@@ -61,11 +63,12 @@ var deepEqual = require("deep-equal");
 // constructors
 
 exports.NO_OP = function() {
-	return { "type": "no-op" };
+	return { "type": "no-op" }; // no module_name is required on no-ops
 }
 
 exports.REP = function (old_value, new_value, global_order) {
 	return { // don't simplify here -- breaks tests
+		module_name: "values.js",
 		type: "rep",
 		old_value: old_value,
 		new_value: new_value,
@@ -75,6 +78,7 @@ exports.REP = function (old_value, new_value, global_order) {
 
 exports.MAP = function (operator, value) {
 	return { // don't simplify here -- breaks tests
+		module_name: "values.js",
 		type: "map",
 		operator: operator,
 		value: value
@@ -131,13 +135,13 @@ exports.invert = function (op) {
 		return op;
 
 	if (op.type == "rep")
-		return { type: "rep", old_value: op.new_value, new_value: op.old_value, global_order: op.global_order };
+		return exports.REP(op.new_value, op.old_value, op.global_order);
 	
 	if (op.type == "map" && op.operator == "add")
-		return { type: "map", operator: "add", value: -op.value };
+		return exports.MAP("add", -op.value);
 	
 	if (op.type == "map" && op.operator == "mult")
-		return { type: "map", operator: "mult", value: 1.0/op.value };
+		return exports.MAP("mult", 1.0/op.value);
 	
 	if (op.type == "map" && op.operator == "xor")
 		return op; // it's its own inverse
@@ -158,28 +162,15 @@ exports.atomic_compose = function (a, b) {
 		return a;
 
 	if (a.type == "rep" && b.type == "rep" && a.global_order == b.global_order)
-		return exports.simplify({
-			type: "rep",
-			old_value: a.old_value,
-			new_value: b.new_value,
-			global_order: a.global_order
-		});
+		return exports.simplify(exports.REP(a.old_value, b.new_value, a.global_order));
 	
     // This relies on the map operators being associative.
 		
 	if (a.type == "map" && b.type == "map" && a.operator == b.operator && a.operator == "add")
-		return exports.simplify({
-			type: "map",
-			operator: "add",
-			value: a.value + b.value,
-		});
+		return exports.simplify(exports.MAP("add", a.value + b.value));
 
 	if (a.type == "map" && b.type == "map" && a.operator == b.operator && a.operator == "mult")
-		return exports.simplify({
-			type: "map",
-			operator: "mult",
-			value: a.value * b.value,
-		});
+		return exports.simplify(exports.MAP("mult", a.value * b.value));
 
 	if (a.type == "map" && b.type == "map" && a.operator == b.operator && a.operator == "xor") {
 		if (a.value == false && b.value == false)
@@ -214,12 +205,7 @@ exports.atomic_rebase = function (a, b) {
 		
 		if (b.global_order > a.global_order)
 			// clobber a's operation
-			return exports.simplify({
-				type: "rep",
-				old_value: a.new_value,
-				new_value: b.new_value,
-				global_order: b.global_order
-			});
+			return exports.simplify(exports.REP(a.new_value, b.new_value, b.global_order));
 			
 		if (b.global_order < a.global_order)
 			return exports.NO_OP(); // this replacement gets clobbered

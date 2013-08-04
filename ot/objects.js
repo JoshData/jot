@@ -8,6 +8,7 @@
     Creates, deletes, or renames a property.
 
 	{
+	 module_name: "objects.js",
 	 type: "prop",
 	 old_key: ...a key name, or null to create a key...,
 	 new_key: ...a new key name, or null to delete a key...,
@@ -21,9 +22,10 @@
     Applies another sort of operation to a key's value.
 
 	{
+	 module_name: "objects.js",
 	 type: "apply",
 	 key: ...a key name...,
-	 package_name: ...package name that defines other operation...,
+	 op.module_name: ...package name that defines other operation...,
 	 op: ...operation data...,
 	}
 	
@@ -34,11 +36,12 @@ var deepEqual = require("deep-equal");
 // constructors
 
 exports.NO_OP = function() {
-	return { "type": "no-op" };
+	return { "type": "no-op" }; // module_name is not required on no-ops
 }
 
 exports.PROP = function (old_key, new_key, old_value, new_value) {
 	return {
+		module_name: "objects.js",
 		type: "prop",
 		old_key: old_key,
 		new_key: new_key,
@@ -59,34 +62,40 @@ exports.REN = function (old_key, new_key) {
 	return exports.PROP(old_key, new_key, null, null);
 }
 
-exports.APPLY = function (key, package_name, op) {
+exports.APPLY = function (key, op) {
+	if (op.type == "no-op") return op; // don't embed because it never knows its package name
 	return { // don't simplify here -- breaks tests
+		module_name: "objects.js",
 		type: "apply",
 		key: key,
-		package_name: package_name,
 		op: op
 	};
 }
 
-exports.access = function(path, package_name, op_name /*, op_args */) {
+exports.access = function(path, module_name, op_name /*, op_args */) {
 	var op_args = [];
 	for (var i = 3; i < arguments.length; i++)
 		op_args.push(arguments[i]);
 	
-	var seqs = require(__dirname + '/sequences.js');
-	var lib = require(package_name);
+	var seqs = load_module('sequences.js');
+	var lib = load_module(module_name);
 	var op = lib[op_name].apply(null, op_args);
-	var op_pkg = package_name;
+	
 	for (var i = path.length-1; i >= 0; i--) {
 		if (typeof path[i] == 'string') {
-			op =  exports.APPLY(path[i], op_pkg, op);
-			op_pkg = __dirname + '/objects.js';
+			op =  exports.APPLY(path[i], op);
 		} else {
-			op =  seqs.APPLY(path[i], op_pkg, op);
-			op_pkg = __dirname + '/sequences.js';
+			op =  seqs.APPLY(path[i], op);
 		}
 	}
 	return op;
+}
+
+// utils
+
+function load_module(module_name) {
+	// this function is in both objects and sequences
+	return require(__dirname + "/" + module_name);
 }
 
 // operations
@@ -112,7 +121,7 @@ exports.apply = function (op, value) {
 	
 	if (op.type == "apply") {
 		// modifies value in-place
-		var lib = require(op.package_name);
+		var lib = load_module(op.op.module_name);
 		value[op.key] = lib.apply(op.op, value[op.key]);
 		return value;
 	}
@@ -129,7 +138,7 @@ exports.simplify = function (op) {
 		return exports.NO_OP();
 		
 	if (op.type == "apply") {
-		var lib = require(op.package_name);
+		var lib = load_module(op.op.module_name);
 		var op2 = lib.simplify(op.op);
 		if (op2.type == "no-op")
 			return exports.NO_OP();
@@ -145,8 +154,8 @@ exports.invert = function (op) {
 		return exports.PROP(op.new_key, op.old_key, op.new_value, op.old_value);
 	
 	if (op.type == "apply") {
-		var lib = require(op.package_name);
-		return exports.APPLY(op.key, op.package_name, lib.invert(op.op));
+		var lib = load_module(op.op.module_name);
+		return exports.APPLY(op.key, lib.invert(op.op));
 	}
 }
 
@@ -172,11 +181,11 @@ exports.atomic_compose = function (a, b) {
 		return exports.PROP(a.old_key, b.new_key, a.old_value, b.new_value);
 	}
 		
-	if (a.type == "apply" && b.type == "apply" && a.key == b.key && a.package_name == b.package_name) {
-		var lib = require(a.package_name);
+	if (a.type == "apply" && b.type == "apply" && a.key == b.key && a.op.module_name == b.op.module_name) {
+		var lib = load_module(a.op.module_name);
 		var op2 = lib.atomic_compose(a.op, b.op);
 		if (op2)
-			return exports.APPLY(a.key, a.package_name, op2);
+			return exports.APPLY(a.key, op2);
 	}
 	
 	return null; // no atomic composition is possible
@@ -221,11 +230,11 @@ exports.atomic_rebase = function (a, b) {
 		return b;
 	}
 	
-	if (a.type == "apply" && b.type == "apply" && a.package_name == b.package_name) {
-		var lib = require(a.package_name);
+	if (a.type == "apply" && b.type == "apply" && a.op.module_name == b.op.module_name) {
+		var lib = load_module(a.op.module_name);
 		var op2 = lib.atomic_rebase(a.op, b.op);
 		if (op2)
-			return exports.APPLY(a.key, a.package_name, op2);
+			return exports.APPLY(a.key, op2);
 	}
 
 	if (a.type == "prop" && b.type == "apply") {
@@ -235,7 +244,7 @@ exports.atomic_rebase = function (a, b) {
 		
 		// a renamed the key b was working on, so revise b to use the new name
 		if (a.old_key != a.new_key)
-			return exports.APPLY(a.new_key, b.package_name, b.op);
+			return exports.APPLY(a.new_key, b.op);
 	}
 	
 	if (a.type == "apply" && b.type == "prop") {

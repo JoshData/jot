@@ -28,7 +28,7 @@ assert.equal(
 	"312");
 
 assert.deepEqual(
-	seqs.apply(seqs.APPLY(0, "../ot/values.js", values.REP(1, 4)), [1, 2, 3]),
+	seqs.apply(seqs.APPLY(0, values.REP(1, 4)), [1, 2, 3]),
 	[4, 2, 3]);
 
 // simplify
@@ -46,11 +46,11 @@ assert.deepEqual(
 	seqs.simplify(seqs.MOVE(3, 5, 4)),
 	seqs.MOVE(3, 5, 4));
 assert.deepEqual(
-	seqs.simplify(seqs.APPLY(0, "../ot/values.js", values.REP(1, 1))),
+	seqs.simplify(seqs.APPLY(0, values.REP(1, 1))),
 	seqs.NO_OP());
 assert.deepEqual(
-	seqs.simplify(seqs.APPLY(0, "../ot/values.js", values.REP(1, 2))),
-	seqs.APPLY(0, "../ot/values.js", values.REP(1, 2)));
+	seqs.simplify(seqs.APPLY(0, values.REP(1, 2))),
+	seqs.APPLY(0, values.REP(1, 2)));
 
 // invert
 
@@ -64,8 +64,8 @@ assert.deepEqual(
 	seqs.invert(seqs.MOVE(10, 3, 3)),
 	seqs.MOVE(3, 3, 13));
 assert.deepEqual(
-	seqs.invert(seqs.APPLY(0, "../ot/values.js", values.REP(1, 2))),
-	seqs.APPLY(0, "../ot/values.js", values.REP(2, 1)));
+	seqs.invert(seqs.APPLY(0, values.REP(1, 2))),
+	seqs.APPLY(0, values.REP(2, 1)));
 
 // compose
 
