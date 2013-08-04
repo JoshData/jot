@@ -1,13 +1,10 @@
 /* Base functions for the operational transform library. */
 
-// load the module named in an operation object
-exports.load_module = function(module_name) {
-	return require(__dirname + "/" + module_name);
-}
+var jot_platform = require(__dirname + "/platform.js");
 
 exports.run_op_func = function(op, method/*, arg1, arg2, ... */) {
 	/* Runs a method defined in the operation's library. */
-	var lib = exports.load_module(op.module_name);
+	var lib = jot_platform.load_module(op.module_name);
 	var args = [op];
 	for (var i = 2; i < arguments.length; i++)
 		args.push(arguments[i]);
@@ -83,14 +80,14 @@ exports.invert_array = function(ops) {
 	/* Takes an array of operations and returns the inverse of the whole array,
 	i.e. the inverse of each operation in reverse order. */
 	var new_ops = [];
-	while (ops.length)
-		new_ops.push(exports.invert(ops.pop()));
+	for (var i = ops.length-1; i >= 0; i--)
+		new_ops.push(exports.invert(ops[i]));
 	return new_ops;
 }
 		
 exports.rebase_array = function(base, ops) {
 	/* Takes an array of operations ops and rebases them against operation base.
-	   Either of base and ops may be an array, or just a single operation.
+	   Base may be an array of operations or just a single operation.
 	   Returns an array of operations. */
 	   
 	/*
@@ -140,13 +137,19 @@ exports.rebase_array = function(base, ops) {
 	
 	if (base instanceof Array) {
 		// from the second part of the rebase contract
-		for (var i = 0; i < base.length; i++)
+		for (var i = 0; i < base.length; i++) {
 			ops = exports.rebase_array(base[i], ops);
+			if (!ops) return null;
+		}
 		return ops;
 		
 	} else {
 		// handle edge case
-		if (ops.length == 1) return [exports.rebase(base, ops[0])];
+		if (ops.length == 1) {
+			var op = exports.rebase(base, ops[0]);
+			if (!op) return null; // conflict
+			return [op];
+		}
 		
 		var op1 = ops[0];
 		var op2 = ops.slice(1); // remaining operations

@@ -163,4 +163,9 @@ on the object. We re-apply the first user's revision history to the original
 object doc. Then we get the second user's changes, rebase them against the
 first user's changes, and apply the rebased operations to the document.
 
+Interactive Example
+-------------------
+
+nodejs build_browser_lib.js > json_editor_example/jot.js
+
 
