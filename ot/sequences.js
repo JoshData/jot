@@ -47,6 +47,7 @@
 	
    */
    
+var base = require("./base.js");
 var deepEqual = require("deep-equal");
 
 // constructors
@@ -114,11 +115,6 @@ function concat4(item1, item2, item3, item4) {
 	return item1.concat(item2).concat(item3).concat(item4);
 }
 
-function load_module(module_name) {
-	// this function is in both objects and sequences
-	return require(__dirname + "/" + module_name);
-}
-
 // operations
 
 exports.apply = function (op, value) {
@@ -140,7 +136,7 @@ exports.apply = function (op, value) {
 	
 	if (op.type == "apply") {
 		// modifies value in-place
-		var lib = load_module(op.op.module_name);
+		var lib = base.load_module(op.op.module_name);
 		value[op.pos] = lib.apply(op.op, value[op.pos]);
 		return value;
 	}
@@ -160,7 +156,7 @@ exports.simplify = function (op) {
 		return exports.NO_OP();
 	
 	if (op.type == "apply") {
-		var lib = load_module(op.op.module_name);
+		var lib = base.load_module(op.op.module_name);
 		var op2 = lib.simplify(op.op);
 		if (op2.type == "no-op")
 			return exports.NO_OP();
@@ -181,7 +177,7 @@ exports.invert = function (op) {
 		return exports.MOVE(op.new_pos, op.count, op.pos + op.count);
 
 	if (op.type == "apply") {
-		var lib = load_module(op.op.module_name);
+		var lib = base.load_module(op.op.module_name);
 		return exports.APPLY(op.pos, lib.invert(op.op));
 	}
 }
@@ -232,7 +228,7 @@ exports.atomic_compose = function (a, b) {
 		return exports.MOVE(a.pos, b.new_pos, a.count)
 
 	if (a.type == "apply" && b.type == "apply" && a.pos == b.pos && a.op.module_name == b.op.module_name) {
-		var lib = load_module(a.op.module_name);
+		var lib = base.load_module(a.op.module_name);
 		var op2 = lib.atomic_compose(a.op, b.op);
 		if (op2)
 			return exports.APPLY(a.pos, a.op.module_name, op2);
@@ -315,7 +311,7 @@ exports.atomic_rebase = function (a, b) {
 			return b;
 			
 		if (a.op.module_name == b.op.module_name) {
-			var lib = load_module(a.op.module_name);
+			var lib = base.load_module(a.op.module_name);
 			var op2 = lib.atomic_rebase(a.op, b.op);
 			if (op2)
 				return exports.APPLY(b.pos, b.op.module_name, op2);

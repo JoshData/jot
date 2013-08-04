@@ -31,6 +31,7 @@
 	
    */
    
+var base = require("./base.js");
 var deepEqual = require("deep-equal");
 
 // constructors
@@ -77,8 +78,8 @@ exports.access = function(path, module_name, op_name /*, op_args */) {
 	for (var i = 3; i < arguments.length; i++)
 		op_args.push(arguments[i]);
 	
-	var seqs = load_module('sequences.js');
-	var lib = load_module(module_name);
+	var seqs = base.load_module('sequences.js');
+	var lib = base.load_module(module_name);
 	var op = lib[op_name].apply(null, op_args);
 	
 	for (var i = path.length-1; i >= 0; i--) {
@@ -89,13 +90,6 @@ exports.access = function(path, module_name, op_name /*, op_args */) {
 		}
 	}
 	return op;
-}
-
-// utils
-
-function load_module(module_name) {
-	// this function is in both objects and sequences
-	return require(__dirname + "/" + module_name);
 }
 
 // operations
@@ -121,7 +115,7 @@ exports.apply = function (op, value) {
 	
 	if (op.type == "apply") {
 		// modifies value in-place
-		var lib = load_module(op.op.module_name);
+		var lib = base.load_module(op.op.module_name);
 		value[op.key] = lib.apply(op.op, value[op.key]);
 		return value;
 	}
@@ -138,7 +132,7 @@ exports.simplify = function (op) {
 		return exports.NO_OP();
 		
 	if (op.type == "apply") {
-		var lib = load_module(op.op.module_name);
+		var lib = base.load_module(op.op.module_name);
 		var op2 = lib.simplify(op.op);
 		if (op2.type == "no-op")
 			return exports.NO_OP();
@@ -154,7 +148,7 @@ exports.invert = function (op) {
 		return exports.PROP(op.new_key, op.old_key, op.new_value, op.old_value);
 	
 	if (op.type == "apply") {
-		var lib = load_module(op.op.module_name);
+		var lib = base.load_module(op.op.module_name);
 		return exports.APPLY(op.key, lib.invert(op.op));
 	}
 }
@@ -182,7 +176,7 @@ exports.atomic_compose = function (a, b) {
 	}
 		
 	if (a.type == "apply" && b.type == "apply" && a.key == b.key && a.op.module_name == b.op.module_name) {
-		var lib = load_module(a.op.module_name);
+		var lib = base.load_module(a.op.module_name);
 		var op2 = lib.atomic_compose(a.op, b.op);
 		if (op2)
 			return exports.APPLY(a.key, op2);
@@ -231,7 +225,7 @@ exports.atomic_rebase = function (a, b) {
 	}
 	
 	if (a.type == "apply" && b.type == "apply" && a.op.module_name == b.op.module_name) {
-		var lib = load_module(a.op.module_name);
+		var lib = base.load_module(a.op.module_name);
 		var op2 = lib.atomic_rebase(a.op, b.op);
 		if (op2)
 			return exports.APPLY(a.key, op2);
