@@ -48,4 +48,122 @@ exports.rebase = function(a, b) {
 	return exports.run_op_func(a, "atomic_rebase", b);
 }
 
+exports.normalize_array = function(ops) {
+	/* Takes an array of operations and composes consecutive operations where possible,
+	removes no-ops, and returns a new array of operations. */
+	var new_ops = [];
+	for (var i = 0; i < ops.length; i++) {
+		if (ops[i].type == "no-op") continue; // don't put no-ops into the new list
+		if (new_ops.length == 0) {
+			new_ops.push(ops[i]); // first operation
+		} else {
+			// try to compose with the previous op
+			var c = exports.compose(new_ops[new_ops.length-1], ops[i]);
+			if (c) {
+				if (c.type == "no-op")
+					new_ops.pop(); // they obliterated each other, so remove the one that we already added
+				else
+					new_ops[new_ops.length-1] = c; // replace with composition
+			} else {
+				new_ops.push(ops[i]);
+			}
+		}
+	}
+	return new_ops;
+}
+
+exports.apply_array = function(ops, document) {
+	/* Takes an array of operations and applies them successively to a document. */
+	for (var i = 0; i < ops.length; i++)
+		document = exports.apply(ops[i], document);
+	return document;
+}
+
+exports.invert_array = function(ops) {
+	/* Takes an array of operations and returns the inverse of the whole array,
+	i.e. the inverse of each operation in reverse order. */
+	var new_ops = [];
+	while (ops.length)
+		new_ops.push(exports.invert(ops.pop()));
+	return new_ops;
+}
+		
+exports.rebase_array = function(base, ops) {
+	/* Takes an array of operations ops and rebases them against operation base.
+	   Either of base and ops may be an array, or just a single operation.
+	   Returns an array of operations. */
+	   
+	/*
+	* To see the logic, it will help to put this in a symbolic form.
+	*
+	*   Let a + b == compose(a, b)
+	*   and a / b == rebase(b, a)
+	*
+	* The contract of rebase has two parts;
+	*
+	* 	1) a + (b/a) == b + (a/b)
+	* 	2) x/(a + b) == (x/a)/b
+	*
+	* Also note that the compose operator is associative, so
+	*
+	*	a + (b+c) == (a+b) + c
+	*
+	* Our return value here in symbolic form is:
+	*
+	*   (op1/base) + (op2/(base/op1))
+	*   where ops = op1 + op2
+	*
+	* To see that we've implemented rebase correctly, let's look
+	* at what happens when we compose our result with base as per
+	* the rebase rule:
+	*
+	*   base + (ops/base)
+	*
+	* And then do some algebraic manipulations:
+	*
+	*   base + [ (op1/base) + (op2/(base/op1)) ]   (substituting our hypothesis for self/base)
+	*   [ base + (op1/base) ] + (op2/(base/op1))   (associativity)
+	*   [ op1 + (base/op1) ] + (op2/(base/op1))    (rebase's contract on the left side)
+	*   op1 + [ (base/op1)  + (op2/(base/op1)) ]   (associativity)
+	*   op1 + [ op2 + ((base/op1)/op2) ]           (rebase's contract on the right side)
+	*   (op1 + op2) + ((base/op1)/op2)             (associativity)
+	*   self + [(base/op1)/op2]                    (substituting self for (op1+op2))
+	*   self + [base/(op1+op2)]                    (rebase's second contract)
+	*   self + (base/self)                         (substitution)
+	*
+	* Thus we've proved that the rebase contract holds for our return value.
+	*/
+	
+	ops = exports.normalize_array(ops);
+	
+	if (ops.length == 0) return ops; // basically a no-op
+	
+	if (base instanceof Array) {
+		// from the second part of the rebase contract
+		for (var i = 0; i < base.length; i++)
+			ops = exports.rebase_array(base[i], ops);
+		return ops;
+		
+	} else {
+		// handle edge case
+		if (ops.length == 1) return [exports.rebase(base, ops[0])];
+		
+		var op1 = ops[0];
+		var op2 = ops.slice(1); // remaining operations
+		
+		var r1 = exports.rebase(base, op1);
+		if (!r1) return null; // rebase failed
+		
+		var r2 = exports.rebase(op1, base);
+		if (!r2) return null; // rebase failed (must be the same as r1, so this test should never succeed)
+		
+		var r3 = exports.rebase_array(r2, op2);
+		if (!r3) return null; // rebase failed
+		
+		// returns a new array
+		return [r1].concat(r3);
+	}
+}
+
+
 

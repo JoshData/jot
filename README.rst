@@ -113,65 +113,54 @@ Example
 
 Here's example code that follows the example in the introduction:
 	
-	var values = require("./ot/values.js");
-	var sequences = require("./ot/sequences.js");
-	var objects = require("./ot/objects.js");
+	var ot = require("./ot/base.js");
+	var spyobj = require("./ot/spyobject.js");
 	
 	var doc = {
 		key1: "Hello World!",
 		key2: 10,
 	};
 	
-	// create an operation that renames the
-	// "key1" property to "title" but preserves
-	// the value "Hello World!".
-	var rename_key = objects.REN("key1", "title");
+	function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
 	
-	// create an operation that applies the REP
-	// operation on key1's value, replacing the
-	// old string "Hello World!" with the new
-	// string "My Program".
-	var change_property = objects.access(
-		["key1"],
-		"values", "REP",
-		"Hello World!", "My Program");
+	/* User 1 Makes Changes */
+	var d1 = new spyobj.SpyObject(clone(doc));
+	d1.rename("key1", "title");
 	
-	// Rebase change_property so that we can compose
-	// it with rename_key.
-	change_property = objects.atomic_rebase(rename_key, change_property);
+	// d1: { title: 'Hello World!', key2: 10 }
 	
-	// Apply the operations sequentially now to 
-	// combine the effects of both simultaneous
-	// operations.
-	objects.apply(rename_key, doc)
-	objects.apply(change_property, doc)
+	/* User 2 Makes Changes */
+	var d2 = new spyobj.SpyObject(clone(doc));
+	d2.set("key1", "My Program");
 	
-	// And show the new value of the document.
-	console.log(doc);
+	// d2: { key1: 'My Program', key2: 10 }
+	
+	/* Merge Changes */
+	
+	var r1 = d1.pop_history();
+	ot.apply_array(r1, doc);
+	
+	var r2 = d2.pop_history();
+	r2 = ot.rebase_array(r1, r2);
+	ot.apply_array(r2, doc);
+	
+	// doc is now:
+	// { title: 'My Program', key2: 10 }
 
 To run:
 
 	nodejs example.js
 	
-The output is:
-
-	{ key2: 10, title: 'My Program' }
-
 Note how the output applies both changes logically, even though the second
 change was specified as a change to key1, but that key doesn't exist by
 the time the change is applied. It's the atomic_rebase call that takes
 care of that.
 	
 An initial document (doc) is created. Changes are *simultaneously* made to
-doc. It's up to you to record those changes. Here, one user renames the key1
-property. That rename is encoded by the objects.REN function.
-
-The second user changes the value of the property. To illustrate how to
-change values nested deep within objects, we use the objects.access method
-which takes a path of keys (and/or array indexes) that target the value
-to be changed. The next two arguments are the node package name that defines
-the operation and the operation's name. The final arguments are the arguments
-to the operation's constructor method. In this case, it is the old value
-and the new value.
+doc. Here we're using a utility class SpyObject which records the revisions
+taken on it. SpoyObject.pop_history() returns the history of revisions made
+on the object. We re-apply the first user's revision history to the original
+object doc. Then we get the second user's changes, rebase them against the
+first user's changes, and apply the rebased operations to the document.
 
 
