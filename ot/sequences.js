@@ -3,7 +3,7 @@
    
    Three operations are provided:
    
-   SLICE
+   SPLICE
 
     Replacemes of values in the sequence. Replace nothing with
     something to insert, or replace something with nothing to
@@ -11,7 +11,7 @@
 
 	{
 	 module_name: "sequences.js",
-	 type: "slice",
+	 type: "splice",
 	 pos: ...an index...
 	 old_value: ...a value...,
 	 new_value: ...a value...,
@@ -56,10 +56,10 @@ exports.NO_OP = function() {
 	return { "type": "no-op" }; // module_name is not required on no-ops
 }
 
-exports.SLICE = function (pos, old_value, new_value, global_order) {
+exports.SPLICE = function (pos, old_value, new_value, global_order) {
 	return { // don't simplify here -- breaks tests
 		module_name: "sequences.js",
-		type: "slice",
+		type: "splice",
 		pos: pos,
 		old_value: old_value,
 		new_value: new_value,
@@ -69,12 +69,12 @@ exports.SLICE = function (pos, old_value, new_value, global_order) {
 
 exports.INS = function (pos, value, global_order) {
 	// value.slice(0,0) is a shorthand for constructing an empty string or empty list, generically
-	return exports.SLICE(pos, value.slice(0,0), value, global_order);
+	return exports.SPLICE(pos, value.slice(0,0), value, global_order);
 }
 
 exports.DEL = function (pos, old_value, global_order) {
 	// value.slice(0,0) is a shorthand for constructing an empty string or empty list, generically
-	return exports.SLICE(pos, old_value, value.slice(0,0), global_order);
+	return exports.SPLICE(pos, old_value, value.slice(0,0), global_order);
 }
 
 exports.MOVE = function (pos, count, new_pos) {
@@ -123,7 +123,7 @@ exports.apply = function (op, value) {
 	if (op.type == "no-op")
 		return value;
 
-	if (op.type == "slice") {
+	if (op.type == "splice") {
 		return concat3(value.slice(0, op.pos), op.new_value, value.slice(op.pos+op.old_value.length));
 	}
 
@@ -149,7 +149,7 @@ exports.simplify = function (op) {
 		returns a no-op operation. If there's no simpler operation,
 		returns the op unchanged. */
 		
-	if (op.type == "slice" && deepEqual(op.old_value, op.new_value))
+	if (op.type == "splice" && deepEqual(op.old_value, op.new_value))
 		return exports.NO_OP();
 	
 	if (op.type == "move" && op.pos == op.new_pos)
@@ -168,8 +168,8 @@ exports.simplify = function (op) {
 exports.invert = function (op) {
 	/* Returns a new atomic operation that is the inverse of op */
 		
-	if (op.type == "slice")
-		return exports.SLICE(op.pos, op.new_value, op.old_value, op.global_order);
+	if (op.type == "splice")
+		return exports.SPLICE(op.pos, op.new_value, op.old_value, op.global_order);
 	
 	if (op.type == "move" && op.new_pos > op.pos)
 		return exports.MOVE(op.new_pos - op.count, op.count, op.pos);
@@ -200,7 +200,7 @@ exports.atomic_compose = function (a, b) {
 		if (a.pos <= b.pos && b.pos+b.old_value.length <= a.pos+a.new_value.length) {
 			// b replaces some of the values a inserts
 			// also takes care of adjacent inserts
-			return exports.SLICE(a.pos,
+			return exports.SPLICE(a.pos,
 				a.old_value,
 				concat3(
 					a.new_value.slice(0, b.pos-a.pos),
@@ -212,7 +212,7 @@ exports.atomic_compose = function (a, b) {
 		if (b.pos <= a.pos && a.pos+a.new_value.length <= b.pos+b.old_value.length) {
 			// b replaces all of the values a inserts
 			// also takes care of adjacent deletes
-			return exports.SLICE(b.pos,
+			return exports.SPLICE(b.pos,
 				concat3(
 					b.old_value.slice(0, a.pos-b.pos),
 					a.old_value,
@@ -253,7 +253,7 @@ exports.atomic_rebase = function (a, b) {
 	if (b.type == "no-op")
 		return b;
 
-	if (a.type == "slice" && b.type == "slice") {
+	if (a.type == "splice" && b.type == "splice") {
 		// Two insertions at the same location.
 		if (a.pos == b.pos && a.old_value.length == 0 && b.old_value.length == 0) {
 			// insert to the left
@@ -262,7 +262,7 @@ exports.atomic_rebase = function (a, b) {
 			
 			// insert to the right
 			if (b.global_order > a.global_order)
-				return exports.SLICE(b.pos+a.new_value.length, b.old_value, b.new_value, b.global_order);
+				return exports.SPLICE(b.pos+a.new_value.length, b.old_value, b.new_value, b.global_order);
 		}
 
 		// b takes place before the range that a affects
@@ -279,7 +279,7 @@ exports.atomic_rebase = function (a, b) {
 		}
 		if (b.pos <= a.pos && a.pos+a.new_value.length <= b.pos+b.old_value.length && b.global_order > a.global_order) {
 			// b replaces more than a and b takes precedence; fix b so that it's old value is correct
-			return exports.SLICE(b.pos,
+			return exports.SPLICE(b.pos,
 				concat3(
 					b.old_value.slice(0, a.pos-b.pos),
 					a.new_value,
@@ -318,7 +318,7 @@ exports.atomic_rebase = function (a, b) {
 		}
 	}
 	
-	if (a.type == "slice" && b.type == "move") {
+	if (a.type == "splice" && b.type == "move") {
 		// operations intersect
 		if (b.pos+b.count >= a.pos && b.pos < a.pos+a.old_value.length)
 			return null;
@@ -332,7 +332,7 @@ exports.atomic_rebase = function (a, b) {
 			return exports.MOVE(b.pos + (a.new_value.length-a.old_value.length), b.count, b.new_pos);
 	}
 	
-	if (a.type == "slice" && b.type == "apply") {
+	if (a.type == "splice" && b.type == "apply") {
 		// operations intersect
 		if (b.pos >= a.pos && b.pos < a.pos+a.old_value.length)
 			return null;
@@ -341,17 +341,17 @@ exports.atomic_rebase = function (a, b) {
 		return exports.APPLY(b.pos + (a.new_value.length-a.old_value.lenght), b.op.module_name, b.op);
 	}
 	
-	if (a.type == "move" && b.type == "slice") {
+	if (a.type == "move" && b.type == "splice") {
 		// operations intersect
 		if (b.pos+b.old_value.length >= a.pos && b.pos < a.pos+a.count)
 			return null;
-		return exports.SLICE(map_index(b.pos), b.old_value, b.new_value, b.global_index);
+		return exports.SPLICE(map_index(b.pos), b.old_value, b.new_value, b.global_index);
 	}
 	
 	if (a.type == "move" && b.type == "apply")
 		return exports.APPLY(map_index(b.pos), b.op.module_name, b.op);
 	
-	if (a.type == "apply" && b.type == "slice") {
+	if (a.type == "apply" && b.type == "splice") {
 		// operations intersect
 		if (a.pos >= b.pos && a.pos < b.pos+b.old_value.length)
 			return null;

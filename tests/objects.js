@@ -20,7 +20,7 @@ assert.deepEqual(
 assert.deepEqual(
 	objs.apply(objs.APPLY(
 		"a",
-		seqs.SLICE(0, "b", "Hello")
+		seqs.SPLICE(0, "b", "Hello")
 		), {"a": "b"}),
 	{ "a": "Hello" });
 assert.deepEqual(

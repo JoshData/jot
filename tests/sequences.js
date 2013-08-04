@@ -8,16 +8,16 @@ assert.equal(
 	seqs.apply(seqs.NO_OP(), "123"),
 	"123");
 assert.equal(
-	seqs.apply(seqs.SLICE(0, "1", "4"), "123"),
+	seqs.apply(seqs.SPLICE(0, "1", "4"), "123"),
 	"423");
 assert.equal(
-	seqs.apply(seqs.SLICE(0, "1", ""), "123"),
+	seqs.apply(seqs.SPLICE(0, "1", ""), "123"),
 	"23");
 assert.equal(
-	seqs.apply(seqs.SLICE(0, "1", "44"), "123"),
+	seqs.apply(seqs.SPLICE(0, "1", "44"), "123"),
 	"4423");
 assert.equal(
-	seqs.apply(seqs.SLICE(3, "", "44"), "123"),
+	seqs.apply(seqs.SPLICE(3, "", "44"), "123"),
 	"12344");
 
 assert.equal(
@@ -34,11 +34,11 @@ assert.deepEqual(
 // simplify
 
 assert.deepEqual(
-	seqs.simplify(seqs.SLICE(3, "123", "123")),
+	seqs.simplify(seqs.SPLICE(3, "123", "123")),
 	seqs.NO_OP());
 assert.deepEqual(
-	seqs.simplify(seqs.SLICE(3, "123", "456")),
-	seqs.SLICE(3, "123", "456"));
+	seqs.simplify(seqs.SPLICE(3, "123", "456")),
+	seqs.SPLICE(3, "123", "456"));
 assert.deepEqual(
 	seqs.simplify(seqs.MOVE(3, 5, 3)),
 	seqs.NO_OP());
@@ -55,8 +55,8 @@ assert.deepEqual(
 // invert
 
 assert.deepEqual(
-	seqs.invert(seqs.SLICE(3, "123", "456")),
-	seqs.SLICE(3, "456", "123"));
+	seqs.invert(seqs.SPLICE(3, "123", "456")),
+	seqs.SPLICE(3, "456", "123"));
 assert.deepEqual(
 	seqs.invert(seqs.MOVE(3, 3, 10)),
 	seqs.MOVE(7, 3, 3));

@@ -68,15 +68,15 @@ You give JOT a sequence of operations, which are one of:
 
 * REP: Replace one value with another (typically array elements or property values).
 * MAP: Increment a numeric value by a value, multiply a numeric value by a value, or XOR a boolean value by another boolean value.
-* SLICE (strings): Insert delete, or replace consecutive characters in the string.
-* SLICE (arrays): Insert, delete, or replace consecutive elements of an array.
+* SPLICE (strings): Insert delete, or replace consecutive characters in the string.
+* SPLICE (arrays): Insert, delete, or replace consecutive elements of an array.
 * MOVE: Move consecutive elements of an array from one index to another.
 * PROP: Create, delete, or rename a property on an object or alter a property's value.
 
 Some of the operations have helpful aliases for common edge cases:
 
-* INS (insert text or array elements; part of SLICE)
-* DEL (delete text or array elements; part of SLICE)
+* INS (insert text or array elements; part of SPLICE)
+* DEL (delete text or array elements; part of SPLICE)
 * PUT (add a new property; part of PROP)
 * DEL (remove a property; part of PROP)
 * REN (rename a property; part of PROP)
@@ -88,7 +88,7 @@ There's also
 
 As you might be able to see, the JOT model is a superset of the model you need
 for basic plain text concurrent editing. That is, it encapsulates the entire
-text editing model within the string SLICE operation, plus it gives you four more
+text editing model within the string SPLICE operation, plus it gives you four more
 operations to work with structured data.
 
 Operations
@@ -100,12 +100,12 @@ it's what you do when you have two concurrent edits. For instance:
 
 * When REN is used to rename a property and REP is used to change its value, the
   REP operation is revised to find the property by its new name.
-* When SLICE or REP is used concurrently and two different values are set, a conflict
+* When SPLICE or REP is used concurrently and two different values are set, a conflict
   is flagged. One of the two values must be chosen by the caller and the other
   discarded.
 * When MAP is used by two concurrent users each to increment a value by one, the two
   operations can be combined so the value is incremented by two.
-* When text is edited, insertions using SLICE at different locations in the text can be
+* When text is edited, insertions using SPLICE at different locations in the text can be
   combined (like a typical merge or patch).
   
 Example

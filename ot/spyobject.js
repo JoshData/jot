@@ -82,7 +82,7 @@ function SpyObject(doc, observer, path) {
 		observer.op_history.push(
 			objects.access(
 				this.path,
-				"sequences", "SLICE",
+				"sequences", "SPLICE",
 				this.doc.length, [], [clone(value)]));
 		this.doc.push(value);
 	};
@@ -91,7 +91,7 @@ function SpyObject(doc, observer, path) {
 		observer.op_history.push(
 			objects.access(
 				this.path,
-				"sequences", "SLICE",
+				"sequences", "SPLICE",
 				this.doc.length+1, [clone(value)], []));
 		return value;
 	};
