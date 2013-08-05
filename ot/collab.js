@@ -1,9 +1,8 @@
-var ot = require("./ot/base.js");
+var ot = require(__dirname + "/base.js");
 
-exports.Collaboration = function(document_updater, the_wire) {
-	/* The Collaboration class is a shared state between you and another editor.
-	It runs synchronously with your local changes but asynchronously
-	with remote changes.
+exports.TwoWayCollaboration = function(document_updater, the_wire, asymmetric) {
+	/* The TwoWayCollaboration class is a shared state between you and another editor.
+	It runs synchronously with your local changes but asynchronously with remote changes.
 	
 	What synchronously means here is that when the local user makes a
 	change to the document, local_revision() must be called with that operation
@@ -19,15 +18,23 @@ exports.Collaboration = function(document_updater, the_wire) {
 	
 	this.document_updater = document_updater;
 	this.to_the_wire = the_wire;
-	
+	this.asymmetric = asymmetric || false;
+		
 	this.our_hist_start = 0;
 	this.our_history = [];
 	this.rolled_back = 0;
 	
 	this.remote_hist_start = 0;
 	this.remote_history = [];
+	
+	// symmetric mode
 	this.remote_conflict_pending_undo = false;
-		
+	
+	// asymmetric mode
+	this.remote_conflicted_operations = [];
+	
+	// public methods
+	
 	this.local_revision = function(operation, operation_metadata) {
 		/* The user calls this to indicate they made a local change to
 		   the document. */
@@ -99,9 +106,14 @@ exports.Collaboration = function(document_updater, the_wire) {
 		for (var i = 0; i < this.remote_history.length; i++)
 			remote_ops.push(this.remote_history[i][1]);
 		
-		// Rebase
+		// Get the current operations coming in, appended to any held-back operations from a conflict (asymmetric).
 		if (!(operation instanceof Array)) operation = [operation];
 		var original_operation = operation;
+		operation = this.remote_conflicted_operations.concat(operation);
+		operation = ot.normalize_array(operation);
+		console.log(operation);
+		
+		// Rebase against (our recent changes rebased against the remote operations we've already applied).
 		var local_ops = ot.normalize_array(this.our_history.slice(this.rolled_back));
 		var r1 = ot.rebase_array(remote_ops, local_ops);
 		if (r1 == null)
@@ -110,27 +122,45 @@ exports.Collaboration = function(document_updater, the_wire) {
 			operation = ot.rebase_array(r1, operation); // may also be null, returns array
 		
 		if (operation == null) {
-			// Both sides will experience a similar conflict. Since each side has
-			// committed to the document a different set of changes since the last
-			// point the documents were sort of in sync, each side has to roll
-			// back their changes independently.
-			//
-			// Once we've rolled back our_history, there is no need to rebase the incoming
-			// remote operation. So we can just continue below. But we'll note that it's
-			// a conflict.
-			var undo = ot.normalize_array( ot.invert_array(this.our_history.slice(this.rolled_back)) );
-			this.rolled_back = this.our_history.length;
-			if (undo.length > 0) {
-				this.document_updater(undo, { "type": "local-conflict-undo" }); // send to local user
-				for (var i = 0; i < undo.length; i++) {
-					this.local_revision(undo[i], { "type" : "conflict-undo" }); // send to remote user
-					this.rolled_back += 1; // because we just put the undo on the history inside local_revision
+			if (!asymmetric) {
+				// Symmetric Mode
+				// --------------
+				// Both sides will experience a similar conflict. Since each side has
+				// committed to the document a different set of changes since the last
+				// point the documents were sort of in sync, each side has to roll
+				// back their changes independently.
+				//
+				// Once we've rolled back our_history, there is no need to rebase the incoming
+				// remote operation. So we can just continue below. But we'll note that it's
+				// a conflict.
+				var undo = ot.normalize_array( ot.invert_array(this.our_history.slice(this.rolled_back)) );
+				this.rolled_back = this.our_history.length;
+				if (undo.length > 0) {
+					this.document_updater(undo, { "type": "local-conflict-undo" }); // send to local user
+					for (var i = 0; i < undo.length; i++) {
+						this.local_revision(undo[i], { "type" : "conflict-undo" }); // send to remote user
+						this.rolled_back += 1; // because we just put the undo on the history inside local_revision
+					}
 				}
+				operation_metadata["type"] = "conflicted"; // flag that this is probably going to be reset
+				this.remote_conflict_pending_undo = true;
+				
+				operation = original_operation;
+				
+			} else {
+				// Asymmetric Mode
+				// ---------------
+				// In asymmetric mode, one side (this side!) is privileged. The other side
+				// runs with asymmetric=false, and it will still blow away its own changes
+				// and send undo-operations when there is a conflict.
+				//
+				// The privileged side (this side) will not blow away its own changes. Instead,
+				// we wait for the remote end to send enough undo operations so that there's
+				// no longer a conflict.
+				for (var i = 0; i < original_operation.length; i++)
+					this.remote_conflicted_operations.push(original_operation[i]);
+				return;
 			}
-			operation_metadata["type"] = "conflicted"; // flag that this is probably going to be reset
-			this.remote_conflict_pending_undo = true;
-			
-			operation = original_operation;
 		}
 		
 		// Apply.
@@ -148,6 +178,101 @@ exports.Collaboration = function(document_updater, the_wire) {
 		
 		// Append this operation to the remote_history.
 		this.remote_history.push( [base_revision, operation] );
+		
+		// Conflict resolved (asymmetric mode).
+		this.remote_conflicted_operations = []
 	}
+};
+
+exports.CollaborationServer = function (){
+	/* The CollaborationServer class manages a collaboration between two or more
+	   remote participants. The server handles all message passing between participants. */
+	   
+	this.collaborator_count = 0;
+	this.collaborators = { };
+	this.doc = { };
+	
+	var me = this;
+	   
+	this.add_collaborator = function(the_wire) {
+		// Registers a new collaborator who can be sent messages through
+		// the_wire(msg). Returns an object with properties id and document
+		// which holds the current document state.
+		
+		var id = this.collaborator_count;
+		this.collaborator_count += 1;
+		console.log("collaborator " + id + " added.");
+		
+		function doc_updatr(op, op_metadata) {
+		   me.document_updated(id, op, op_metadata);
+		}
+		
+		this.collaborators[id] = {
+		   // create an asynchronous collaborator
+		   collab: new exports.TwoWayCollaboration(doc_updatr, the_wire, true)
+		};
+		
+		return {
+		   id: id,
+		   document: this.doc
+		};
+	};
+	
+	this.remove_collaborator = function(id) {
+		delete this.collaborators[id];
+	};
+	
+	this.process_remote_message = function(id, msg) {
+		// We've received a message from a particular collaborator. Pass the message
+		// to the TwoWayCollaboration instance, which in turn will lead to
+		// document_updated being called.
+		this.collaborators[id].collab.process_remote_message(msg);
+	};
+	
+	this.document_updated = function(collaborator_id, operation, operation_metadata) {
+		// Apply the operation to our local copy of the document.
+		if (!(operation instanceof Array)) operation = [operation];
+		ot.apply_array(operation, this.doc);
+		
+		// Send the operation to every other collaborator.
+		for (var c in this.collaborators)
+			if (c != collaborator_id)
+				this.collaborators[c].collab.local_revision(operation, operation_metadata);
+	};
+	
+	this.start_socketio_server = function(port, with_examples) {
+		var me = this;
+		
+		var app = require('http').createServer(handler);
+		var io = require('socket.io').listen(app);
+		
+		app.listen(port);
+		
+		function handler (req, res) {
+		  if (with_examples) {
+		  	  var cs = require("connect").static(with_examples, {});
+		  	  return cs(req, res, function () { res.end(); });
+		  }
+		  
+		  res.writeHead(403);
+		  res.end("Nothing here but a socket.io server.");
+		}
+
+		//var io = require('socket.io').listen(port);
+		
+		io.sockets.on('connection', function (socket) {
+			var collab_info = me.add_collaborator(function(msg) { socket.emit("op", msg); });
+
+			socket.emit("doc", collab_info.document); // send current state
+			
+			socket.on("op", function(msg) {
+				// message received from client
+				me.process_remote_message(collab_info.id, msg);
+			});
+			socket.on("disconnect", function() {
+				me.remove_collaborator(collab_info.id);
+			});
+		});   	   
+	};
 };
 

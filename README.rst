@@ -54,7 +54,7 @@ The code is written for the Node platform.
 
 Dependencies:
 
-npm install deep-equal googlediff
+npm install deep-equal googlediff socket.io
 
 
 Document Model
@@ -165,6 +165,10 @@ first user's changes, and apply the rebased operations to the document.
 
 Interactive Example
 -------------------
+
+To run the interactive example, you'll also need to:
+
+	npm install connect
 
 nodejs build_browser_lib.js > json_editor_example/jot.js
 

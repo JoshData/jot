@@ -13,9 +13,14 @@
     <script type="text/javascript" src="jot.js"></script>
     <script type="text/javascript" src="jot-eventloop.js"></script>
     <script type="text/javascript" src="jsoneditor-integration.js"></script>
+
+    <script src="/socket.io/socket.io.js"></script>
     
+    <!--
+    can also do a collaboration between two clients using Firebase...
     <script type='text/javascript' src='https://cdn.firebase.com/v0/firebase.js'></script>
     <script type="text/javascript" src="firebase-integration.js"></script>
+    -->
 
 </head>
 <body>
@@ -32,7 +37,14 @@
 
     	var my_name = make_guid();
     	
-		setup_connection(my_name); // defined in firebase-integaration, calls setup_rest
+		//setup_connection(my_name);
+		
+	    var socket = io.connect('');
+	    socket.on('doc', function (data) {
+		  setup_rest(data,
+		  	function(msg) { socket.emit("op", msg); },
+		  	function(callback) { socket.on("op", callback); });
+	    });
 
 		var editor;
 		function modify_doc_func(op, op_metadata) {
@@ -40,7 +52,7 @@
 		}
 		function setup_rest(doc, to_the_wire_func, register_from_the_wire) {
 			var ot_collab = require("ot/collab.js");
-			var collab = new ot_collab.Collaboration(modify_doc_func, to_the_wire_func);
+			var collab = new ot_collab.TwoWayCollaboration(modify_doc_func, to_the_wire_func);
 			
 			var event_loop = setup_event_loop(collab);
 			setup_editor_hook(event_loop); // before setup_editor
