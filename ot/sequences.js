@@ -196,7 +196,7 @@ exports.atomic_compose = function (a, b) {
 	if (b.type == "no-op")
 		return a;
 	
-	if (a.type == 'rep' && b.type == 'rep' && a.global_order == b.global_order) {
+	if (a.type == 'splice' && b.type == 'splice' && a.global_order == b.global_order) {
 		if (a.pos <= b.pos && b.pos+b.old_value.length <= a.pos+a.new_value.length) {
 			// b replaces some of the values a inserts
 			// also takes care of adjacent inserts
