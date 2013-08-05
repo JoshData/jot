@@ -12,7 +12,7 @@ functionality.
 This library:
 
 * Models atomic data changes to JSON data structures (operations).
-* Inverts, composes, and rebases operations.
+* Inverts, composes, and rebases operations (transforms).
 * Manages real-time collaborations between two or more users.
 * Provides example client/server code and a working example.
 
