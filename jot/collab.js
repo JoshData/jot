@@ -111,7 +111,6 @@ exports.TwoWayCollaboration = function(document_updater, the_wire, asymmetric) {
 		var original_operation = operation;
 		operation = this.remote_conflicted_operations.concat(operation);
 		operation = ot.normalize_array(operation);
-		console.log(operation);
 		
 		// Rebase against (our recent changes rebased against the remote operations we've already applied).
 		var local_ops = ot.normalize_array(this.our_history.slice(this.rolled_back));
