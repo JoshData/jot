@@ -117,9 +117,14 @@ function setup_editor_hook(event_loop) {
 				if (params.parent.type == "object") {
 					// append/insertBefore/insertAfter all have the same effect on
 					// objects because they are unordered in the document model.
-					params.node.tmp_field_name = make_guid();
+					if (has_child_already(params.node.parent, params.node, params.node.field))
+						// the field name starts off as the empty string, which 
+						// is a valid key, but check if it's in use before actually
+						// sending that key name. if it is in use, send a different
+						// key name on the wire.
+						params.node.tmp_field_name = make_guid();
 					op = ot_obj.access(get_path(params.parent), "objects.js",
-						"PUT", params.node.tmp_field_name, params.node.value);
+						"PUT", (params.node.tmp_field_name ? params.node.tmp_field_name : params.node.field), params.node.value);
 				} else {
 					// array
 					var index;
@@ -184,11 +189,11 @@ function apply_to_document(op, node) {
 	
 	if (op.module_name == "objects.js") {
 		if (op.type == "prop") {
-			if (op.old_key) {
+			if (op.old_key != null) {
 				// delete or rename a key
 				for (var i in node.childs) {
 					if (node.childs[i].field == op.old_key) {
-						if (op.new_key)
+						if (op.new_key != null)
 							node.childs[i].updateField(op.new_key);
 						else
 							node.removeChild(node.childs[i]);

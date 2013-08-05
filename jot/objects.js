@@ -107,9 +107,9 @@ exports.apply = function (op, value) {
 		return value;
 
 	if (op.type == "prop") {
-		if (!op.old_key)
+		if (op.old_key == null)
 			value[op.new_key] = op.new_value;
-		else if (!op.new_key)
+		else if (op.new_key == null)
 			delete value[op.old_key];
 		else {
 			var v = value[op.old_key];
