@@ -195,7 +195,7 @@ exports.atomic_compose = function (a, b) {
 
 	if (b.type == "no-op")
 		return a;
-	
+
 	if (a.type == 'splice' && b.type == 'splice' && a.global_order == b.global_order) {
 		if (a.pos <= b.pos && b.pos+b.old_value.length <= a.pos+a.new_value.length) {
 			// b replaces some of the values a inserts
@@ -205,8 +205,8 @@ exports.atomic_compose = function (a, b) {
 				concat3(
 					a.new_value.slice(0, b.pos-a.pos),
 					b.new_value,
-					a.new_value.slice((b.pos+b.old_value.length)-(a.pos+a.new_value.length))
-					)
+					a.new_value.slice(a.new_value.length + (b.pos+b.old_value.length)-(a.pos+a.new_value.length))
+					) // in the final component, don't use a negative index because it might be zero (which is always treated as positive)
 				);
 		}
 		if (b.pos <= a.pos && a.pos+a.new_value.length <= b.pos+b.old_value.length) {
@@ -216,7 +216,7 @@ exports.atomic_compose = function (a, b) {
 				concat3(
 					b.old_value.slice(0, a.pos-b.pos),
 					a.old_value,
-					b.old_value.slice((a.pos+a.new_value.length)-(b.pos+b.old_value.length))
+					b.old_value.slice(b.old_value.length + (a.pos+a.new_value.length)-(b.pos+b.old_value.length))
 					),
 				b.new_value
 				);
