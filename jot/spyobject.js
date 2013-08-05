@@ -48,9 +48,7 @@ function SpyObject(doc, observer, path) {
 				"values", "MAP",
 				"add", clone(amount)));
 		
-		var value = this.doc[old_key];
-		delete this.doc[old_key];
-		this.doc[new_key] = value;
+		this.doc[key] += amount;
 	};
 	
 	// objects
