@@ -145,7 +145,7 @@ Interactive Example
 
 I've packaged an interactive example of multi-user collaborative editing
 of a JSON data structure. The front-end is Jos de Jong's excellent
-JSONEditor.
+JSONEditor (https://github.com/josdejong/jsoneditor).
 
 To run the interactive example, you'll also need get dependencies:
 
