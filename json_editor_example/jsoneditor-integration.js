@@ -243,15 +243,15 @@ function apply_to_document(op, node) {
 
 	if (op.module_name == "sequences.js" && (node.type == "string" || node.type == "auto")) {
 		if (op.type == "splice") {
-			v = node.value.splice(op.pos, op.old_value.length, op.new_value);
-			node.updateValue(v);
+			var v = node.value.splice(op.pos, op.old_value.length, op.new_value);
+			node_update_preseve_selection(node, v, op.pos, op.new_value.length-op.old_value.length);
 			return;						
 		}
 	}
 	
 	if (op.module_name == "values.js") {
 		if (op.type == "rep") {
-			node.updateValue(op.new_value);
+			node_update_preseve_selection(node, op.new_value);
 			return;
 		}
 	}
@@ -259,5 +259,16 @@ function apply_to_document(op, node) {
 	alert("Not handled: " + op.module_name + "#" + op.type);
 	console.log(op);
 	console.log(node);
+}
+
+function node_update_preseve_selection(node, value, pos, shift) {
+	var s = node.editor.getSelection();
+	node.updateValue(value);
+	if (s.range && s.range.container == node.dom.value) {
+		// restore caret location, adjusted for change in text length before caret location
+		if (s.range.startOffset > pos && shift) s.range.startOffset += shift;
+		if (s.range.endOffset > pos && shift) s.range.endOffset += shift;
+		node.editor.setSelection(s);
+	}
 }
 
