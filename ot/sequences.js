@@ -271,7 +271,7 @@ exports.atomic_rebase = function (a, b) {
 		
 		// b takes place after the range that a affects
 		if (b.pos >= a.pos + a.old_value.length)
-			return rep(b.pos+(a.new_value.length-a.old_value.length), b.old_value, b.new_value, b.global_order);
+			return exports.SPLICE(b.pos+(a.new_value.length-a.old_value.length), b.old_value, b.new_value, b.global_order);
 		
 		if (a.pos <= b.pos && b.pos+b.old_value.length <= a.pos+a.old_value.length && b.global_order < a.global_order) {
 			// b's replacement is entirely within a's replacement, and a takes precedence
@@ -364,5 +364,35 @@ exports.atomic_rebase = function (a, b) {
 	
 	// Return null indicating this is an unresolvable conflict.
 	return null;
+}
+
+// Use google-diff-match-patch to convert a string REP to a list of insertions
+// and deletions.
+
+exports.from_string_rep = function(rep_op, global_order) {
+	// Do a diff, which results in an array of operations of the form
+	//  (op_type, op_data)
+	// where
+	//  op_type ==  0 => text same on both sides
+	//  op_type == -1 => text deleted (op_data is deleted text)
+	//  op_type == +1 => text inserted (op_data is inserted text)
+	var diff_match_patch = require('googlediff');
+	var base = require(__dirname + "/base.js");
+	var dmp = new diff_match_patch();
+	var d = dmp.diff_main(rep_op.old_value, rep_op.new_value);
+	var ret = [];
+	var pos = 0;
+	for (var i = 0; i < d.length; i++) {
+		if (d[i][0] == 0) {
+			pos += d[i][1].length;
+		} else if (d[i][0] == -1) {
+			ret.push(exports.DEL(pos, d[i][1], global_order));
+			// don't increment pos because next operation sees the string with this part deleted
+		} else if (d[i][0] == 1) {
+			ret.push(exports.INS(pos, d[i][1], global_order));
+			pos += d[i][1].length;
+		}
+	}
+	return base.normalize_array(ret);
 }
 

@@ -74,14 +74,20 @@ exports.APPLY = function (key, op) {
 }
 
 exports.access = function(path, module_name, op_name /*, op_args */) {
-	var op_args = [];
-	for (var i = 3; i < arguments.length; i++)
-		op_args.push(arguments[i]);
+	// also takes an op directly passed as the second argument
+	var op;
+	if (module_name instanceof Object) {
+		op = module_name;
+	} else {
+		var op_args = [];
+		for (var i = 3; i < arguments.length; i++)
+			op_args.push(arguments[i]);
+		
+		var lib = jot_platform.load_module(module_name);
+		op = lib[op_name].apply(null, op_args);
+	}
 	
 	var seqs = jot_platform.load_module('sequences.js');
-	var lib = jot_platform.load_module(module_name);
-	var op = lib[op_name].apply(null, op_args);
-	
 	for (var i = path.length-1; i >= 0; i--) {
 		if (typeof path[i] == 'string') {
 			op = exports.APPLY(path[i], op);

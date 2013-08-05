@@ -1,6 +1,7 @@
 var assert = require('assert')
 var values = require("../ot/values.js");
 var seqs = require("../ot/sequences.js");
+var base = require("../ot/base.js");
 
 // apply
 
@@ -74,4 +75,12 @@ assert.deepEqual(
 // rebase
 
 // ...
+
+// from_string_rep
+
+assert.equal(
+	base.apply_array(
+		seqs.from_string_rep(values.REP("this is a test", "calculus was a hard test")),
+		"this is a test"),
+	"calculus was a hard test");
 

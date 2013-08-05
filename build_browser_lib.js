@@ -25,3 +25,6 @@ for (var name in libs) {
 	process.stdout.write("\n");
 }
 
+process.stdout.write(fs.readFileSync(__dirname+'/node_modules/googlediff/javascript/diff_match_patch_uncompressed.js'));
+process.stdout.write("jot_modules['googlediff'] = { exports: diff_match_patch };\n");
+

@@ -54,7 +54,7 @@ The code is written for the Node platform.
 
 Dependencies:
 
-npm install deep-equal
+npm install deep-equal googlediff
 
 
 Document Model

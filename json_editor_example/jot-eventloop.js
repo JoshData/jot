@@ -26,7 +26,7 @@ function setup_event_loop(collab) {
 	// send localChanges2 and then move localChanges1 to localChanges2, and then
 	// schedule the next firing of the function.
 	function queue_send_changes() {
-		window.setTimeout("jot_send_changes_over_the_wire()", 1000);
+		window.setTimeout("jot_send_changes_over_the_wire()", 2000);
 	}
 	window.jot_send_changes_over_the_wire = function() {
 		var ops = ot_base.normalize_array(localChanges2);

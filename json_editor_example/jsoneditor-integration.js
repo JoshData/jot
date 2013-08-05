@@ -1,3 +1,7 @@
+String.prototype.splice = function( idx, rem, s ) {
+    return (this.slice(0,idx) + s + this.slice(idx + Math.abs(rem)));
+};
+
 function setup_editor(doc) {
 	var container = document.getElementById("jsoneditor");
 	var editor = new jsoneditor.JSONEditor(container);
@@ -10,6 +14,8 @@ function setup_editor_hook(event_loop) {
 	
 	var ot_base = require("ot/base.js");
 	var ot_obj = require("ot/objects.js");
+	var ot_seqs = require("ot/sequences.js");
+	var ot_values = require("ot/values.js");
 	
 	var TreeEditor = jsoneditor.JSONEditor.modes["tree"].editor;
 	var _onAction = TreeEditor.prototype._onAction;
@@ -62,9 +68,16 @@ function setup_editor_hook(event_loop) {
 		try {
 			var op;
 			
-			if (action == "editValue")
-				op = ot_obj.access(get_path(params.node), "values.js",
-					"REP", params.oldValue, params.newValue);
+			if (action == "editValue") {
+				var op = ot_values.REP(params.oldValue, params.newValue);
+				if (typeof params.oldValue == 'string' && typeof params.newValue == 'string') {
+					// if this is a single simple string edit, pass that as the operation
+					var op2 = ot_seqs.from_string_rep(op); // converts this to an array
+					if (op2.length == 1)
+						op = op2[0];
+				}
+				op = ot_obj.access(get_path(params.node), op);
+			}
 				
 			else if (action == "changeType")
 				op = ot_obj.access(get_path(params.node), "values.js",
@@ -200,7 +213,7 @@ function apply_to_document(op, node) {
 		}
 	}
 
-	if (op.module_name == "sequences.js") {
+	if (op.module_name == "sequences.js" && node.type == "array") {
 		if (op.type == "splice") {
 			// (Firebase doesn't store empty properties, so we have to check if
 			// op.old_value and op.new_value are null before getting length. (?) )
@@ -224,6 +237,15 @@ function apply_to_document(op, node) {
 		if (op.type == "apply") {
 			apply_to_document(op.op, node.childs[op.pos]);
 			return;
+		}
+		
+	} 
+
+	if (op.module_name == "sequences.js" && (node.type == "string" || node.type == "auto")) {
+		if (op.type == "splice") {
+			v = node.value.splice(op.pos, op.old_value.length, op.new_value);
+			node.updateValue(v);
+			return;						
 		}
 	}
 	
