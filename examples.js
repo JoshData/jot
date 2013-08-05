@@ -1,5 +1,5 @@
-var ot = require("./ot/base.js");
-var spyobj = require("./ot/spyobject.js");
+var ot = require("./jot/base.js");
+var spyobj = require("./jot/spyobject.js");
 
 var doc = {
 	key1: "Hello World!",

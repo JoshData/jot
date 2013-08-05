@@ -1,5 +1,5 @@
 function setup_event_loop(collab) {
-	var ot_base = require("ot/base.js");
+	var ot_base = require("jot/base.js");
 	
 	// use a two-stage queue so that operations are guaranteed
 	// to wait before getting sent in the wire, in case they
@@ -26,7 +26,7 @@ function setup_event_loop(collab) {
 	// send localChanges2 and then move localChanges1 to localChanges2, and then
 	// schedule the next firing of the function.
 	function queue_send_changes() {
-		window.setTimeout("jot_send_changes_over_the_wire()", 750);
+		window.setTimeout("jot_send_changes_over_the_wire()", 150);
 	}
 	window.jot_send_changes_over_the_wire = function() {
 		var ops = ot_base.normalize_array(localChanges2);

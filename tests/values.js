@@ -1,5 +1,5 @@
 var assert = require('assert')
-var values = require("../ot/values.js");
+var values = require("../jot/values.js");
 
 // apply
 

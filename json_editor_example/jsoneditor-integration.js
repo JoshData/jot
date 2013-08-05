@@ -12,10 +12,10 @@ function setup_editor(doc) {
 function setup_editor_hook(event_loop) {
 	// must run before setup_editor
 	
-	var ot_base = require("ot/base.js");
-	var ot_obj = require("ot/objects.js");
-	var ot_seqs = require("ot/sequences.js");
-	var ot_values = require("ot/values.js");
+	var ot_base = require("jot/base.js");
+	var ot_obj = require("jot/objects.js");
+	var ot_seqs = require("jot/sequences.js");
+	var ot_values = require("jot/values.js");
 	
 	var TreeEditor = jsoneditor.JSONEditor.modes["tree"].editor;
 	var _onAction = TreeEditor.prototype._onAction;

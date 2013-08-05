@@ -51,7 +51,7 @@
 			apply_to_document(op, editor.node);
 		}
 		function setup_rest(doc, to_the_wire_func, register_from_the_wire) {
-			var ot_collab = require("ot/collab.js");
+			var ot_collab = require("jot/collab.js");
 			var collab = new ot_collab.TwoWayCollaboration(modify_doc_func, to_the_wire_func);
 			
 			var event_loop = setup_event_loop(collab);

@@ -2,22 +2,22 @@ var fs = require('fs');
 
 var libs = {
 	"deep-equal": "node_modules/deep-equal/index.js",
-	"base.js": "ot/base.js",
-	"values.js": "ot/values.js",
-	"sequences.js": "ot/sequences.js",
-	"objects.js": "ot/objects.js",
-	"collab.js": "ot/collab.js",
+	"base.js": "jot/base.js",
+	"values.js": "jot/values.js",
+	"sequences.js": "jot/sequences.js",
+	"objects.js": "jot/objects.js",
+	"collab.js": "jot/collab.js",
 };
 
 process.stdout.write("var jot_modules = { }\n");
 
-process.stdout.write(fs.readFileSync("ot/browser_platform.js"));
+process.stdout.write(fs.readFileSync("jot/browser_platform.js"));
 
 for (var name in libs) {
 	process.stdout.write("jot_modules['" + name + "'] =  (function(module) {\n");
 	process.stdout.write("module.exports = { };\n");
 	process.stdout.write("var exports = module.exports;\n");
-	process.stdout.write("var __dirname = 'ot';\n");
+	process.stdout.write("var __dirname = 'jot';\n");
 	var body = fs.readFileSync(libs[name]);
 	process.stdout.write(body);
 	process.stdout.write("return module;");

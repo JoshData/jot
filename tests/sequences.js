@@ -1,7 +1,7 @@
 var assert = require('assert')
-var values = require("../ot/values.js");
-var seqs = require("../ot/sequences.js");
-var base = require("../ot/base.js");
+var values = require("../jot/values.js");
+var seqs = require("../jot/sequences.js");
+var base = require("../jot/base.js");
 
 // apply
 

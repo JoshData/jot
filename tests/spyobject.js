@@ -1,6 +1,6 @@
 var assert = require('assert')
-var ot = require("../ot/base.js");
-var spy = require("../ot/spyobject.js");
+var ot = require("../jot/base.js");
+var spy = require("../jot/spyobject.js");
 
 spydoc = new spy.SpyObject();
 
