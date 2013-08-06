@@ -34,7 +34,7 @@ exports.compose = function(a, b) {
 	if (a.type == "no-op") return b;
 	if (b.type == "no-op") return a;
 	if (a.module_name != b.module_name) return null; // can't compose operations from different modules
-	return exports.run_op_func(a, "atomic_compose", b);
+	return exports.run_op_func(a, "compose", b);
 }
 
 exports.rebase = function(a, b) {
@@ -42,7 +42,7 @@ exports.rebase = function(a, b) {
 	if (a.type == "no-op") return b; // rebasing against no-op leaves operation unchanged
 	if (b.type == "no-op") return b; // rebasing a no-op is still a no-op
 	if (a.module_name != b.module_name) return null; // can't rebase operations from different modules
-	return exports.run_op_func(a, "atomic_rebase", b);
+	return exports.run_op_func(a, "rebase", b);
 }
 
 exports.normalize_array = function(ops) {

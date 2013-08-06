@@ -147,7 +147,7 @@ exports.invert = function (op) {
 		return op; // it's its own inverse
 }
 
-exports.atomic_compose = function (a, b) {
+exports.compose = function (a, b) {
 	/* Creates a new atomic operation that combines the operations a
 		and b, if an atomic operation is possible, otherwise returns
 		null. */
@@ -186,7 +186,7 @@ exports.atomic_compose = function (a, b) {
 	return null; // no atomic composition is possible
 }
 	
-exports.atomic_rebase = function (a, b) {
+exports.rebase = function (a, b) {
 	/* Transforms b, an operation that was applied simultaneously as a,
 		so that it can be composed with a. rebase(a, b) == rebase(b, a). */
 

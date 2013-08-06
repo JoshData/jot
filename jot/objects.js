@@ -159,7 +159,7 @@ exports.invert = function (op) {
 	}
 }
 
-exports.atomic_compose = function (a, b) {
+exports.compose = function (a, b) {
 	/* Creates a new atomic operation that combines the operations a
 		and b, if an atomic operation is possible, otherwise returns
 		null. */
@@ -183,7 +183,7 @@ exports.atomic_compose = function (a, b) {
 		
 	if (a.type == "apply" && b.type == "apply" && a.key == b.key && a.op.module_name == b.op.module_name) {
 		var lib = jot_platform.load_module(a.op.module_name);
-		var op2 = lib.atomic_compose(a.op, b.op);
+		var op2 = lib.compose(a.op, b.op);
 		if (op2)
 			return exports.APPLY(a.key, op2);
 	}
@@ -191,7 +191,7 @@ exports.atomic_compose = function (a, b) {
 	return null; // no atomic composition is possible
 }
 	
-exports.atomic_rebase = function (a, b) {
+exports.rebase = function (a, b) {
 	/* Transforms b, an operation that was applied simultaneously as a,
 		so that it can be composed with a. rebase(a, b) == rebase(b, a).
 		If no rebase is possible (i.e. a conflict) then null is returned.
@@ -232,7 +232,7 @@ exports.atomic_rebase = function (a, b) {
 	
 	if (a.type == "apply" && b.type == "apply" && a.op.module_name == b.op.module_name) {
 		var lib = jot_platform.load_module(a.op.module_name);
-		var op2 = lib.atomic_rebase(a.op, b.op);
+		var op2 = lib.rebase(a.op, b.op);
 		if (op2)
 			return exports.APPLY(a.key, op2);
 	}

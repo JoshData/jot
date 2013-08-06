@@ -90,39 +90,39 @@ assert.deepEqual(
 // compose
 
 assert.deepEqual(
-	values.atomic_compose(
+	values.compose(
 		values.NO_OP(),
 		values.REP(1, 2) ),
 	values.REP(1, 2));
 assert.deepEqual(
-	values.atomic_compose(
+	values.compose(
 		values.REP(1, 2),
 		values.NO_OP() ),
 	values.REP(1, 2));
 
 assert.deepEqual(
-	values.atomic_compose(
+	values.compose(
 		values.REP(0, 1),
 		values.REP(1, 2) ),
 	values.REP(0, 2));
 
 assert.deepEqual(
-	values.atomic_compose(
+	values.compose(
 		values.MAP("add", 1),
 		values.MAP("add", 1) ),
 	values.MAP("add", 2));
 assert.deepEqual(
-	values.atomic_compose(
+	values.compose(
 		values.MAP("mult", 2),
 		values.MAP("mult", 3) ),
 	values.MAP("mult", 6));
 assert.deepEqual(
-	values.atomic_compose(
+	values.compose(
 		values.MAP("xor", true),
 		values.MAP("xor", true) ),
 	values.NO_OP());
 assert.deepEqual(
-	values.atomic_compose(
+	values.compose(
 		values.MAP("add", 1),
 		values.MAP("mult", 2) ),
 	null);
@@ -130,44 +130,44 @@ assert.deepEqual(
 // rebase
 
 assert.deepEqual(
-	values.atomic_rebase(
+	values.rebase(
 		values.NO_OP(),
 		values.MAP("add", 1) ),
 	values.MAP("add", 1));
 assert.deepEqual(
-	values.atomic_rebase(
+	values.rebase(
 		values.MAP("add", 1),
 		values.NO_OP() ),
 	values.NO_OP());
 
 assert.deepEqual(
-	values.atomic_rebase(
+	values.rebase(
 		values.REP(0, 1),
 		values.REP(0, 1) ),
 	values.NO_OP());
 assert.deepEqual(
-	values.atomic_rebase(
+	values.rebase(
 		values.REP(0, 1),
 		values.REP(0, 2) ),
 	null);
 assert.deepEqual(
-	values.atomic_rebase(
+	values.rebase(
 		values.REP(0, 1, 0),
 		values.REP(0, 2, 1) ),
 	values.REP(1, 2, 1));
 assert.deepEqual(
-	values.atomic_rebase(
+	values.rebase(
 		values.REP(0, 2, 1),
 		values.REP(0, 1, 0) ),
 	values.NO_OP());
 
 assert.deepEqual(
-	values.atomic_rebase(
+	values.rebase(
 		values.MAP("add", 1),
 		values.MAP("add", 2) ),
 	values.MAP("add", 2));
 assert.deepEqual(
-	values.atomic_rebase(
+	values.rebase(
 		values.MAP("add", 1),
 		values.MAP("mult", 2) ),
 	null);
