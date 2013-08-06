@@ -1,0 +1,13 @@
+{
+  "name": "jot",
+
+  "dependencies": {
+      "socket.io": "*",
+      "googlediff": "*",
+      "deep-equal": "*"
+  },
+
+  "devDependencies": {
+    "connect": "*"
+  }
+}
