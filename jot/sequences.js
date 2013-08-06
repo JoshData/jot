@@ -3,12 +3,28 @@
    
    Three operations are provided:
    
-   SPLICE
+   SPLICE(pos, old_value, new_value[, global_order])
 
-    Replacemes of values in the sequence. Replace nothing with
+    Replaces values in the sequence. Replace nothing with
     something to insert, or replace something with nothing to
-    delete.
+    delete. pos is zero-based.
+    
+    Shortcuts are provided:
+    
+    INS(pos, new_value[, global_order])
+    
+       (Equivalent to SPLICE(pos, [], new_value, global_order)
+       for arrays or SPLICE(pos, "", new_value, global_order)
+       for strings.)
+       
+    DEL(pos, old_value[, global_order])
+    
+       (Equivalent to SPLICE(pos, old_value, [], global_order)
+       for arrays or SPLICE(pos, old_value, "", global_order)
+       for strings.)
 
+	The SPLICE operation has the following internal form:
+	
 	{
 	 module_name: "sequences.js",
 	 type: "splice",
@@ -17,14 +33,14 @@
 	 new_value: ...a value...,
 	 global_order: ...a value...,
 	}
-   
-	Constructed with rep(pos, old_value, new_value, global_order).
-	Shortcuts ins(pos, value) and del(pos, old_value) are provided.
 
-   MOVE
+   MOVE(pos, count, new_pos)
 
-    Moves a subsequence from one position to another.
+    Moves the subsequence starting at pos and count items long
+    to a new location starting at index new_pos.  pos is zero-based.
 
+	The MOVE operation has the following internal form:
+	
 	{
 	 module_name: "sequences.js",
 	 type: "move",
@@ -33,16 +49,27 @@
 	 new_pos: ...a new index...,
 	}
    
-   APPLY
+   APPLY(pos, operation)
 
     Applies another sort of operation to a single element. For
-    arrays only.
+    arrays only. Use any of the operations in values.js on an
+    element. Or if the element is an array or object, use the
+    operators in this module or the objects.js module, respectively.
+    pos is zero-based.
 
+    Example:
+    
+    To replace an element at index 2 with a new value:
+    
+      APPLY(2, values.REP("old_value", "new_value"))
+      
+	The APPLY operation has the following internal form:
+	
 	{
 	 module_name: "sequences.js",
 	 type: "apply",
 	 pos: ...an index...,
-	 op: ...operation data...,
+	 op: ...an operation from another module...,
 	}
 	
    */
@@ -234,7 +261,7 @@ exports.compose = function (a, b) {
 			return exports.APPLY(a.pos, a.op.module_name, op2);
 	}
 	
-	return null; // no atomic composition is possible
+	return null; // no composition is possible
 }
 	
 exports.rebase = function (a, b) {

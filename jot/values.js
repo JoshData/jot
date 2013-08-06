@@ -1,13 +1,17 @@
-/* An operational transform library for atomic values. This
+/*  An operational transform library for atomic values. This
 	library provides two operations: replace and map. These
 	functions are generic over various sorts of data types.
 	
-	REP
+	REP(old_value, new_value[, global_order])
 	
 	The atomic replacement of one value with another. Works for
 	any data type.
 	
-	The replace operation has the following form:
+	global_order is optional. When supplied and when guaranteed
+	to be unique, creates a conflict-less replace operation by
+	favoring the operation with the higher global_order value.
+	
+	The replace operation has the following internal form:
 	
 	{
 	 module_name: "values.js",
@@ -17,15 +21,7 @@
 	 global_order: ...a value...,
 	}
 	
-	global_order is optional. When supplied and when guaranteed
-	to be unique, creates a conflict-less replace operation by
-	favoring the operation with the higher global_order value.
-	
-	example:
-	
-	op = values.rep(old_value, new_value[, global_order])
-	
-	MAP
+	MAP(operator, value)
 	
 	Applies a commutative, associative, invertable function to a value.
 	Addition is one such function, which provides a composable
@@ -33,15 +29,21 @@
 	
 	on numbers:
 	
-	inc: addition by a number (use a negative number to decrement)
-	mult: multiplication by a number (use the reciprocal to divide)
+	"add": addition by a number (use a negative number to decrement)
+	
+	"mult": multiplication by a number (use the reciprocal to divide)
 	
 	on boolean values:
 	
-	xor: exclusive-or (really only useful with 'true' which makes
-	this a bit-flipper; 'false' is a no_op)
+	"xor": exclusive-or (really only useful with 'true' which makes
+	this a bit-flipper; 'false' is a no-op)
 	
-	The map operation has the following form:
+	(You might think the union and relative-complement set operators
+	would work here, but relative-complement does not have a right-
+	inverse. That is, relcomp composed with union may not be a no-op
+	because the union may add keys not found in the original.)
+	
+	The map operation has the following internal form:
 	
 	{
 	 module_name: "values.js",
@@ -49,12 +51,6 @@
 	 operator: "add" | "mult" | "xor"
 	 value: ...a value...,
 	}
-	
-	example:
-	
-	op = values.map(operator, value)
-	
-	Also defines a "no-op" operator created by no_op();
 	
 	*/
 	
@@ -183,7 +179,7 @@ exports.compose = function (a, b) {
 			return b;
 	}
 		
-	return null; // no atomic composition is possible
+	return null; // no composition is possible
 }
 	
 exports.rebase = function (a, b) {

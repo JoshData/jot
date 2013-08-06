@@ -12,25 +12,34 @@ exports.run_op_func = function(op, method/*, arg1, arg2, ... */) {
 }
 
 exports.simplify = function(op) {
-	/* Simplifies any operation by loading its library's simplify function. */
+	/* Simplifies any operation by loading its library's simplify function.
+	   The return value is op or any operation equivalent to op, and it is
+       typically used to turn degenerate cases of operations, like an insertion
+       of the empty string, into no-ops.*/
 	if (op.type == "no-op") return op; // has no module_name
 	return exports.run_op_func(op, "simplify");
 }
 
 exports.apply = function(op, document) {
-	/* Applies any operation by loading its library's apply function. */
+	/* Applies any operation to a document by loading its library's apply function.
+	   The document may be modified in place or the new value may be returned,
+	   depending on how the particular operation's library works. */
 	if (op.type == "no-op") return document; // has no module_name
 	return exports.run_op_func(op, "apply", document);
 }
 
 exports.invert = function(op) {
-	/* Inverts any operation by loading its library's invert function. */
+	/* Inverts any operation by loading its library's invert function.
+	   The inverse operation has the opposite effect as op. Composing an operation
+	   and its inverse must result in a no-op.*/
 	if (op.type == "no-op") return op; // has no module_name
 	return exports.run_op_func(op, "invert");
 }
 
 exports.compose = function(a, b) {
-	/* Composes any two operations. May return null indicating a composition was not possible. */
+	/* Composes any two operations. The return value is a new operation that when
+	   applied to a document yields the same value as apply(b, apply(a, document)).
+	   May return null indicating a composition was not possible. */
 	if (a.type == "no-op") return b;
 	if (b.type == "no-op") return a;
 	if (a.module_name != b.module_name) return null; // can't compose operations from different modules
@@ -38,7 +47,20 @@ exports.compose = function(a, b) {
 }
 
 exports.rebase = function(a, b) {
-	/* Rebases any two operations. May return null indicating a conflict. */
+	/* Rebases b against a. If a and be are simultaneous operations, returns a
+       new operation that can be composed with a to yield the logical composition
+       of a and b. Or returns null indicating a conflict. The order (a, b) is
+       to signify the order the caller wants to compose the operations in.
+       
+       The rebase operation's contract has two parts:
+         1) compose(a, rebase(a, b)) == compose(b, rebase(b, a)).
+         2) If a = compose(a1, a2), then
+            rebase(a, b) == rebase(a2, rebase(a1, b))
+            
+       This method can be called on operations in any library. It will load the
+       library's rebase function.
+       */
+
 	if (a.type == "no-op") return b; // rebasing against no-op leaves operation unchanged
 	if (b.type == "no-op") return b; // rebasing a no-op is still a no-op
 	if (a.module_name != b.module_name) return null; // can't rebase operations from different modules
@@ -47,7 +69,7 @@ exports.rebase = function(a, b) {
 
 exports.normalize_array = function(ops) {
 	/* Takes an array of operations and composes consecutive operations where possible,
-	removes no-ops, and returns a new array of operations. */
+	   removes no-ops, and returns a new array of operations. */
 	var new_ops = [];
 	for (var i = 0; i < ops.length; i++) {
 		if (ops[i].type == "no-op") continue; // don't put no-ops into the new list
@@ -70,7 +92,9 @@ exports.normalize_array = function(ops) {
 }
 
 exports.apply_array = function(ops, document) {
-	/* Takes an array of operations and applies them successively to a document. */
+	/* Takes an array of operations and applies them successively to a document.
+	   This basically treats the array as the composition of all of the array
+	   elements. */
 	for (var i = 0; i < ops.length; i++)
 		document = exports.apply(ops[i], document);
 	return document;
@@ -78,7 +102,7 @@ exports.apply_array = function(ops, document) {
 
 exports.invert_array = function(ops) {
 	/* Takes an array of operations and returns the inverse of the whole array,
-	i.e. the inverse of each operation in reverse order. */
+	   i.e. the inverse of each operation in reverse order. */
 	var new_ops = [];
 	for (var i = ops.length-1; i >= 0; i--)
 		new_ops.push(exports.invert(ops[i]));
@@ -88,7 +112,7 @@ exports.invert_array = function(ops) {
 exports.rebase_array = function(base, ops) {
 	/* Takes an array of operations ops and rebases them against operation base.
 	   Base may be an array of operations or just a single operation.
-	   Returns an array of operations. */
+	   Returns an array of operations.*/
 	   
 	/*
 	* To see the logic, it will help to put this in a symbolic form.
@@ -132,7 +156,7 @@ exports.rebase_array = function(base, ops) {
 	*/
 	
 	ops = exports.normalize_array(ops);
-	
+
 	if (ops.length == 0) return ops; // basically a no-op
 	
 	if (base instanceof Array) {

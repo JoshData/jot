@@ -3,10 +3,29 @@
    
    Two operations are provided:
    
-   PROP
+   PROP(old_key, new_key, old_value, new_value)
 
     Creates, deletes, or renames a property.
 
+    Shortcuts are provided:
+    
+    PUT(key, value)
+    
+      (Equivalent to PROP(null, key, null, value).)
+
+    DEL(key, old_value)
+    
+      (Equivalent to PROP(key, null, old_value, null).)
+
+    REN(old_key, new_key)
+    
+      (Equivalent to PROP(old_key, new_key, null, null).)
+      
+    It is not possible to rename a key and change its value
+    in the same operation.
+      
+	The PROP operation has the following internal form:
+	
 	{
 	 module_name: "objects.js",
 	 type: "prop",
@@ -16,17 +35,39 @@
 	 new_value: ...the new value for the key; null when deleting or renaming a key...,
 	}
    
-	
-   APPLYOP
+   APPLY(key, operation)
 
-    Applies another sort of operation to a key's value.
+    Applies another sort of operation to a property's value. Use any
+    operation defined in any of the modules depending on the data type
+    of the property. For instance, the operations in values.js can be
+    applied to any property. The operations in sequences.js can be used
+    if the property's value is a string or array. And the operations in
+    this module can be used if the value is another object.
+    
+    Example:
+    
+    To replace the value of a property with a new value:
+    
+      APPLY("key1", values.REP("old_value", "new_value"))
+      
+    You can also use the 'access' helper method to construct recursive
+    APPLY operations:
+    
+      access(["key1", subkey1"], values.REP("old_value", "new_value"))
+      or
+      access(["key1", subkey1"], "values.js", "REP", "old_value", "new_value")
+      
+      is equivalent to
+      
+      APPLY("key1", APPLY("subkey1", values.REP("old_value", "new_value")))
+
+	The APPLY operation has the following internal form:
 
 	{
 	 module_name: "objects.js",
 	 type: "apply",
 	 key: ...a key name...,
-	 op.module_name: ...package name that defines other operation...,
-	 op: ...operation data...,
+	 op: ...operation from another module...,
 	}
 	
    */
@@ -188,7 +229,7 @@ exports.compose = function (a, b) {
 			return exports.APPLY(a.key, op2);
 	}
 	
-	return null; // no atomic composition is possible
+	return null; // no composition is possible
 }
 	
 exports.rebase = function (a, b) {
