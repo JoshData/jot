@@ -1,6 +1,9 @@
 JSON Operational Transform (JOT)
 ================================
 
+By Joshua Tauberer <http://razor.occams.info>. August 2013.
+(Note that I haven't yet decided whether this is open source.)
+
 This module implements operational transform on a JSON data model, in
 JavaScript for node.js and browsers.
 
@@ -17,8 +20,6 @@ This library:
 * Provides example client/server code and a working example.
 
 There's no UI here, except in the example.
-
-(Note that I haven't yet decided whether this is open source.)
 
 Introduction
 ------------
@@ -73,7 +74,7 @@ Before running anything, you'll need to install the dependencies:
 
 To build the library for browsers, use:
 
-	nodejs build_browser_lib.js > jot.js
+	node build_browser_lib.js > jot.js
 
 Example
 -------
@@ -110,6 +111,8 @@ Here's example code that follows the example in the introduction:
 	var r1 = d1.pop_history();
 	ot.apply_array(r1, doc);
 
+	// doc is now { title: 'Hello World!', count: 10 }
+
 	var r2 = d2.pop_history();
 	r2 = ot.rebase_array(r1, r2);
 	ot.apply_array(r2, doc);
@@ -118,11 +121,11 @@ Here's example code that follows the example in the introduction:
 
 To run:
 
-	nodejs example.js
+	node example.js
 
-Note how the output applies both changes logically, even though the second
-change was specified as a change to key1, but that key doesn't exist by
-the time the change is applied. It's the atomic_rebase call that takes
+Note how the output applies both users' changes logically, even though the
+second user's changes specified "key1" and "key2", neither of which exist
+by the time the revision is applied. It's the rebase_array call that takes
 care of that.
 
 An initial document (doc) is created. Changes are *simultaneously* made to
@@ -153,12 +156,12 @@ To run the interactive example, you'll also need get dependencies:
 
 Then build jot.js, our library suitable for use within the browser:
 
-	nodejs build_browser_lib.js > json_editor_example/jot.js
+	node build_browser_lib.js > json_editor_example/jot.js
 
 Start an HTTP server which will serve the static files and also act
 as a websockets server to handle the communication between the editors.
 
-	nodejs start.js
+	node start.js
 
 Finally, open http://localhost:8080/ in as many browser windows as you
 like and start editing.
@@ -214,4 +217,11 @@ This is all put together in the CollaborationServer class which manages the stat
 needed to pass operations around between any number of concurrent editors. The library
 is also used on the client side to merge incoming remote changes with what has already
 been changed locally.
+
+Notes
+-----
+
+Thanks to @konklone for some inspiration and the first pull request.
+
+The Substance Operator library is very similar to this library. http://interior.substance.io/modules/operator.html
 
