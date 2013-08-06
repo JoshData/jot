@@ -234,7 +234,7 @@ function apply_to_document(op, node) {
 			// insert
 			for (var i = 0; i < (op.new_value ? op.new_value.length : 0); i++) {
 				var elem = empty_node.clone();
-				if (node.childs.length == 0)
+				if (op.pos+i >= node.childs.length)
 					node.appendChild(elem);
 				else
 					node.insertBefore(elem, node.childs[op.pos+i]);
