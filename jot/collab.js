@@ -1,6 +1,6 @@
 var ot = require(__dirname + "/base.js");
 
-exports.TwoWayCollaboration = function(document_updater, the_wire, asymmetric) {
+exports.TwoWayCollaboration = function(document_updater, the_wire, asymmetric, id) {
 	/* The TwoWayCollaboration class is a shared state between you and another editor.
 	It runs synchronously with your local changes but asynchronously with remote changes.
 	
@@ -16,6 +16,7 @@ exports.TwoWayCollaboration = function(document_updater, the_wire, asymmetric) {
 	on the wire to the remote user. It accepts any object to be sent over the wire."""
 	*/
 	
+	this.id = id || "";
 	this.document_updater = document_updater;
 	this.to_the_wire = the_wire;
 	this.asymmetric = asymmetric || false;
@@ -26,6 +27,7 @@ exports.TwoWayCollaboration = function(document_updater, the_wire, asymmetric) {
 	
 	this.remote_hist_start = 0;
 	this.remote_history = [];
+	this.needs_ack = 0; // 0=do nothing, 1=send no-op, 2=send ping
 	
 	// symmetric mode
 	this.remote_conflict_pending_undo = false;
@@ -34,7 +36,7 @@ exports.TwoWayCollaboration = function(document_updater, the_wire, asymmetric) {
 	this.remote_conflicted_operations = [];
 	
 	// public methods
-	
+
 	this.local_revision = function(operation, operation_metadata) {
 		/* The user calls this to indicate they made a local change to
 		   the document. */
@@ -51,7 +53,22 @@ exports.TwoWayCollaboration = function(document_updater, the_wire, asymmetric) {
 			base_rev: this.remote_hist_start + this.remote_history.length - 1,
 			op: operation,
 			metadata: operation_metadata});
+		this.needs_ack = 0;
+		
+		this.log_queue_sizes();		
 	}
+	
+	this.send_ping = function(as_no_op) {
+		if (this.needs_ack == 1) {
+			this.local_revision({ type: "no-op" });
+		} else if (this.needs_ack == 2) {
+			this.to_the_wire({
+				base_rev: this.remote_hist_start + this.remote_history.length - 1,
+				op: "PING"
+			});
+			this.needs_ack = 0;
+		}
+	};
 	
 	this.process_remote_message = function(msg) {
 		/* The user calls this when they receive a message over the wire. */
@@ -99,6 +116,13 @@ exports.TwoWayCollaboration = function(document_updater, the_wire, asymmetric) {
 			this.rolled_back -= base_revision-this.our_hist_start+1;
 			if (this.rolled_back < 0) this.rolled_back = 0;
 			this.our_hist_start = base_revision+1;
+		}
+		
+		// This might just be a ping that allows us to clear buffers knowing that the
+		// other end has received and applied our base_revision revision.
+		if (operation == "PING") {
+			this.log_queue_sizes();
+			return;
 		}
 			
 		// Get the remote operations we've already applied (the 2nd elements in this.remote_history).
@@ -172,15 +196,25 @@ exports.TwoWayCollaboration = function(document_updater, the_wire, asymmetric) {
 			operation_metadata["type"] = "conflicted";
 			
 		operation_metadata["type"] = "remote-" + operation_metadata["type"];
-			
-		this.document_updater(operation, operation_metadata);
+				
+		// we may get a no-op as a ping, don't pass that along
+		operation = ot.normalize_array(operation);
+		if (operation.length > 0)
+			this.document_updater(operation, operation_metadata);
 		
 		// Append this operation to the remote_history.
 		this.remote_history.push( [base_revision, operation] );
+		this.needs_ack = (operation.length > 0 ? 1 : 2); // will send a no-op, unless this operation was a no-op in which case we'll just ping
 		
 		// Conflict resolved (asymmetric mode).
 		this.remote_conflicted_operations = []
-	}
+		
+		this.log_queue_sizes();
+	};
+	
+	this.log_queue_sizes = function() {
+		console.log(this.id + " | queue sizes: " + this.our_history.length + "/" + this.remote_history.length);
+	};
 };
 
 exports.CollaborationServer = function (){
@@ -190,9 +224,32 @@ exports.CollaborationServer = function (){
 	this.collaborator_count = 0;
 	this.collaborators = { };
 	this.doc = { };
+	this.ack_interval = 3000;
+	this.max_ack_time = 6000;
 	
 	var me = this;
+	
+	// send no-ops to each collaborator like pings so that buffers can be
+	// cleared when everyone gets on the same page.
+	function send_acks_around() {
+		for (var c in me.collaborators) {
+		  var cb = me.collaborators[c].collab;
+		  if (cb.needs_ack) {
+			  if (cb.last_ack_time >= me.max_ack_time) {
+				  cb.send_ping();
+				  cb.last_ack_time = 0;
+			  } else {
+				  cb.last_ack_time += me.ack_interval;
+			  }
+		  }
+		}
+	}
+	var timerid = setInterval(send_acks_around, this.ack_interval);
 	   
+	this.destroy = function() {
+		clearInterval(timerid); // ?
+	}
+	
 	this.add_collaborator = function(the_wire) {
 		// Registers a new collaborator who can be sent messages through
 		// the_wire(msg). Returns an object with properties id and document
@@ -208,8 +265,10 @@ exports.CollaborationServer = function (){
 		
 		this.collaborators[id] = {
 		   // create an asynchronous collaborator
-		   collab: new exports.TwoWayCollaboration(doc_updatr, the_wire, true)
+		   collab: new exports.TwoWayCollaboration(doc_updatr, the_wire, true, "c:"+id)
 		};
+		
+		this.collaborators[id].collab.last_ack_time = 0;
 		
 		return {
 		   id: id,
@@ -218,6 +277,7 @@ exports.CollaborationServer = function (){
 	};
 	
 	this.remove_collaborator = function(id) {
+		console.log("collaborator " + id + " removed.");
 		delete this.collaborators[id];
 	};
 	
@@ -234,16 +294,19 @@ exports.CollaborationServer = function (){
 		ot.apply_array(operation, this.doc);
 		
 		// Send the operation to every other collaborator.
-		for (var c in this.collaborators)
-			if (c != collaborator_id)
+		for (var c in this.collaborators) {
+			if (c != collaborator_id) {
 				this.collaborators[c].collab.local_revision(operation, operation_metadata);
+				this.collaborators[c].collab.last_ack_time = 0;
+			}
+		}
 	};
 	
 	this.start_socketio_server = function(port, with_examples) {
 		var me = this;
 		
 		var app = require('http').createServer(handler);
-		var io = require('socket.io').listen(app);
+		var io = require('socket.io').listen(app, { log: false });
 		
 		app.listen(port);
 		
