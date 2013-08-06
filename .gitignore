@@ -1,2 +1,6 @@
 *~
 node_modules
+json_editor_example/img/
+json_editor_example/jot.js
+json_editor_example/jsoneditor.css
+json_editor_example/jsoneditor.js
