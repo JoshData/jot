@@ -43,6 +43,7 @@ function setup_editor_hook(event_loop) {
 		if (!type) type = node.type;
 		if (type == "auto") {
 			// guessing what the editor does
+			// TODO: numbers
 			if (node.value == "true") return true;
 			if (node.value == "false") return false;
 			if (node.value == "null") return null;
@@ -124,7 +125,7 @@ function setup_editor_hook(event_loop) {
 						// key name on the wire.
 						params.node.tmp_field_name = make_guid();
 					op = ot_obj.access(get_path(params.parent), "objects.js",
-						"PUT", (params.node.tmp_field_name ? params.node.tmp_field_name : params.node.field), params.node.value);
+						"PUT", (params.node.tmp_field_name ? params.node.tmp_field_name : params.node.field), getValue(params.node));
 				} else {
 					// array
 					var index;
@@ -184,7 +185,10 @@ function apply_to_document(op, node) {
 		empty_node = node.editor.node.clone();
 		empty_node.type = "auto";
 		empty_node.field = null;
-		empty_node.childs = undefined;
+		empty_node.value = null;
+		empty_node.childs = [];
+		empty_node.expanded = false;
+		empty_node.dom = {};
 	}
 	
 	if (op.module_name == "objects.js") {
@@ -204,8 +208,8 @@ function apply_to_document(op, node) {
 				// creation of a key
 				var k = empty_node.clone();
 				k.field = op.new_key;
-				k.value = op.new_value; // must transform
 				node.appendChild(k);
+				node_set_value(k, op.new_value);
 				return;
 			}
 		}
@@ -230,11 +234,11 @@ function apply_to_document(op, node) {
 			// insert
 			for (var i = 0; i < (op.new_value ? op.new_value.length : 0); i++) {
 				var elem = empty_node.clone();
-				elem.value = op.new_value[i]; // must transform
 				if (node.childs.length == 0)
 					node.appendChild(elem);
 				else
 					node.insertBefore(elem, node.childs[op.pos+i]);
+				node_set_value(elem, op.new_value[i]);
 			}
 			return;						
 		}
@@ -266,9 +270,35 @@ function apply_to_document(op, node) {
 	console.log(node);
 }
 
+function node_set_value(node, val) {
+	// TODO: numbers
+	if (val == null || typeof val == "string" || typeof val == "boolean" || typeof val == "number") {
+		if (typeof val == "string" && (val == "null" || val == "true" || val == "false"))
+			node.changeType("string");
+		else
+			node.changeType("auto");
+		node.updateValue(val);
+	} else if (val instanceof Array || val instanceof Object) {
+		if (val instanceof Array) node.changeType("array");
+		else if (val instanceof Object) node.changeType("object");
+		node.childs = [];
+		for (var i in val) {
+			var c = empty_node.clone();
+			
+			if (val instanceof Array)
+				c.index = i;
+			else
+				c.field = i;
+			
+			node_set_value(c, val[i]);
+			node.appendChild(c);
+		}
+	}
+}
+
 function node_update_preseve_selection(node, value, pos, shift) {
 	var s = node.editor.getSelection();
-	node.updateValue(value);
+	node_set_value(node, value);
 	if (s.range && s.range.container == node.dom.value) {
 		// restore caret location, adjusted for change in text length before caret location
 		if (s.range.startOffset > pos && shift) s.range.startOffset += shift;
