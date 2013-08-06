@@ -23,9 +23,8 @@
 	
 	MAP(operator, value)
 	
-	Applies a commutative, associative, invertable function to a value.
-	Addition is one such function, which provides a composable
-	increment operation. The supported operators are:
+	Applies a commutative, invertable function to a value. The supported
+	operators are:
 	
 	on numbers:
 	
@@ -33,10 +32,17 @@
 	
 	"mult": multiplication by a number (use the reciprocal to divide)
 	
+	"rot": addition by a number followed by modulus (the value is
+	       given as a list of the increment and the modulus) The document
+	       object must be non-negative and less than the modulus.
+	
 	on boolean values:
 	
 	"xor": exclusive-or (really only useful with 'true' which makes
 	this a bit-flipper; 'false' is a no-op)
+	
+	Note that by commutative we mean that the operation is commutative
+	under the composition transform, i.e. add(1)+add(2) == add(2)+add(1).
 	
 	(You might think the union and relative-complement set operators
 	would work here, but relative-complement does not have a right-
@@ -94,6 +100,9 @@ exports.apply = function (op, value) {
 	
 	if (op.type == "map" && op.operator == "add")
 		return value + op.value;
+
+	if (op.type == "map" && op.operator == "rot")
+		return (value + op.value[0]) % op.value[1];
 	
 	if (op.type == "map" && op.operator == "mult")
 		return value * op.value;
@@ -115,7 +124,17 @@ exports.simplify = function (op) {
 	if (op.type == "map" && op.operator == "add" && op.value == 0)
 		return exports.NO_OP();
 	
+	if (op.type == "map" && op.operator == "rot" && op.value[0] == 0)
+		return exports.NO_OP();
+
+	if (op.type == "map" && op.operator == "rot")
+		// ensure the first value is less than the modulus
+		return exports.MAP("rot", [op.value[0] % op.value[1], op.value[1]]);
+	
 	if (op.type == "map" && op.operator == "mult" && op.value == 1)
+		return exports.NO_OP();
+	
+	if (op.type == "map" && op.operator == "xor" && op.value == false)
 		return exports.NO_OP();
 	
 	if (op.type == "map" && op.operator == "xor" && op.value == false)
@@ -135,6 +154,9 @@ exports.invert = function (op) {
 	
 	if (op.type == "map" && op.operator == "add")
 		return exports.MAP("add", -op.value);
+
+	if (op.type == "map" && op.operator == "rot")
+		return exports.MAP("rot", [-op.value[0], op.value[1]]);
 	
 	if (op.type == "map" && op.operator == "mult")
 		return exports.MAP("mult", 1.0/op.value);
@@ -160,10 +182,11 @@ exports.compose = function (a, b) {
 	if (a.type == "rep" && b.type == "rep" && a.global_order == b.global_order)
 		return exports.simplify(exports.REP(a.old_value, b.new_value, a.global_order));
 	
-    // This relies on the map operators being associative.
-		
 	if (a.type == "map" && b.type == "map" && a.operator == b.operator && a.operator == "add")
 		return exports.simplify(exports.MAP("add", a.value + b.value));
+
+	if (a.type == "map" && b.type == "map" && a.operator == b.operator && a.operator == "rot" && a.value[1] == b.value[1])
+		return exports.simplify(exports.MAP("rot", [a.value[0] + b.value[0], a.value[1]]));
 
 	if (a.type == "map" && b.type == "map" && a.operator == b.operator && a.operator == "mult")
 		return exports.simplify(exports.MAP("mult", a.value * b.value));
@@ -212,8 +235,10 @@ exports.rebase = function (a, b) {
 	
 	// Since the map operators are commutative, it doesn't matter which order
 	// they are applied in. That makes the rebase trivial.
-	if (a.type == "map" && b.type == "map" && a.operator == b.operator)
+	if (a.type == "map" && b.type == "map" && a.operator == b.operator) {
+		if (a.operator == "rot" && a.value[1] != b.value[1]) return null; // rot must have same modulus
 		return b;
+	}
 		
 	// Return null indicating this is an unresolvable conflict.
 	return null;
