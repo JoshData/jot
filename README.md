@@ -1,11 +1,14 @@
 JSON Operational Transform (JOT)
 ================================
 
-By Joshua Tauberer <http://razor.occams.info>. August 2013.
+By Joshua Tauberer <http://razor.occams.info>.
+
+August 2013.
+
 (Note that I haven't yet decided whether this is open source.)
 
-This module implements operational transform on a JSON data model, in
-JavaScript for node.js and browsers.
+This module implements operational transformation on a JSON data model,
+implemented in JavaScript for use either in node.js or browsers.
 
 Basically this is the core of real time simultaneous editing, like Etherpad,
 but for structured data rather than just plain text. Since everything can
@@ -14,8 +17,8 @@ functionality.
 
 This library:
 
-* Models atomic data changes to JSON data structures (operations).
-* Inverts, composes, and rebases operations (transforms).
+* Models atomic changes to JSON data structures (operations).
+* Inverts, composes, and rebases operations (transformations).
 * Manages real-time collaborations between two or more users.
 * Provides example client/server code and a working example.
 
@@ -55,12 +58,12 @@ If you were to apply these changes in sequence, you would have a problem.
 By the time you get to B's changes, the keys "key1" and "key2" are no
 longer there!
 
-What you need is git's "rebase" function that revises B given the simultaneous
-edits in A. Here's what you get after rebasing B against A:
+What you need is git's "rebase" that revises B given the simultaneous
+edits in A. Here's what you get after "rebasing" B against A:
 
 	B = [("set" : "title" => "My Program"), ("set" : "count" => 20)]
 
-Now you can apply A and B sequentially.
+Now you *can* apply A and B sequentially.
 
 Installation
 ------------
@@ -166,21 +169,20 @@ as a websockets server to handle the communication between the editors.
 Finally, open http://localhost:8080/ in as many browser windows as you
 like and start editing.
 
-Document Model
---------------
+Operations
+----------
 
-JOT's document model is JSON. Unlike most collaborative editing models where
-the document is simply a string, JOT models editing on any data that can be
-structured as JSON (which of course is everything).
+Unlike most collaborative editing models where operations like insert and
+delete apply simply to strings, the document model in JOT is JSON. This
+makes JOT useful when tracking changes to data, rather than to text.
 
-You give JOT a sequence of operations, which are one of:
+The operations in JOT are:
 
-* REP: Replace one value with another (typically array elements or property values).
-* MAP: Increment a numeric value by a value, multiply a numeric value by a value, or XOR a boolean value by another boolean value.
-* SPLICE (strings): Insert delete, or replace consecutive characters in the string.
-* SPLICE (arrays): Insert, delete, or replace consecutive elements of an array.
+* REP: Replace one value with another (typically an array element or a property value).
+* MAP: Increment, multiply, or rotate (as in rot-13) a number, or xor a boolean.
+* SPLICE: Insert delete, or replace consecutive characters in a string or consecutive elements of an array.
 * MOVE: Move consecutive elements of an array from one index to another.
-* PROP: Create, delete, or rename a property on an object or alter a property's value.
+* PROP: Create, delete, or rename a property on an object.
 
 Some of the operations have helpful aliases for common edge cases:
 
@@ -197,22 +199,34 @@ There's also
 
 As you might be able to see, the JOT model is a superset of the model you need
 for basic plain text concurrent editing. That is, it encapsulates the entire
-text editing model within the string SPLICE operation, plus it gives you four more
-operations to work with structured data.
+text editing model (INS, DEL) within the string SPLICE operation, plus it adds
+four more operations for non-string data structures.
 
-What makes this useful is that each operation knows how to "rebase" itself against
-every other operation. This is the "transform" part of operational transform, and
-it's what you do when you have two concurrent edits. For instance:
+Transformations
+---------------
 
-* When REN is used to rename a property and REP is used to change its value, the
-  REP operation is revised to find the property by its new name.
-* When MOVE is used twice concurrently to move the same elements to a different
-  array location, a conflict is flagged.
-* When MAP is used by two concurrent users each to increment a value by one, the two
-  operations can be combined so the value is incremented by two.
-* When text is edited, insertions using SPLICE at different locations in the text can be
-  combined (like a typical merge or patch).
+What makes JOT useful is that each operation knows how to "rebase" itself against
+every other operation. This is the "transformation" part of operational transformation,
+and it's what you do when you have two concurrent edits that need to be merged.
 
+Let's say you have two operations A and B which represent simultaneous edits to
+a common base document. For instance, A inserts three characters at the start of
+the document and B, which was generated on some other machine concurrently, deletes
+the character at index 6. Rebasing B against A yields a new operation B' that can be
+applied sequentially *after* A but causes the same logical effect as the original B.
+In this example, B' is the deletion of the character at index 9.
+
+Applying two operations in sequence is called composition and is denoted with the
+symbol ○. And lets denote B rebased against A as "B / A". So before the rebase we
+have two operations A and B. After the rebase we have A and B/A, such that A ○ (B/A)
+combines the logical intent of both A and B.
+
+The rebase operation satisfies the constraints that 1) A ○ (B/A) == B ○ (A/B), and
+2) C / (A ○ B) == (C / A) / B.
+
+Real Time Collaboration
+-----------------------
+  
 This is all put together in the CollaborationServer class which manages the state
 needed to pass operations around between any number of concurrent editors. The library
 is also used on the client side to merge incoming remote changes with what has already

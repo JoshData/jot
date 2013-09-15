@@ -33,7 +33,7 @@
 	"mult": multiplication by a number (use the reciprocal to divide)
 	
 	"rot": addition by a number followed by modulus (the value is
-	       given as a list of the increment and the modulus) The document
+	       given as a list of the increment and the modulus). The document
 	       object must be non-negative and less than the modulus.
 	
 	on boolean values:
@@ -54,7 +54,7 @@
 	{
 	 module_name: "values.js",
 	 type: "map",
-	 operator: "add" | "mult" | "xor"
+	 operator: "add" | "mult" | "rot" | "xor"
 	 value: ...a value...,
 	}
 	

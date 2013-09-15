@@ -22,7 +22,8 @@
       (Equivalent to PROP(old_key, new_key, null, null).)
       
     It is not possible to rename a key and change its value
-    in the same operation.
+    in the same operation, or to change a value on an existing
+    key.
       
 	The PROP operation has the following internal form:
 	
@@ -82,6 +83,7 @@ exports.NO_OP = function() {
 }
 
 exports.PROP = function (old_key, new_key, old_value, new_value) {
+	if (old_key == new_key && old_ney != null && old_value != new_value) throw "invalid arguments";
 	return {
 		module_name: "objects.js",
 		type: "prop",
