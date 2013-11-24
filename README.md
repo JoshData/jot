@@ -5,7 +5,7 @@ By Joshua Tauberer <http://razor.occams.info>.
 
 August 2013.
 
-(Note that I haven't yet decided whether this is open source.)
+License: GPL v3 <http://choosealicense.com/licenses/gpl-v3/>
 
 This module implements operational transformation on a JSON data model,
 written in JavaScript for use either in node.js or browsers.
