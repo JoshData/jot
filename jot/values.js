@@ -1,4 +1,4 @@
-/*  An operational transform library for atomic values. This
+/*  An operational transformation library for atomic values. This
 	library provides two operations: replace and map. These
 	functions are generic over various sorts of data types.
 	

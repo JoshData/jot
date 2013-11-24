@@ -1,4 +1,4 @@
-/* Base functions for the operational transform library. */
+/* Base functions for the operational transformation library. */
 
 var jot_platform = require(__dirname + "/platform.js");
 

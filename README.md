@@ -1,5 +1,5 @@
-JSON Operational Transform (JOT)
-================================
+JSON Operational Transformation (JOT)
+=====================================
 
 By Joshua Tauberer <http://razor.occams.info>.
 
@@ -8,7 +8,7 @@ August 2013.
 (Note that I haven't yet decided whether this is open source.)
 
 This module implements operational transformation on a JSON data model,
-implemented in JavaScript for use either in node.js or browsers.
+written in JavaScript for use either in node.js or browsers.
 
 Basically this is the core of real time simultaneous editing, like Etherpad,
 but for structured data rather than just plain text. Since everything can
@@ -48,7 +48,7 @@ and *simultanesouly* user B makes the following changes (to the original):
 		"key2": 20
 	}
 
-How do you merge changes? In operational transform, changes are represented
+How do you merge changes? In operational transformation, changes are represented
 structurally:
 
 	A = [("rename" : "key1" => "title"), ("rename" : "key2" => "count")]

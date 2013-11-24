@@ -1,4 +1,4 @@
-/* An operational transform library for sequence-like objects,
+/* An operational transformation library for sequence-like objects,
    including strings and arrays.
    
    Three operations are provided:

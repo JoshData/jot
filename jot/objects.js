@@ -1,5 +1,5 @@
-/* An operational transform library for objects (associative
-   arrays).
+/* An operational transformation library for objects
+   (associative arrays).
    
    Two operations are provided:
    
