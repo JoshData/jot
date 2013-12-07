@@ -258,7 +258,7 @@ exports.compose = function (a, b) {
 		var lib = jot_platform.load_module(a.op.module_name);
 		var op2 = lib.compose(a.op, b.op);
 		if (op2)
-			return exports.APPLY(a.pos, a.op.module_name, op2);
+			return exports.APPLY(a.pos, op2);
 	}
 	
 	return null; // no composition is possible

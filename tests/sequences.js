@@ -72,6 +72,13 @@ assert.deepEqual(
 
 // ...
 
+assert.deepEqual(
+	seqs.compose(
+		seqs.APPLY(555, values.REP("A", "B")),
+		seqs.APPLY(555, values.REP("B", "C"))
+		),
+	seqs.APPLY(555, values.REP("A", "C")));
+
 // rebase
 
 // ...
