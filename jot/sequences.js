@@ -341,7 +341,7 @@ exports.rebase = function (a, b) {
 			var lib = jot_platform.load_module(a.op.module_name);
 			var op2 = lib.rebase(a.op, b.op);
 			if (op2)
-				return exports.APPLY(b.pos, b.op.module_name, op2);
+				return exports.APPLY(b.pos, op2);
 		}
 	}
 	
@@ -365,7 +365,7 @@ exports.rebase = function (a, b) {
 			return null;
 		if (b.pos < a.pos)
 			return b;
-		return exports.APPLY(b.pos + (a.new_value.length-a.old_value.lenght), b.op.module_name, b.op);
+		return exports.APPLY(b.pos + (a.new_value.length-a.old_value.length), b.op);
 	}
 	
 	if (a.type == "move" && b.type == "splice") {
@@ -376,7 +376,7 @@ exports.rebase = function (a, b) {
 	}
 	
 	if (a.type == "move" && b.type == "apply")
-		return exports.APPLY(map_index(b.pos), b.op.module_name, b.op);
+		return exports.APPLY(map_index(b.pos), b.op);
 	
 	if (a.type == "apply" && b.type == "splice") {
 		// operations intersect

@@ -83,6 +83,27 @@ assert.deepEqual(
 
 // ...
 
+assert.deepEqual(
+	seqs.rebase(
+		seqs.APPLY(555, values.MAP("add", 1)),
+		seqs.APPLY(555, values.MAP("add", 3))
+		),
+	seqs.APPLY(555, values.MAP("add", 3)));
+
+assert.deepEqual(
+	seqs.rebase(
+		seqs.INS(555, ["NEWVALUE"]),
+		seqs.APPLY(555, values.MAP("add", 3))
+		),
+	seqs.APPLY(556, values.MAP("add", 3)));
+
+assert.deepEqual(
+	seqs.rebase(
+		seqs.MOVE(555, 3, 0),
+		seqs.APPLY(555, values.MAP("add", 3))
+		),
+	seqs.APPLY(0, values.MAP("add", 3)));
+
 // from_string_rep
 
 assert.equal(
