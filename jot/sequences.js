@@ -84,6 +84,7 @@ exports.NO_OP = function() {
 }
 
 exports.SPLICE = function (pos, old_value, new_value, global_order) {
+	if (pos == null || old_value == null || new_value == null) throw "Invalid Argument";
 	return { // don't simplify here -- breaks tests
 		module_name: "sequences.js",
 		type: "splice",
@@ -95,16 +96,19 @@ exports.SPLICE = function (pos, old_value, new_value, global_order) {
 }
 
 exports.INS = function (pos, value, global_order) {
+	if (pos == null || value == null) throw "Invalid Argument";
 	// value.slice(0,0) is a shorthand for constructing an empty string or empty list, generically
 	return exports.SPLICE(pos, value.slice(0,0), value, global_order);
 }
 
 exports.DEL = function (pos, old_value, global_order) {
+	if (pos == null || old_value == null) throw "Invalid Argument";
 	// value.slice(0,0) is a shorthand for constructing an empty string or empty list, generically
 	return exports.SPLICE(pos, old_value, old_value.slice(0,0), global_order);
 }
 
 exports.MOVE = function (pos, count, new_pos) {
+	if (pos == null || count == null || new_pos == null) throw "Invalid Argument";
 	return { // don't simplify here -- breaks tests
 		module_name: "sequences.js",
 		type: "move",
@@ -115,6 +119,7 @@ exports.MOVE = function (pos, count, new_pos) {
 }
 
 exports.APPLY = function (pos, op) {
+	if (pos == null || op == null) throw "Invalid Argument";
 	if (op.type == "no-op") return op; // don't embed because it never knows its package name
 	return { // don't simplify here -- breaks tests
 		module_name: "sequences.js",

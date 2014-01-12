@@ -127,6 +127,7 @@ exports.access = function(path, module_name, op_name /*, op_args */) {
 			op_args.push(arguments[i]);
 		
 		var lib = jot_platform.load_module(module_name);
+		if (!(op_name in lib)) throw "Invalid operatio name " + op_name + " in library " + module_name + ".";
 		op = lib[op_name].apply(null, op_args);
 	}
 	
