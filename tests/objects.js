@@ -2,6 +2,7 @@ var assert = require('assert')
 var values = require("../jot/values.js");
 var seqs = require("../jot/sequences.js");
 var objs = require("../jot/objects.js");
+var meta = require("../jot/meta.js");
 
 // apply
 
@@ -44,4 +45,24 @@ assert.deepEqual(
 // rebase
 
 // ...
+
+// meta
+
+assert.deepEqual(
+	objs.apply(
+		objs.APPLY(
+			"a",
+			meta.COMPOSITION([
+				seqs.APPLY(
+					1,
+					values.MAP("add", 1)
+					),
+				seqs.APPLY(
+					2,
+					values.MAP("add", -1)
+					)
+			])
+		),
+		{"a": [0, 0, 0]}),
+	{ "a": [0, 1, -1] });
 
