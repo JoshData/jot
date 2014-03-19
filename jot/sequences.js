@@ -401,17 +401,74 @@ exports.rebase = function (a, b) {
 // Use google-diff-match-patch to convert a string REP to a list of insertions
 // and deletions.
 
-exports.from_string_rep = function(rep_op, global_order) {
+exports.from_string_rep = function(rep_op, mode, global_order) {
 	// Do a diff, which results in an array of operations of the form
 	//  (op_type, op_data)
 	// where
 	//  op_type ==  0 => text same on both sides
 	//  op_type == -1 => text deleted (op_data is deleted text)
 	//  op_type == +1 => text inserted (op_data is inserted text)
+	// If mode is undefined or 'chars', the diff is performed over
+	// characters. Mode can also be 'words' or 'lines'.
+
 	var diff_match_patch = require('googlediff');
 	var base = require(__dirname + "/base.js");
 	var dmp = new diff_match_patch();
-	var d = dmp.diff_main(rep_op.old_value, rep_op.new_value);
+
+	/////////////////////////////////////////////////////////////
+	// adapted from diff_match_patch.prototype.diff_linesToChars_
+	function diff_tokensToChars_(text1, text2, split_regex) {
+	  var lineArray = [];
+	  var lineHash = {};
+	  lineArray[0] = '';
+	  function munge(text) {
+	    var chars = '';
+	    var lineStart = 0;
+	    var lineEnd = -1;
+	    var lineArrayLength = lineArray.length;
+	    while (lineEnd < text.length - 1) {
+	      split_regex.lastIndex = lineStart;
+	      var m = split_regex.exec(text);
+	      if (m)
+	      	lineEnd = m.index;
+	      else
+	        lineEnd = text.length - 1;
+	      var line = text.substring(lineStart, lineEnd + 1);
+	      lineStart = lineEnd + 1;
+	      if (lineHash.hasOwnProperty ? lineHash.hasOwnProperty(line) :
+	          (lineHash[line] !== undefined)) {
+	        chars += String.fromCharCode(lineHash[line]);
+	      } else {
+	        chars += String.fromCharCode(lineArrayLength);
+	        lineHash[line] = lineArrayLength;
+	        lineArray[lineArrayLength++] = line;
+	      }
+	    }
+	    return chars;
+	  }
+
+	  var chars1 = munge(text1);
+	  var chars2 = munge(text2);
+	  return {chars1: chars1, chars2: chars2, lineArray: lineArray};
+	}
+	/////////////////////////////////////////////////////////////
+
+	// handle words or lines mode
+	var token_state = null;
+	if (mode == "words") token_state = diff_tokensToChars_(rep_op.old_value, rep_op.new_value, /[\W]/g);
+	if (mode == "lines") token_state = diff_tokensToChars_(rep_op.old_value, rep_op.new_value, /\n/g);
+	var t1 = rep_op.old_value;
+	var t2 = rep_op.new_value;
+	if (token_state) { t1 = token_state.chars1; t2 = token_state.chars2; }
+
+	// perform the diff
+	var d = dmp.diff_main(t1, t2);
+
+	// handle words or lines mode
+	if (token_state) dmp.diff_charsToLines_(d, token_state.lineArray);
+	dmp.diff_cleanupSemantic(d);
+
+	// turn the output into an array of DEL and INS operations
 	var ret = [];
 	var pos = 0;
 	for (var i = 0; i < d.length; i++) {
