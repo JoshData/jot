@@ -44,7 +44,28 @@ assert.deepEqual(
 
 // rebase
 
-// ...
+assert.deepEqual(
+	objs.rebase(
+		objs.APPLY("a", values.MAP("add", 1)),
+		objs.APPLY("a", values.MAP("add", 2))
+		),
+	objs.APPLY("a", values.MAP("add", 2))
+	);
+assert.deepEqual(
+	objs.rebase(
+		objs.APPLY("a", values.REP(0, 1)),
+		objs.APPLY("a", values.REP(0, 2))
+		),
+	null
+	);
+assert.deepEqual(
+	objs.rebase(
+		objs.APPLY("a", values.REP(0, 1)),
+		objs.APPLY("b", values.REP(0, 2))
+		),
+	objs.APPLY("b", values.REP(0, 2))
+	);
+
 
 // meta
 

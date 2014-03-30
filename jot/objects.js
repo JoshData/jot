@@ -275,6 +275,11 @@ exports.rebase = function (a, b) {
 	}
 	
 	if (a.type == "apply" && b.type == "apply" && a.op.module_name == b.op.module_name) {
+		if (a.key != b.key) {
+			// Changes to different keys are independent.
+			return b;
+		}
+
 		var lib = jot_platform.load_module(a.op.module_name);
 		var op2 = lib.rebase(a.op, b.op);
 		if (op2)
