@@ -182,20 +182,24 @@ makes JOT useful when tracking changes to data, rather than to text.
 
 The operations in JOT are:
 
-* INS(index, value): Insert text or array elements into an array.
-* DEL(index, old_value): Delete text or array elements in an array.
-* PUT(key, value): Add a new property to an object.
-* DEL(key, old_value): Remove a property from an object.
-* REN(key, new_name): Rename a property of an object.
-* MOVE(index, count, new_index): Move consecutive elements of an array from one index to another.
-* ARRAY_APPLY(index, operation): Apply any operation to a particular array element.
-* OBJECT_APPLY(key, operation): Apply any operation to a particular property value.
-* SET(old_value, new_value): Set a value (an array element, an object property, or an atomic value).
-* MAP(operation, value): Increment ("add"), multiply ("mult"), or increment w/ modulus ("rot") a number or XOR ("xor") a boolean value. For `rot`, the value is given as an array of [increment, modulus].
+* `INS(index, value)`: Insert text or array elements into an array.
+* `DEL(index, old_value)`: Delete text or array elements in an array.
+* `PUT(key, value)`: Add a new property to an object.
+* `DEL(key, old_value)`: Remove a property from an object.
+* `REN(key, new_name)`: Rename a property of an object.
+* `MOVE(index, count, new_index)`: Move consecutive elements of an array from one index to another.
+* `ARRAY_APPLY(index, operation)`: Apply any operation to a particular array element.
+* `OBJECT_APPLY(key, operation)`: Apply any operation to a particular property value.
+* `SET(old_value, new_value)`: Set a value (an array element, an object property, or an atomic value).
+* `MAP(operation, value)`: Increment ("add"), multiply ("mult"), or increment w/ modulus ("rot") a number or XOR ("xor") a boolean value. For `rot`, the value is given as an array of [increment, modulus].
 
 The JOT model is a superset of the model you need for basic plain text concurrent
 editing. That is, it includes the entire text editing model in the INS and DEL
 operations plus it adds new operations for non-string data structures.
+
+Note that some operations (DEL, DEL, and SET) require passing the value
+being modified before the modification took place (i.e. what the value
+was before the operation).
 
 (Interally, INS and DEL are subcases of "SPLICE" and PUT, DEL, and REN are subcases
 of "PROP".)
