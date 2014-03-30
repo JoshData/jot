@@ -398,10 +398,9 @@ exports.rebase = function (a, b) {
 	return null;
 }
 
-// Use google-diff-match-patch to convert a string SET to a list of insertions
-// and deletions.
-
-exports.from_string_rep = function(rep_op, mode, global_order) {
+// Use google-diff-match-patch to convert a diff between two
+// strings into an array of SPLICE operations.
+exports.from_diff = function(old_value, new_value, mode, global_order) {
 	// Do a diff, which results in an array of operations of the form
 	//  (op_type, op_data)
 	// where
@@ -455,10 +454,10 @@ exports.from_string_rep = function(rep_op, mode, global_order) {
 
 	// handle words or lines mode
 	var token_state = null;
-	if (mode == "words") token_state = diff_tokensToChars_(rep_op.old_value, rep_op.new_value, /[\W]/g);
-	if (mode == "lines") token_state = diff_tokensToChars_(rep_op.old_value, rep_op.new_value, /\n/g);
-	var t1 = rep_op.old_value;
-	var t2 = rep_op.new_value;
+	if (mode == "words") token_state = diff_tokensToChars_(old_value, new_value, /[\W]/g);
+	if (mode == "lines") token_state = diff_tokensToChars_(old_value, new_value, /\n/g);
+	var t1 = old_value;
+	var t2 = new_value;
 	if (token_state) { t1 = token_state.chars1; t2 = token_state.chars2; }
 
 	// perform the diff
