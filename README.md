@@ -84,43 +84,54 @@ Example
 
 Here's example code that follows the example in the introduction:
 
-	/* helpers and libraries */
+	/* load libraries */
+	var jot = require("./jot/base.js");
 	function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
-	var ot = require("./jot/base.js");
-	var spyobj = require("./jot/spyobject.js");
 
-	/* here's the initial document */
+	/* The Base Document */
+
 	var doc = {
 		key1: "Hello World!",
 		key2: 10,
 	};
 
-	/* User 1 Makes Changes */
-	var d1 = new spyobj.SpyObject(clone(doc));
-	d1.rename("key1", "title");
-	d1.rename("key2", "count");
+	/* User 1 Makes Changes To The Keys */
 
-	// d1 is now { title: 'Hello World!', count: 10 }
+	var user1 = [
+		jot.REN("key1", "title"),
+		jot.REN("key2", "count")
+	];
 
-	/* User 2 Makes Changes */
-	var d2 = new spyobj.SpyObject(clone(doc));
-	d2.set("key1", "My Program");
-	d2.inc("key2", 10); // an atomic increment!
+	jot.apply_array(user1, doc);
+		>>> { title: 'Hello World!', count: 10 }
 
-	// d2 is now { key1: 'My Program', key2: 20 }
+	/* User 2 Makes Changes To The Values */
 
-	/* Merge the Changes */
+	var user2 = [
+		jot.OBJECT_APPLY("key1", jot.SET("Hello World!", "My Program")),
+		jot.OBJECT_APPLY("key2", jot.MAP('add', 10))
+	];
 
-	var r1 = d1.pop_history();
-	ot.apply_array(r1, doc);
+	jot.apply_array(user2, doc);
+		>>> { key1: 'My Program', key2: 20 }
 
-	// doc is now { title: 'Hello World!', count: 10 }
+	/* Can't Do This */
 
-	var r2 = d2.pop_history();
-	r2 = ot.rebase_array(r1, r2);
-	ot.apply_array(r2, doc);
+	// jot.apply_array(user1.concat(user2), doc);
+		>>> doc now has garbage because the object keys (key1, key)
+		>>> have been renamed before user2's operations are applied.
 
-	// doc is now { title: 'My Program', count: 20 }
+	/* Serialize the Two Changes */
+
+	user2_rebased = jot.rebase_array(user1, user2);
+		>>> user2_rebased is now:
+		>>> [
+		>>> 	jot.OBJECT_APPLY("title", jot.SET("Hello World!", "My Program")),
+		>>> 	jot.OBJECT_APPLY("count", jot.MAP('add', 10))
+		>>> ];
+
+	jot.apply_array(user1.concat(user2_rebased), doc);
+		>>> { title: 'My Program', count: 20 }
 
 To run:
 
@@ -130,13 +141,6 @@ Note how the output applies both users' changes logically, even though the
 second user's changes specified "key1" and "key2", neither of which exist
 by the time the revision is applied. It's the rebase_array call that takes
 care of that.
-
-An initial document (doc) is created. Changes are *simultaneously* made to
-doc. Here we're using a utility class SpyObject which records the revisions
-taken on it. SpoyObject.pop_history() returns the history of revisions made
-on the object. We re-apply the first user's revision history to the original
-object doc. Then we get the second user's changes, rebase them against the
-first user's changes, and apply the rebased operations to the document.
 
 Collaboration
 -------------
@@ -183,10 +187,10 @@ The operations in JOT are:
 * PUT: Add a new property to an object.
 * DEL: Remove a property from an object.
 * REN: Rename a property of an object.
+* MOVE: Move consecutive elements of an array from one index to another.
 * APPLY: Apply any operation to a particular array element or object property value.
 * SET: Set a value (an array element, an object property, or an atomic value).
 * MAP: Increment or multiply a number. (Increment supports a modulus.)
-* MOVE: Move consecutive elements of an array from one index to another.
 
 The JOT model is a superset of the model you need for basic plain text concurrent
 editing. That is, it includes the entire text editing model in the INS and DEL

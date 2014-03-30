@@ -192,5 +192,18 @@ exports.rebase_array = function(base, ops) {
 	}
 }
 
-
-
+/* MAKE SOME ALIASES */
+function op_alias(module_name, operation_name, arguments) {
+	var lib = jot_platform.load_module(module_name);
+	return lib[operation_name].apply(null, arguments);
+}
+exports.INS = function(/*...*/) { return op_alias("sequences", "INS", arguments); }
+exports.DEL = function(/*...*/) { return op_alias("sequences", "DEL", arguments); }
+exports.PUT = function(/*...*/) { return op_alias("objects", "PUT", arguments); }
+exports.DEL = function(/*...*/) { return op_alias("objects", "DEL", arguments); }
+exports.REN = function(/*...*/) { return op_alias("objects", "REN", arguments); }
+exports.MOVE = function(/*...*/) { return op_alias("sequences", "MOVE", arguments); }
+exports.OBJECT_APPLY = function(/*...*/) { return op_alias("objects", "APPLY", arguments); }
+exports.ARRAY_APPLY = function(/*...*/) { return op_alias("sequences", "APPLY", arguments); }
+exports.SET = function(/*...*/) { return op_alias("values", "SET", arguments); }
+exports.MAP = function(/*...*/) { return op_alias("values", "MAP", arguments); }

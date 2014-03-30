@@ -1,43 +1,50 @@
-/* helper */
+/* load libraries */
+var jot = require("./jot/base.js");
 function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
-/* load libraries */
-var ot = require("./jot/base.js");
-var spyobj = require("./jot/spyobject.js");
+/* The Base Document */
 
 var doc = {
 	key1: "Hello World!",
 	key2: 10,
 };
 
-/* User 1 Makes Changes */
+console.log("Original Document")
+console.log(doc); // { key1: 'Hello World!', key2: 10 }
+console.log("")
 
-var d1 = new spyobj.SpyObject(clone(doc));
-d1.rename("key1", "title");
-d1.rename("key2", "count");
+/* User 1 Makes Changes To The Keys */
+
+var user1 = [
+	jot.REN("key1", "title"),
+	jot.REN("key2", "count")
+];
 
 console.log("User 1")
-console.log(d1.doc); // { title: 'Hello World!', count: 10 }
+console.log(jot.apply_array(user1, clone(doc))); // { title: 'Hello World!', count: 10 }
 console.log("")
 
-/* User 2 Makes Changes */
+/* User 2 Makes Changes To The Values */
 
-var d2 = new spyobj.SpyObject(clone(doc));
-d2.set("key1", "My Program");
-d2.inc("key2", 10);
+var user2 = [
+	jot.OBJECT_APPLY("key1", jot.SET("Hello World!", "My Program")), // must provide the before and after values
+	jot.OBJECT_APPLY("key2", jot.MAP('add', 10))
+];
 
 console.log("User 2")
-console.log(d2.doc); // { key1: 'My Program', key2: 20 }
+console.log(jot.apply_array(user2, clone(doc))); // { key1: 'My Program', key2: 20 }
 console.log("")
 
-var r1 = d1.pop_history();
-ot.apply_array(r1, doc);
+/* Can't Do This */
 
-var r2 = d2.pop_history();
-r2 = ot.rebase_array(r1, r2);
-ot.apply_array(r2, doc);
+// jot.apply_array(user1.concat(user2), doc);
 
-console.log("Merged Edits")
-console.log(doc); // { title: 'My Program', count: 20 }
+/* Serialize the Two Changes */
+
+user2_rebased = jot.rebase_array(user1, user2);
+
+console.log("Merged")
+console.log(jot.apply_array(user1.concat(user2_rebased), clone(doc))); // { title: 'My Program', count: 20 }
+console.log("")
 
 
