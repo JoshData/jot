@@ -182,16 +182,16 @@ makes JOT useful when tracking changes to data, rather than to text.
 
 The operations in JOT are:
 
-* `INS(index, value)`: Insert text or array elements into an array.
-* `DEL(index, old_value)`: Delete text or array elements in an array.
-* `PUT(key, value)`: Add a new property to an object.
-* `REM(key, old_value)`: Remove a property from an object.
-* `REN(key, new_name)`: Rename a property of an object.
+* `INS(index, value)`: Insert text into a string or array elements into an array. When applied to strings, `value` is a string. When applied to arrays, `value` is an array. To insert a single element into an array, wrap it in an array before passing to `INS`.
+* `DEL(index, old_value)`: Delete text from a string or removes array elements from an array. When applied to strings, `old_value` is the substring being deleted. When applied to arrays, `old_value` is an array of the items being deleted.
+* `PUT(key, value)`: Add a new property to an object. `key` is any valid JSON key (a string) and `value` is any valid JSON object.
+* `REM(key, old_value)`: Remove a property from an object. `key` is a string and `old_value` is the value of the property before the property is removed.
+* `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings.
 * `MOVE(index, count, new_index)`: Move consecutive elements of an array from one index to another.
-* `ARRAY_APPLY(index, operation)`: Apply any operation to a particular array element.
-* `OBJECT_APPLY(key, operation)`: Apply any operation to a particular property value.
-* `SET(old_value, new_value)`: Set a value (an array element, an object property, or an atomic value).
-* `MAP(operation, value)`: Increment ("add"), multiply ("mult"), or increment w/ modulus ("rot") a number or XOR ("xor") a boolean value. For `rot`, the value is given as an array of [increment, modulus].
+* `ARRAY_APPLY(index, operation)`: Apply any operation to a particular array element. `operation` is any operation created by these constructors.
+* `OBJECT_APPLY(key, operation)`: Apply any operation to a particular property value. `operation` is any operation created by these constructors.
+* `SET(old_value, new_value)`: Set a value (an array element, an object property, or an atomic value). `old_value` is the value the document had prior to this operation, and `new_value` is the new value after the operation.
+* `MAP(op, value)`: Increment (`op`="add"), multiply (`op`="mult"), or increment w/ modulus (`op`="rot") a number, or XOR (`op`="xor") a boolean value. For `rot`, the value is given as an array of [increment, modulus].
 
 The JOT model is a superset of the model you need for basic plain text concurrent
 editing. That is, it includes the entire text editing model in the INS and DEL
