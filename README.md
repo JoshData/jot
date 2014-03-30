@@ -19,8 +19,8 @@ This library:
 
 * Models atomic changes to JSON data structures (operations).
 * Inverts, composes, and rebases operations (transformations).
-* Manages real-time collaborations between two or more users.
-* Provides example client/server code and a working example.
+* (experimental) Manages real-time collaborations between two or more users.
+* (highly experimental) Provides example client/server code and a working example.
 
 There's no UI here, except in the example.
 
