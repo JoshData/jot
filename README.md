@@ -178,29 +178,23 @@ makes JOT useful when tracking changes to data, rather than to text.
 
 The operations in JOT are:
 
+* INS: Insert text or array elements into an array.
+* DEL: Delete text or array elements in an array.
+* PUT: Add a new property to an object.
+* DEL: Remove a property from an object.
+* REN: Rename a property of an object.
+* APPLY: Apply any operation to a particular array element or object property value.
 * SET: Set a value (an array element, an object property, or an atomic value).
-* MAP: Increment, multiply, or rotate (as in rot-13) a number, or xor a boolean.
-* SPLICE: Insert delete, or replace consecutive characters in a string or consecutive elements of an array.
+* MAP: Increment or multiply a number. (Increment supports a modulus.)
 * MOVE: Move consecutive elements of an array from one index to another.
-* PROP: Create, delete, or rename a property on an object.
 
-Some of the operations have helpful aliases for common edge cases:
+The JOT model is a superset of the model you need for basic plain text concurrent
+editing. That is, it includes the entire text editing model in the INS and DEL
+operations plus it adds new operations for non-string data structures.
 
-* INS (insert text or array elements; part of SPLICE)
-* DEL (delete text or array elements; part of SPLICE)
-* PUT (add a new property; part of PROP)
-* DEL (remove a property; part of PROP)
-* REN (rename a property; part of PROP)
+(Interally, INS and DEL are subcases of "SPLICE" and PUT, DEL, and REN are subcases
+of "PROP". There is also "NO_OP", which is an operation with no effect.)
 
-There's also
-
-* NO_OP: An operation that does nothing.
-* APPLY: Apply an operation to an array element or to an object property value.
-
-As you might be able to see, the JOT model is a superset of the model you need
-for basic plain text concurrent editing. That is, it encapsulates the entire
-text editing model (INS, DEL) within the string SPLICE operation, plus it adds
-four more operations for non-string data structures.
 
 Transformations
 ---------------
