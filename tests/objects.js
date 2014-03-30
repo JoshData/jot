@@ -10,7 +10,7 @@ assert.deepEqual(
 	objs.apply(objs.PUT("a", "b"), {}),
 	{ "a": "b" });
 assert.deepEqual(
-	objs.apply(objs.DEL("a", "b"), {"a": "b"}),
+	objs.apply(objs.REM("a", "b"), {"a": "b"}),
 	{});
 assert.deepEqual(
 	objs.apply(objs.APPLY(

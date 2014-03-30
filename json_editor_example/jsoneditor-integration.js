@@ -107,7 +107,7 @@ function setup_editor_hook(event_loop) {
 			else if (action == "removeNode") {
 				if (params.parent.type == "object") {
 					op = ot_obj.access(get_path(params.node.parent), "objects.js",
-						"DEL", params.node.field, getValue(params.node));
+						"REM", params.node.field, getValue(params.node));
 				} else {
 					op = ot_obj.access(get_path(params.parent), "sequences.js",
 						"DEL", params.index, [getValue(params.node)]);

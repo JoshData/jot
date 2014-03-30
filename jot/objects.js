@@ -13,7 +13,7 @@
     
       (Equivalent to PROP(null, key, null, value).)
 
-    DEL(key, old_value)
+    REM(key, old_value)
     
       (Equivalent to PROP(key, null, old_value, null).)
 
@@ -98,7 +98,7 @@ exports.PUT = function (key, value) {
 	return exports.PROP(null, key, null, value);
 }
 
-exports.DEL = function (key, old_value) {
+exports.REM = function (key, old_value) {
 	return exports.PROP(key, null, old_value, null);
 }
 
