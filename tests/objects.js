@@ -15,7 +15,7 @@ assert.deepEqual(
 assert.deepEqual(
 	objs.apply(objs.APPLY(
 		"a",
-		values.REP("b", "c")
+		values.SET("b", "c")
 		), {"a": "b"}),
 	{ "a": "c" });
 assert.deepEqual(
@@ -53,17 +53,17 @@ assert.deepEqual(
 	);
 assert.deepEqual(
 	objs.rebase(
-		objs.APPLY("a", values.REP(0, 1)),
-		objs.APPLY("a", values.REP(0, 2))
+		objs.APPLY("a", values.SET(0, 1)),
+		objs.APPLY("a", values.SET(0, 2))
 		),
 	null
 	);
 assert.deepEqual(
 	objs.rebase(
-		objs.APPLY("a", values.REP(0, 1)),
-		objs.APPLY("b", values.REP(0, 2))
+		objs.APPLY("a", values.SET(0, 1)),
+		objs.APPLY("b", values.SET(0, 2))
 		),
-	objs.APPLY("b", values.REP(0, 2))
+	objs.APPLY("b", values.SET(0, 2))
 	);
 
 

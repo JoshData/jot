@@ -178,7 +178,7 @@ makes JOT useful when tracking changes to data, rather than to text.
 
 The operations in JOT are:
 
-* REP: Replace one value with another (typically an array element or a property value).
+* SET: Set a value (an array element, an object property, or an atomic value).
 * MAP: Increment, multiply, or rotate (as in rot-13) a number, or xor a boolean.
 * SPLICE: Insert delete, or replace consecutive characters in a string or consecutive elements of an array.
 * MOVE: Move consecutive elements of an array from one index to another.

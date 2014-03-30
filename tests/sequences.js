@@ -29,7 +29,7 @@ assert.equal(
 	"312");
 
 assert.deepEqual(
-	seqs.apply(seqs.APPLY(0, values.REP(1, 4)), [1, 2, 3]),
+	seqs.apply(seqs.APPLY(0, values.SET(1, 4)), [1, 2, 3]),
 	[4, 2, 3]);
 
 // simplify
@@ -47,11 +47,11 @@ assert.deepEqual(
 	seqs.simplify(seqs.MOVE(3, 5, 4)),
 	seqs.MOVE(3, 5, 4));
 assert.deepEqual(
-	seqs.simplify(seqs.APPLY(0, values.REP(1, 1))),
+	seqs.simplify(seqs.APPLY(0, values.SET(1, 1))),
 	seqs.NO_OP());
 assert.deepEqual(
-	seqs.simplify(seqs.APPLY(0, values.REP(1, 2))),
-	seqs.APPLY(0, values.REP(1, 2)));
+	seqs.simplify(seqs.APPLY(0, values.SET(1, 2))),
+	seqs.APPLY(0, values.SET(1, 2)));
 
 // invert
 
@@ -65,8 +65,8 @@ assert.deepEqual(
 	seqs.invert(seqs.MOVE(10, 3, 3)),
 	seqs.MOVE(3, 3, 13));
 assert.deepEqual(
-	seqs.invert(seqs.APPLY(0, values.REP(1, 2))),
-	seqs.APPLY(0, values.REP(2, 1)));
+	seqs.invert(seqs.APPLY(0, values.SET(1, 2))),
+	seqs.APPLY(0, values.SET(2, 1)));
 
 // compose
 
@@ -74,10 +74,10 @@ assert.deepEqual(
 
 assert.deepEqual(
 	seqs.compose(
-		seqs.APPLY(555, values.REP("A", "B")),
-		seqs.APPLY(555, values.REP("B", "C"))
+		seqs.APPLY(555, values.SET("A", "B")),
+		seqs.APPLY(555, values.SET("B", "C"))
 		),
-	seqs.APPLY(555, values.REP("A", "C")));
+	seqs.APPLY(555, values.SET("A", "C")));
 
 // rebase
 
@@ -108,7 +108,7 @@ assert.deepEqual(
 
 assert.equal(
 	base.apply_array(
-		seqs.from_string_rep(values.REP("this is a test", "calculus was a hard test")),
+		seqs.from_string_rep(values.SET("this is a test", "calculus was a hard test")),
 		"this is a test"),
 	"calculus was a hard test");
 

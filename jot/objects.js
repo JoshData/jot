@@ -49,18 +49,18 @@
     
     To replace the value of a property with a new value:
     
-      APPLY("key1", values.REP("old_value", "new_value"))
+      APPLY("key1", values.SET("old_value", "new_value"))
       
     You can also use the 'access' helper method to construct recursive
     APPLY operations:
     
-      access(["key1", subkey1"], values.REP("old_value", "new_value"))
+      access(["key1", subkey1"], values.SET("old_value", "new_value"))
       or
-      access(["key1", subkey1"], "values.js", "REP", "old_value", "new_value")
+      access(["key1", subkey1"], "values.js", "SET", "old_value", "new_value")
       
       is equivalent to
       
-      APPLY("key1", APPLY("subkey1", values.REP("old_value", "new_value")))
+      APPLY("key1", APPLY("subkey1", values.SET("old_value", "new_value")))
 
 	The APPLY operation has the following internal form:
 

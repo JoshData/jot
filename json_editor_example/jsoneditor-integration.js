@@ -70,7 +70,7 @@ function setup_editor_hook(event_loop) {
 			var op;
 			
 			if (action == "editValue") {
-				var op = ot_values.REP(params.oldValue, params.newValue);
+				var op = ot_values.SET(params.oldValue, params.newValue);
 				if (typeof params.oldValue == 'string' && typeof params.newValue == 'string') {
 					// if this is a single simple string edit, pass that as the operation
 					var op2 = ot_seqs.from_string_rep(op); // converts this to an array
@@ -82,7 +82,7 @@ function setup_editor_hook(event_loop) {
 				
 			else if (action == "changeType")
 				op = ot_obj.access(get_path(params.node), "values.js",
-					"REP",
+					"SET",
 					getValue(params.node, params.oldType), // this is a little tricky because the old value
 					getValue(params.node, params.newType)); // isn't stored anywhere, yet information isn't lost
 					

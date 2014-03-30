@@ -2,7 +2,7 @@
 	library provides two operations: replace and map. These
 	functions are generic over various sorts of data types.
 	
-	REP(old_value, new_value[, global_order])
+	SET(old_value, new_value[, global_order])
 	
 	The atomic replacement of one value with another. Works for
 	any data type.
@@ -68,7 +68,7 @@ exports.NO_OP = function() {
 	return { "type": "no-op" }; // no module_name is required on no-ops
 }
 
-exports.REP = function (old_value, new_value, global_order) {
+exports.SET = function (old_value, new_value, global_order) {
 	return { // don't simplify here -- breaks tests
 		module_name: "values.js",
 		type: "rep",
@@ -150,7 +150,7 @@ exports.invert = function (op) {
 		return op;
 
 	if (op.type == "rep")
-		return exports.REP(op.new_value, op.old_value, op.global_order);
+		return exports.SET(op.new_value, op.old_value, op.global_order);
 	
 	if (op.type == "map" && op.operator == "add")
 		return exports.MAP("add", -op.value);
@@ -180,7 +180,7 @@ exports.compose = function (a, b) {
 		return a;
 
 	if (a.type == "rep" && b.type == "rep" && a.global_order == b.global_order)
-		return exports.simplify(exports.REP(a.old_value, b.new_value, a.global_order));
+		return exports.simplify(exports.SET(a.old_value, b.new_value, a.global_order));
 	
 	if (a.type == "map" && b.type == "map" && a.operator == b.operator && a.operator == "add")
 		return exports.simplify(exports.MAP("add", a.value + b.value));
@@ -224,7 +224,7 @@ exports.rebase = function (a, b) {
 		
 		if (b.global_order > a.global_order)
 			// clobber a's operation
-			return exports.simplify(exports.REP(a.new_value, b.new_value, b.global_order));
+			return exports.simplify(exports.SET(a.new_value, b.new_value, b.global_order));
 			
 		if (b.global_order < a.global_order)
 			return exports.NO_OP(); // this replacement gets clobbered

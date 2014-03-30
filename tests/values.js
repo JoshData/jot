@@ -8,7 +8,7 @@ assert.equal(
 	"1");
 
 assert.equal(
-	values.apply(values.REP("1", "2"), "1"),
+	values.apply(values.SET("1", "2"), "1"),
 	"2");
 
 assert.equal(
@@ -40,10 +40,10 @@ assert.deepEqual(
 	values.NO_OP());
 
 assert.deepEqual(
-	values.simplify(values.REP(0, 1)),
-	values.REP(0, 1));
+	values.simplify(values.SET(0, 1)),
+	values.SET(0, 1));
 assert.deepEqual(
-	values.simplify(values.REP(0, 0)),
+	values.simplify(values.SET(0, 0)),
 	values.NO_OP());
 
 assert.deepEqual(
@@ -78,8 +78,8 @@ assert.deepEqual(
 	values.NO_OP());
 
 assert.deepEqual(
-	values.invert(values.REP(0, 1)),
-	values.REP(1, 0));
+	values.invert(values.SET(0, 1)),
+	values.SET(1, 0));
 
 assert.deepEqual(
 	values.invert(values.MAP("add", 5)),
@@ -102,19 +102,19 @@ assert.deepEqual(
 assert.deepEqual(
 	values.compose(
 		values.NO_OP(),
-		values.REP(1, 2) ),
-	values.REP(1, 2));
+		values.SET(1, 2) ),
+	values.SET(1, 2));
 assert.deepEqual(
 	values.compose(
-		values.REP(1, 2),
+		values.SET(1, 2),
 		values.NO_OP() ),
-	values.REP(1, 2));
+	values.SET(1, 2));
 
 assert.deepEqual(
 	values.compose(
-		values.REP(0, 1),
-		values.REP(1, 2) ),
-	values.REP(0, 2));
+		values.SET(0, 1),
+		values.SET(1, 2) ),
+	values.SET(0, 2));
 
 assert.deepEqual(
 	values.compose(
@@ -157,23 +157,23 @@ assert.deepEqual(
 
 assert.deepEqual(
 	values.rebase(
-		values.REP(0, 1),
-		values.REP(0, 1) ),
+		values.SET(0, 1),
+		values.SET(0, 1) ),
 	values.NO_OP());
 assert.deepEqual(
 	values.rebase(
-		values.REP(0, 1),
-		values.REP(0, 2) ),
+		values.SET(0, 1),
+		values.SET(0, 2) ),
 	null);
 assert.deepEqual(
 	values.rebase(
-		values.REP(0, 1, 0),
-		values.REP(0, 2, 1) ),
-	values.REP(1, 2, 1));
+		values.SET(0, 1, 0),
+		values.SET(0, 2, 1) ),
+	values.SET(1, 2, 1));
 assert.deepEqual(
 	values.rebase(
-		values.REP(0, 2, 1),
-		values.REP(0, 1, 0) ),
+		values.SET(0, 2, 1),
+		values.SET(0, 1, 0) ),
 	values.NO_OP());
 
 assert.deepEqual(

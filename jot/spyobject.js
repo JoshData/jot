@@ -28,7 +28,7 @@ function SpyObject(doc, observer, path) {
 			observer.op_history.push(
 				objects.access(
 					this.path.concat([key]),
-					"values", "REP",
+					"values", "SET",
 					this.doc[key], clone(value)));
 		} else {
 			observer.op_history.push(

@@ -61,7 +61,7 @@
     
     To replace an element at index 2 with a new value:
     
-      APPLY(2, values.REP("old_value", "new_value"))
+      APPLY(2, values.SET("old_value", "new_value"))
       
 	The APPLY operation has the following internal form:
 	
@@ -398,7 +398,7 @@ exports.rebase = function (a, b) {
 	return null;
 }
 
-// Use google-diff-match-patch to convert a string REP to a list of insertions
+// Use google-diff-match-patch to convert a string SET to a list of insertions
 // and deletions.
 
 exports.from_string_rep = function(rep_op, mode, global_order) {
