@@ -108,7 +108,7 @@ assert.deepEqual(
 
 assert.equal(
 	base.apply_array(
-		seqs.from_string_rep(values.SET("this is a test", "calculus was a hard test")),
+		seqs.from_diff("this is a test", "calculus was a hard test"),
 		"this is a test"),
 	"calculus was a hard test");
 
