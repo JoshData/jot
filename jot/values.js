@@ -108,7 +108,7 @@ exports.apply = function (op, value) {
 		return value * op.value;
 	
 	if (op.type == "map" && op.operator == "xor")
-		return value ^ op.value;
+		return !!(value ^ op.value); // the ^ operator is over numbers, then use "!!" to cast it to a boolean
 }
 
 exports.simplify = function (op) {
