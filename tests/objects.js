@@ -1,4 +1,4 @@
-var assert = require('assert')
+var test = require('tap').test;
 var values = require("../jot/values.js");
 var seqs = require("../jot/sequences.js");
 var objs = require("../jot/objects.js");
@@ -6,25 +6,26 @@ var meta = require("../jot/meta.js");
 
 // apply
 
-assert.deepEqual(
+test('objects', function(t) {
+t.deepEqual(
 	objs.apply(objs.PUT("a", "b"), {}),
 	{ "a": "b" });
-assert.deepEqual(
+t.deepEqual(
 	objs.apply(objs.REM("a", "b"), {"a": "b"}),
 	{});
-assert.deepEqual(
+t.deepEqual(
 	objs.apply(objs.APPLY(
 		"a",
 		values.SET("b", "c")
 		), {"a": "b"}),
 	{ "a": "c" });
-assert.deepEqual(
+t.deepEqual(
 	objs.apply(objs.APPLY(
 		"a",
 		seqs.SPLICE(0, "b", "Hello")
 		), {"a": "b"}),
 	{ "a": "Hello" });
-assert.deepEqual(
+t.deepEqual(
 	objs.apply(objs.APPLY(
 		"a",
 		seqs.APPLY(
@@ -44,21 +45,21 @@ assert.deepEqual(
 
 // rebase
 
-assert.deepEqual(
+t.deepEqual(
 	objs.rebase(
 		objs.APPLY("a", values.MAP("add", 1)),
 		objs.APPLY("a", values.MAP("add", 2))
 		),
 	objs.APPLY("a", values.MAP("add", 2))
 	);
-assert.deepEqual(
+t.deepEqual(
 	objs.rebase(
 		objs.APPLY("a", values.SET(0, 1)),
 		objs.APPLY("a", values.SET(0, 2))
 		),
 	null
 	);
-assert.deepEqual(
+t.deepEqual(
 	objs.rebase(
 		objs.APPLY("a", values.SET(0, 1)),
 		objs.APPLY("b", values.SET(0, 2))
@@ -69,7 +70,7 @@ assert.deepEqual(
 
 // meta
 
-assert.deepEqual(
+t.deepEqual(
 	objs.apply(
 		objs.APPLY(
 			"a",
@@ -87,3 +88,5 @@ assert.deepEqual(
 		{"a": [0, 0, 0]}),
 	{ "a": [0, 1, -1] });
 
+    t.end();
+});
