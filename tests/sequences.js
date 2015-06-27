@@ -30,6 +30,22 @@ t.equal(
 t.deepEqual(
 	new seqs.APPLY(0, new values.SET(1, 4)).apply([1, 2, 3]),
 	[4, 2, 3]);
+t.deepEqual(
+	new seqs.APPLY(1, new values.SET(2, 4)).apply([1, 2, 3]),
+	[1, 4, 3]);
+t.deepEqual(
+	new seqs.APPLY(2, new values.SET(3, 4)).apply([1, 2, 3]),
+	[1, 2, 4]);
+
+t.deepEqual(
+	new seqs.APPLY(0, new values.SET("a", "d")).apply("abc"),
+	"dbc");
+t.deepEqual(
+	new seqs.APPLY(1, new values.SET("b", "d")).apply("abc"),
+	"adc");
+t.deepEqual(
+	new seqs.APPLY(2, new values.SET("c", "d")).apply("abc"),
+	"abd");
 
 // simplify
 

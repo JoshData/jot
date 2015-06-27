@@ -30,11 +30,10 @@
 
    new sequences.APPLY(pos, operation)
 
-    Applies another sort of operation to a single element. For
-    arrays only. Use any of the operations in values.js on an
-    element. Or if the element is an array or object, use the
-    operators in this module or the objects.js module, respectively.
-    pos is zero-based.
+    Applies another sort of operation to a single element. Use
+    any of the operations in values.js on an element. Or if the
+    element is an array or object, use the operators in this module
+    or the objects.js module, respectively. pos is zero-based.
 
     Example:
     
@@ -49,6 +48,16 @@ var LIST = require("./meta.js").LIST;
 
 // utilities
 
+function elem(seq, pos) {
+	if (seq instanceof String)
+		return seq.charAt(pos);
+	return seq[pos];
+}
+function unelem(elem) {
+	if (elem instanceof String)
+		return elem;
+	return [elem];
+}
 function concat2(item1, item2) {
 	if (item1 instanceof String)
 		return item1 + item2;
@@ -319,8 +328,10 @@ exports.APPLY = function (pos, op) {
 exports.APPLY.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
 	   the same type as document but with the element modified. */
-	document = document.slice(); // shallow copy
-	document[this.pos] = this.op.apply(document[this.pos]);
+	return concat3(
+		document.slice(0, this.pos),
+		unelem(this.op.apply(elem(document, this.pos))),
+		document.slice(this.pos+1, document.length));
 	return document;
 }
 
