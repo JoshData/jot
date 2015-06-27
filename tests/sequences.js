@@ -1,7 +1,7 @@
 var test = require('tap').test;
 var values = require("../jot/values.js");
 var seqs = require("../jot/sequences.js");
-var base = require("../jot/base.js");
+var jot = require("../jot");
 
 // apply
 //
@@ -109,7 +109,7 @@ t.deepEqual(
 // from_string_rep
 
 t.equal(
-	base.apply_array(
+	jot.apply_array(
 		seqs.from_diff("this is a test", "calculus was a hard test"),
 		"this is a test"),
 	"calculus was a hard test");

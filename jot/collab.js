@@ -1,4 +1,4 @@
-var ot = require(__dirname + "/base.js");
+var ot = require(__dirname);
 
 exports.TwoWayCollaboration = function(document_updater, the_wire, asymmetric, id) {
 	/* The TwoWayCollaboration class is a shared state between you and another editor.

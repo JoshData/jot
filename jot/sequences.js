@@ -411,7 +411,7 @@ exports.from_diff = function(old_value, new_value, mode, global_order) {
 	// characters. Mode can also be 'words' or 'lines'.
 
 	var diff_match_patch = require('googlediff');
-	var base = require(__dirname + "/base.js");
+	var jot = require(__dirname);
 	var dmp = new diff_match_patch();
 
 	/////////////////////////////////////////////////////////////
@@ -481,6 +481,6 @@ exports.from_diff = function(old_value, new_value, mode, global_order) {
 			pos += d[i][1].length;
 		}
 	}
-	return base.normalize_array(ret);
+	return jot.normalize_array(ret);
 }
 

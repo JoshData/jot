@@ -14,7 +14,7 @@
 
 	*/
 	
-var jot_base = require(__dirname + "/base.js");
+var jot_base = require(__dirname);
 
 // constructors
 

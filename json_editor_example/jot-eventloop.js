@@ -1,5 +1,5 @@
 function setup_event_loop(collab) {
-	var ot_base = require("jot/base.js");
+	var ot_base = require("jot");
 	
 	// use a two-stage queue so that operations are guaranteed
 	// to wait before getting sent in the wire, in case they

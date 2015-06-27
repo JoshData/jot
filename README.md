@@ -85,7 +85,7 @@ Example
 Here's example code that follows the example in the introduction:
 
 	/* load libraries */
-	var jot = require("./jot/base.js");
+	var jot = require("./jot");
 	function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
 	/* The Base Document */
