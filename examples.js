@@ -1,6 +1,5 @@
 /* load libraries */
 var jot = require("./jot");
-function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
 /* The Base Document */
 
@@ -13,38 +12,50 @@ console.log("Original Document")
 console.log(doc); // { key1: 'Hello World!', key2: 10 }
 console.log("")
 
-/* User 1 Makes Changes To The Keys */
+/* User 1 makes changes to the document's keys so
+ * that the document becomes:
+ *
+ * { title: 'Hello World!', count: 10 }
+ *
+ */
 
-var user1 = [
+var user1 = jot.LIST([
 	jot.REN("key1", "title"),
 	jot.REN("key2", "count")
-];
+]);
 
 console.log("User 1")
-console.log(jot.apply_array(user1, clone(doc))); // { title: 'Hello World!', count: 10 }
+console.log(user1.apply(doc)); // { title: 'Hello World!', count: 10 }
 console.log("")
 
-/* User 2 Makes Changes To The Values */
+/* User 2 makes changes to the document's values so
+ * that the document becomes:
+ *
+ * { key1: 'My Program', key2: 20 }
+ *
+ */
 
-var user2 = [
-	jot.OBJECT_APPLY("key1", jot.SET("Hello World!", "My Program")), // must provide the before and after values
+var user2 = jot.LIST([
+	jot.OBJECT_APPLY("key1", jot.SET("Hello World!", "My Program")),
 	jot.OBJECT_APPLY("key2", jot.MAP('add', 10))
-];
+]);
 
 console.log("User 2")
-console.log(jot.apply_array(user2, clone(doc))); // { key1: 'My Program', key2: 20 }
+console.log(user2.apply(doc)); // { key1: 'My Program', key2: 20 }
 console.log("")
 
-/* Can't Do This */
+/* You can't do this! */
 
-// jot.apply_array(user1.concat(user2), doc);
+console.log("The Wrong Way")
+console.log(user1.compose(user2).apply(doc));
+console.log("")
 
-/* Serialize the Two Changes */
+/* You must rebase user2's operations before composing them. */
 
-user2_rebased = jot.rebase_array(user1, user2);
+user2 = user2.rebase(user1);
+if (user2 == null) throw "hmm";
 
 console.log("Merged")
-console.log(jot.apply_array(user1.concat(user2_rebased), clone(doc))); // { title: 'My Program', count: 20 }
+console.log(user1.compose(user2).apply(doc)); // { title: 'My Program', count: 20 }
 console.log("")
-
 

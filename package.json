@@ -3,7 +3,6 @@
   "version": "0.0.1",
   "description": "JSON Operational Transformation",
   "dependencies": {
-    "socket.io": "*",
     "googlediff": "*",
     "deep-equal": "*"
   },

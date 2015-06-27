@@ -1,9 +1,9 @@
-/* An operational transformation library for sequence-like objects,
-   including strings and arrays.
+/* An operational transformation library for sequence-like objects:
+   strings and arrays.
    
    Three operations are provided:
    
-   SPLICE(pos, old_value, new_value[, global_order])
+   new sequences.SPLICE(pos, old_value, new_value[, global_order])
 
     Replaces values in the sequence. Replace nothing with
     something to insert, or replace something with nothing to
@@ -11,45 +11,24 @@
     
     Shortcuts are provided:
     
-    INS(pos, new_value[, global_order])
+    new sequences.INS(pos, new_value[, global_order])
     
        (Equivalent to SPLICE(pos, [], new_value, global_order)
        for arrays or SPLICE(pos, "", new_value, global_order)
        for strings.)
        
-    DEL(pos, old_value[, global_order])
+    new sequences.DEL(pos, old_value[, global_order])
     
        (Equivalent to SPLICE(pos, old_value, [], global_order)
        for arrays or SPLICE(pos, old_value, "", global_order)
        for strings.)
 
-	The SPLICE operation has the following internal form:
-	
-	{
-	 module_name: "sequences.js",
-	 type: "splice",
-	 pos: ...an index...
-	 old_value: ...a value...,
-	 new_value: ...a value...,
-	 global_order: ...a value...,
-	}
-
-   MOVE(pos, count, new_pos)
+   new sequences.MOVE(pos, count, new_pos)
 
     Moves the subsequence starting at pos and count items long
-    to a new location starting at index new_pos.  pos is zero-based.
+    to a new location starting at index new_pos. pos is zero-based.
 
-	The MOVE operation has the following internal form:
-	
-	{
-	 module_name: "sequences.js",
-	 type: "move",
-	 pos: ...an index...,
-	 count: ...a length...,
-	 new_pos: ...a new index...,
-	}
-   
-   APPLY(pos, operation)
+   new sequences.APPLY(pos, operation)
 
     Applies another sort of operation to a single element. For
     arrays only. Use any of the operations in values.js on an
@@ -61,73 +40,12 @@
     
     To replace an element at index 2 with a new value:
     
-      APPLY(2, values.SET("old_value", "new_value"))
-      
-	The APPLY operation has the following internal form:
-	
-	{
-	 module_name: "sequences.js",
-	 type: "apply",
-	 pos: ...an index...,
-	 op: ...an operation from another module...,
-	}
-	
+      APPLY(2, new values.SET("old_value", "new_value"))
    */
    
-var jot_platform = require(__dirname + "/platform.js");
 var deepEqual = require("deep-equal");
-
-// constructors
-
-exports.NO_OP = function() {
-	return { "type": "no-op" }; // module_name is not required on no-ops
-}
-
-exports.SPLICE = function (pos, old_value, new_value, global_order) {
-	if (pos == null || old_value == null || new_value == null) throw "Invalid Argument";
-	return { // don't simplify here -- breaks tests
-		module_name: "sequences.js",
-		type: "splice",
-		pos: pos,
-		old_value: old_value,
-		new_value: new_value,
-		global_order: global_order || null
-	};
-}
-
-exports.INS = function (pos, value, global_order) {
-	if (pos == null || value == null) throw "Invalid Argument";
-	// value.slice(0,0) is a shorthand for constructing an empty string or empty list, generically
-	return exports.SPLICE(pos, value.slice(0,0), value, global_order);
-}
-
-exports.DEL = function (pos, old_value, global_order) {
-	if (pos == null || old_value == null) throw "Invalid Argument";
-	// value.slice(0,0) is a shorthand for constructing an empty string or empty list, generically
-	return exports.SPLICE(pos, old_value, old_value.slice(0,0), global_order);
-}
-
-exports.MOVE = function (pos, count, new_pos) {
-	if (pos == null || count == null || new_pos == null) throw "Invalid Argument";
-	return { // don't simplify here -- breaks tests
-		module_name: "sequences.js",
-		type: "move",
-		pos: pos,
-		count: count,
-		new_pos: new_pos
-	};
-}
-
-exports.APPLY = function (pos, op) {
-	if (pos == null || op == null) throw "Invalid Argument";
-	if (op.type == "no-op") return op; // don't embed because it never knows its package name
-	return { // don't simplify here -- breaks tests
-		module_name: "sequences.js",
-		type: "apply",
-		pos: pos,
-		op: op
-	};
-}
+var values = require("./values.js");
+var LIST = require("./meta.js").LIST;
 
 // utilities
 
@@ -147,253 +65,339 @@ function concat4(item1, item2, item3, item4) {
 	return item1.concat(item2).concat(item3).concat(item4);
 }
 
-// operations
-
-exports.apply = function (op, value) {
-	/* Applies the operation to a value. */
-		
-	if (op.type == "no-op")
-		return value;
-
-	if (op.type == "splice") {
-		return concat3(value.slice(0, op.pos), op.new_value, value.slice(op.pos+op.old_value.length));
-	}
-
-	if (op.type == "move") {
-		if (op.pos < op.new_pos)
-			return concat3(value.slice(0, op.pos), value.slice(op.pos+op.count, op.new_pos), value.slice(op.pos, op.pos+op.count) + value.slice(op.new_pos));
-		else
-			return concat3(value.slice(0, op.new_pos), value.slice(op.pos, op.pos+op.count), value.slice(op.new_pos, op.pos), value.slice(op.pos+op.count));
-	}
-	
-	if (op.type == "apply") {
-		// modifies value in-place
-		var lib = jot_platform.load_module(op.op.module_name);
-		value[op.pos] = lib.apply(op.op, value[op.pos]);
-		return value;
-	}
+function map_index(pos, move_op) {
+	if (pos >= move_op.pos && pos < move_op.pos+move_op.count) return (pos-move_op.pos) + move_op.new_pos; // within the move
+	if (pos < move_op.pos && pos < move_op.new_pos) return pos; // before the move
+	if (pos < move_op.pos) return pos + move_op.count; // a moved around by from right to left
+	if (pos > move_op.pos && pos >= move_op.new_pos) return pos; // after the move
+	if (pos > move_op.pos) return pos - move_op.count; // a moved around by from left to right
+	throw "unhandled problem"
 }
 
-exports.simplify = function (op) {
+//////////////////////////////////////////////////////////////////////////////
+
+exports.SPLICE = function (pos, old_value, new_value, global_order) {
+	/* An operation that replaces a subrange of the sequence with new elements. */
+	if (pos == "__hmm__") return; // used for subclassing to INS, DEL
+	if (pos == null || old_value == null || new_value == null) throw "Invalid Argument";
+	this.pos = pos;
+	this.old_value = old_value;
+	this.new_value = new_value;
+	this.global_order = global_order;
+}
+
+	// shortcuts
+	exports.INS = function (pos, value, global_order) {
+		if (pos == null || value == null) throw "Invalid Argument";
+		// value.slice(0,0) is a shorthand for constructing an empty string or empty list, generically
+		exports.SPLICE.apply(this, [pos, value.slice(0,0), value, global_order]);
+	}
+	exports.INS.prototype = new exports.SPLICE("__hmm__"); // inherit prototype
+
+	exports.DEL = function (pos, old_value, global_order) {
+		if (pos == null || old_value == null) throw "Invalid Argument";
+		// value.slice(0,0) is a shorthand for constructing an empty string or empty list, generically
+		exports.SPLICE.apply(this, [pos, old_value, old_value.slice(0,0), global_order]);
+	}
+	exports.DEL.prototype = new exports.SPLICE("__hmm__"); // inherit prototype
+
+exports.SPLICE.prototype.apply = function (document) {
+	/* Applies the operation to a document. Returns a new sequence that is
+	   the same type as document but with the subrange replaced. */
+	return concat3(document.slice(0, this.pos), this.new_value, document.slice(this.pos+this.old_value.length));
+}
+
+exports.SPLICE.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
-		of another operation. For instance, simplify on a replace
-		operation that replaces one value with the same value
-		returns a no-op operation. If there's no simpler operation,
-		returns the op unchanged. */
-		
-	if (op.type == "splice" && deepEqual(op.old_value, op.new_value))
-		return exports.NO_OP();
-	
-	if (op.type == "move" && op.pos == op.new_pos)
-		return exports.NO_OP();
-	
-	if (op.type == "apply") {
-		var lib = jot_platform.load_module(op.op.module_name);
-		var op2 = lib.simplify(op.op);
-		if (op2.type == "no-op")
-			return exports.NO_OP();
-	}
-	
-	return op; // no simplification is possible
+	   of this operation.*/
+	if (deepEqual(this.old_value, this.new_value))
+		return new values.NO_OP();
+	return this;
 }
 
-exports.invert = function (op) {
-	/* Returns a new atomic operation that is the inverse of op */
-		
-	if (op.type == "splice")
-		return exports.SPLICE(op.pos, op.new_value, op.old_value, op.global_order);
-	
-	if (op.type == "move" && op.new_pos > op.pos)
-		return exports.MOVE(op.new_pos - op.count, op.count, op.pos);
-	if (op.type == "move")
-		return exports.MOVE(op.new_pos, op.count, op.pos + op.count);
-
-	if (op.type == "apply") {
-		var lib = jot_platform.load_module(op.op.module_name);
-		return exports.APPLY(op.pos, lib.invert(op.op));
-	}
+exports.SPLICE.prototype.invert = function () {
+	/* Returns a new atomic operation that is the inverse of this operation */
+	return new exports.SPLICE(this.pos, this.new_value, this.old_value, this.global_order);
 }
 
-exports.compose = function (a, b) {
-	/* Creates a new atomic operation that combines the operations a
-		and b, if an atomic operation is possible, otherwise returns
-		null. */
+exports.SPLICE.prototype.compose = function (other) {
+	/* Creates a new atomic operation that has the same result as this
+	   and other applied in sequence (this first, other after). Returns
+	   null if no atomic operation is possible. */
 
-	a = exports.simplify(a);
-	b = exports.simplify(b);
+	// the next operation is a no-op, so the composition is just this
+	if (other instanceof values.NO_OP)
+		return this;
 
-	if (a.type == "no-op")
-		return b;
+	// a SET clobbers this operation
+	if (other instanceof values.SET)
+		return other.simplify();
 
-	if (b.type == "no-op")
-		return a;
-
-	if (a.type == 'splice' && b.type == 'splice' && a.global_order == b.global_order) {
-		if (a.pos <= b.pos && b.pos+b.old_value.length <= a.pos+a.new_value.length) {
-			// b replaces some of the values a inserts
+	if (other instanceof exports.SPLICE && this.global_order == other.global_order) {
+		if (this.pos <= other.pos && other.pos+other.old_value.length <= this.pos+this.new_value.length) {
+			// other replaces some of the values a inserts
 			// also takes care of adjacent inserts
-			return exports.SPLICE(a.pos,
-				a.old_value,
+			return new exports.SPLICE(
+				this.pos,
+				this.old_value,
 				concat3(
-					a.new_value.slice(0, b.pos-a.pos),
-					b.new_value,
-					a.new_value.slice(a.new_value.length + (b.pos+b.old_value.length)-(a.pos+a.new_value.length))
+					this.new_value.slice(0, other.pos-this.pos),
+					other.new_value,
+					this.new_value.slice(this.new_value.length + (other.pos+other.old_value.length)-(this.pos+this.new_value.length))
 					) // in the final component, don't use a negative index because it might be zero (which is always treated as positive)
 				);
 		}
-		if (b.pos <= a.pos && a.pos+a.new_value.length <= b.pos+b.old_value.length) {
+		if (other.pos <= this.pos && this.pos+this.new_value.length <= other.pos+other.old_value.length) {
 			// b replaces all of the values a inserts
 			// also takes care of adjacent deletes
-			return exports.SPLICE(b.pos,
+			return new exports.SPLICE(
+				other.pos,
 				concat3(
-					b.old_value.slice(0, a.pos-b.pos),
-					a.old_value,
-					b.old_value.slice(b.old_value.length + (a.pos+a.new_value.length)-(b.pos+b.old_value.length))
+					other.old_value.slice(0, this.pos-other.pos),
+					this.old_value,
+					other.old_value.slice(other.old_value.length + (this.pos+this.new_value.length)-(other.pos+other.old_value.length))
 					),
-				b.new_value
+				other.new_value
 				);
 		}
 		// TODO: a and b partially overlap with each other
 	}
-	
-	if (a.type == "move" && b.type == "move" && a.new_pos == b.pos && a.count == b.count)
-		return exports.MOVE(a.pos, b.new_pos, a.count)
 
-	if (a.type == "apply" && b.type == "apply" && a.pos == b.pos && a.op.module_name == b.op.module_name) {
-		var lib = jot_platform.load_module(a.op.module_name);
-		var op2 = lib.compose(a.op, b.op);
-		if (op2)
-			return exports.APPLY(a.pos, op2);
-	}
-	
-	return null; // no composition is possible
+	// No composition possible.
+	return null;
 }
-	
-exports.rebase = function (a, b) {
-	/* Transforms b, an operation that was applied simultaneously as a,
-		so that it can be composed with a. rebase(a, b) == rebase(b, a).
-		If no rebase is possible (i.e. a conflict) then null is returned.
-		Or an array of operations can be returned if the rebase involves
-		multiple steps.*/
 
-	a = exports.simplify(a);
-	b = exports.simplify(b);
-	
-	if (a.type == "no-op")
-		return b;
+exports.SPLICE.prototype.rebase = function (other) {
+	/* Transforms this operation so that it can be composed *after* the other
+	   operation to yield the same logical effect. Returns null on conflict. */
 
-	if (b.type == "no-op")
-		return b;
+	if (other instanceof values.NO_OP)
+		return this;
 
-	if (a.type == "splice" && b.type == "splice") {
+	if (other instanceof exports.SPLICE) {
 		// Two insertions at the same location.
-		if (a.pos == b.pos && a.old_value.length == 0 && b.old_value.length == 0) {
-			// insert to the left
-			if (b.global_order < a.global_order)
-				return b;
+		if (this.pos == other.pos && this.old_value.length == 0 && other.old_value.length == 0) {
+			// insert to the left (i.e. index doesn't change even though something was inserted)
+			if (this.global_order > other.global_order)
+				return this;
 			
-			// insert to the right
-			if (b.global_order > a.global_order)
-				return exports.SPLICE(b.pos+a.new_value.length, b.old_value, b.new_value, b.global_order);
+			// insert to the right (update the index)
+			if (other.global_order > this.global_order)
+				return new exports.SPLICE(this.pos+other.new_value.length, this.old_value, this.new_value, this.global_order);
+
+			// if global_order is the same, then conflict
 		}
 
-		// b takes place before the range that a affects
-		if (b.pos + b.old_value.length <= a.pos)
-			return b;
+		// this operation is on a range before the range that other touches
+		if (this.pos + this.old_value.length <= other.pos)
+			return this;
 		
-		// b takes place after the range that a affects
-		if (b.pos >= a.pos + a.old_value.length)
-			return exports.SPLICE(b.pos+(a.new_value.length-a.old_value.length), b.old_value, b.new_value, b.global_order);
-		
-		if (a.pos <= b.pos && b.pos+b.old_value.length <= a.pos+a.old_value.length && b.global_order < a.global_order) {
-			// b's replacement is entirely within a's replacement, and a takes precedence
-			return exports.NO_OP()
-		}
-		if (b.pos <= a.pos && a.pos+a.new_value.length <= b.pos+b.old_value.length && b.global_order > a.global_order) {
-			// b replaces more than a and b takes precedence; fix b so that it's old value is correct
-			return exports.SPLICE(b.pos,
-				concat3(
-					b.old_value.slice(0, a.pos-b.pos),
-					a.new_value,
-					b.old_value.slice((a.pos+a.old_value.length)-(b.pos+b.old_value.length))
-					),
-				b.new_value
-				);
-		}
+		// this operation is on a range after the range that other touches
+		// - adjust the index
+		if (this.pos >= other.pos + other.old_value.length)
+			return new exports.SPLICE(this.pos+(other.new_value.length-other.old_value.length), this.old_value, this.new_value, this.global_order);
+	}
+
+	if (other instanceof exports.MOVE) {
+		// if operations don't intersect...
+		if (this.pos+this.old_value.length < other.pos || this.pos >= other.pos+other.count)
+			return new exports.SPLICE(map_index(this.pos, other), this.old_value, this.new_value, this.global_index);
 	}
 	
-	function map_index(pos) {
-		if (pos >= a.pos && pos < a.pos+a.count) return (pos-a.pos) + a.new_pos; // within the move
-		if (pos < a.pos && pos < a.new_pos) return pos; // before the move
-		if (pos < a.pos) return pos + a.count; // a moved around by from right to left
-		if (pos > a.pos && pos >= a.new_pos) return pos; // after the move
-		if (pos > a.pos) return pos - a.count; // a moved around by from left to right
-		return null; // ???
+	if (other instanceof exports.APPLY) {
+		// if operations don't intersect, then this operation doesn't need to
+		// be changed because indexes haven't changed
+		if (other.pos > this.pos || other.pos < this.pos+this.old_value.length)
+			return this;
+	}	
+
+	return null;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+exports.MOVE = function (pos, count, new_pos) {
+	if (pos == null || count == null || new_pos == null) throw "Invalid Argument";
+	this.pos = pos;
+	this.count = count;
+	this.new_pos = new_pos;
+}
+
+exports.MOVE.prototype.apply = function (document) {
+	/* Applies the operation to a document. Returns a new sequence that is
+	   the same type as document but with the subrange moved. */
+	if (this.pos < this.new_pos)
+		return concat3(document.slice(0, this.pos), document.slice(this.pos+this.count, this.new_pos), document.slice(this.pos, this.pos+this.count) + document.slice(this.new_pos));
+	else
+		return concat3(document.slice(0, this.new_pos), document.slice(this.pos, this.pos+this.count), document.slice(this.new_pos, this.pos), document.slice(this.pos+this.count));
+}
+
+exports.MOVE.prototype.simplify = function () {
+	/* Returns a new atomic operation that is a simpler version
+	   of this operation.*/
+	if (this.pos == this.new_pos)
+		return new values.NO_OP();	   
+	return this;
+}
+
+exports.MOVE.prototype.invert = function () {
+	/* Returns a new atomic operation that is the inverse of this operation */
+	if (this.new_pos > this.pos)
+		return new exports.MOVE(this.new_pos - this.count, this.count, this.pos);
+	else
+		return new exports.MOVE(this.new_pos, this.count, this.pos + this.count);
+}
+
+exports.MOVE.prototype.compose = function (other) {
+	/* Creates a new atomic operation that has the same result as this
+	   and other applied in sequence (this first, other after). Returns
+	   null if no atomic operation is possible. */
+
+	// the next operation is a no-op, so the composition is just this
+	if (other instanceof values.NO_OP)
+		return this;
+
+	// a SET clobbers this operation
+	if (other instanceof values.SET)
+		return other.simplify();
+
+	// the elements are immediately deleted next
+	if (other instanceof exports.SPLICE && this.new_pos == other.pos && this.count == other.old_value.length && other.new_value.length == 0)
+		return new exports.DEL(this.pos, other.old_value);
+
+	// The same range moved a second time.
+	if (other instanceof exports.MOVE && this.new_pos == other.pos && this.count == other.count)
+		return new exports.MOVE(this.pos, other.new_pos, a.count)
+
+	// No composition possible.
+	return null;
+}
+
+exports.MOVE.prototype.rebase = function (other) {
+	/* Transforms this operation so that it can be composed *after* the other
+	   operation to yield the same logical effect. Returns null on conflict. */
+
+	if (other instanceof values.NO_OP)
+		return this;
+
+	if (other instanceof exports.SPLICE) {
+		// operations intersect
+		if (this.pos+this.count >= other.pos && this.pos < other.pos+other.old_value.length)
+			return null;
+		if (this.pos < other.pos && this.new_pos < other.pos)
+			return this; // not affected
+		if (this.pos < other.pos && this.new_pos > other.pos)
+			return new exports.MOVE(this.pos, this.count, this.new_pos + (other.new_value.length-other.old_value.length));
+		if (this.pos > other.pos && this.new_pos > other.pos)
+			return new exports.MOVE(this.pos + (other.new_value.length-other.old_value.length), this.count, this.new_pos + (other.new_value.length-other.old_value.length));
+		if (this.pos > other.pos && this.new_pos < other.pos)
+			return new exports.MOVE(this.pos + (other.new_value.length-other.old_value.length), this.count, this.new_pos);
 	}
 
-	if (a.type == "move" && b.type == "move") {
+	if (other instanceof exports.MOVE) {
 		// moves intersect
-		if (b.pos+b.count >= a.pos && b.pos < a.pos+a.count)
+		if (this.pos+this.count >= other.pos && this.pos < other.pos+other.count)
 			return null;
-		return exports.MOVE(map_index(b.pos), b.count, map_index(b.new_pos));
+		return new exports.MOVE(map_index(this.pos, other), this.count, map_index(this.new_pos, other));
 	}
 
-	if (a.type == "apply" && b.type == "apply") {
-		if (a.pos != b.pos)
-			return b;
-			
-		if (a.op.module_name == b.op.module_name) {
-			var lib = jot_platform.load_module(a.op.module_name);
-			var op2 = lib.rebase(a.op, b.op);
-			if (op2)
-				return exports.APPLY(b.pos, op2);
-		}
-	}
-	
-	if (a.type == "splice" && b.type == "move") {
-		// operations intersect
-		if (b.pos+b.count >= a.pos && b.pos < a.pos+a.old_value.length)
-			return null;
-		if (b.pos < a.pos && b.new_pos < a.pos)
-			return b; // not affected
-		if (b.pos < a.pos && b.new_pos > a.pos)
-			return exports.MOVE(b.pos, b.count, b.new_pos + (a.new_value.length-a.old_value.length));
-		if (b.pos > a.pos && b.new_pos > a.pos)
-			return exports.MOVE(b.pos + (a.new_value.length-a.old_value.length), b.count, b.new_pos + (a.new_value.length-a.old_value.length));
-		if (b.pos > a.pos && b.new_pos < a.pos)
-			return exports.MOVE(b.pos + (a.new_value.length-a.old_value.length), b.count, b.new_pos);
-	}
-	
-	if (a.type == "splice" && b.type == "apply") {
-		// operations intersect
-		if (b.pos >= a.pos && b.pos < a.pos+a.old_value.length)
-			return null;
-		if (b.pos < a.pos)
-			return b;
-		return exports.APPLY(b.pos + (a.new_value.length-a.old_value.length), b.op);
-	}
-	
-	if (a.type == "move" && b.type == "splice") {
-		// operations intersect
-		if (b.pos+b.old_value.length >= a.pos && b.pos < a.pos+a.count)
-			return null;
-		return exports.SPLICE(map_index(b.pos), b.old_value, b.new_value, b.global_index);
-	}
-	
-	if (a.type == "move" && b.type == "apply")
-		return exports.APPLY(map_index(b.pos), b.op);
-	
-	if (a.type == "apply" && b.type == "splice") {
-		// operations intersect
-		if (a.pos >= b.pos && a.pos < b.pos+b.old_value.length)
-			return null;
-		return b; // otherwise, no impact
+	if (other instanceof exports.APPLY)
+		return this; // no impact
+
+	return null;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+
+exports.APPLY = function (pos, op) {
+	if (pos == null || op == null) throw "Invalid Argument";
+	this.pos = pos;
+	this.op = op;
+}
+
+exports.APPLY.prototype.apply = function (document) {
+	/* Applies the operation to a document. Returns a new sequence that is
+	   the same type as document but with the element modified. */
+	document = document.slice(); // shallow copy
+	document[this.pos] = this.op.apply(document[this.pos]);
+	return document;
+}
+
+exports.APPLY.prototype.simplify = function () {
+	/* Returns a new atomic operation that is a simpler version
+	   of this operation.*/
+	var op = this.op.simplify();
+	if (op instanceof values.NO_OP)
+		return new values.NO_OP();	   
+	return this;
+}
+
+exports.APPLY.prototype.invert = function () {
+	/* Returns a new atomic operation that is the inverse of this operation */
+	return new exports.APPLY(this.pos, this.op.invert());
+}
+
+exports.APPLY.prototype.compose = function (other) {
+	/* Creates a new atomic operation that has the same result as this
+	   and other applied in sequence (this first, other after). Returns
+	   null if no atomic operation is possible. */
+
+	// the next operation is a no-op, so the composition is just this
+	if (other instanceof values.NO_OP)
+		return this;
+
+	// a SET clobbers this operation
+	if (other instanceof values.SET)
+		return other.simplify();
+
+	// a SPLICE that includes this operation's position clobbers the operation
+	if (other instanceof exports.SPLICE && this.pos >= other.pos && this.pos < other.pos + other.old_value.length)
+		return other;
+
+	// two APPLYs on the same element, with composable sub-operations
+	if (other instanceof exports.APPLY && this.pos == other.pos) {
+		var op2 = this.op.compose(other.op);
+		if (op2)
+			return new exports.APPLY(this.pos, op2);
 	}
 
-	if (a.type == "apply" && b.type == "move") {
-		return b; // no impact
+	// No composition possible.
+	return null;
+}
+
+exports.APPLY.prototype.rebase = function (other) {
+	/* Transforms this operation so that it can be composed *after* the other
+	   operation to yield the same logical effect. Returns null on conflict. */
+
+	if (other instanceof values.NO_OP)
+		return this;
+
+	if (other instanceof exports.SPLICE) {
+		// operations intersect
+		if (this.pos >= other.pos && this.pos < other.pos+other.old_value.length)
+			return null;
+		if (this.pos < other.pos)
+			return this;
+		// shift the index
+		return new exports.APPLY(this.pos + (other.new_value.length-other.old_value.length), this.op);
 	}
-	
+
+	// shift the index
+	if (other instanceof exports.MOVE)
+		return new exports.APPLY(map_index(this.pos, other), this.op);
+
+	if (other instanceof exports.APPLY) {
+		// Two APPLYs at different locations don't affect each other.
+		if (other.pos != this.pos)
+			return this;
+		
+		// If they are at the same location, then rebase the sub-operations.
+		var op2 = this.op.rebase(other.op);
+		if (op2)
+			return new exports.APPLY(this.pos, op2);
+	}
+
 	// Return null indicating this is an unresolvable conflict.
 	return null;
 }
@@ -411,7 +415,7 @@ exports.from_diff = function(old_value, new_value, mode, global_order) {
 	// characters. Mode can also be 'words' or 'lines'.
 
 	var diff_match_patch = require('googlediff');
-	var jot = require(__dirname);
+	var jot = require('./index.js');
 	var dmp = new diff_match_patch();
 
 	/////////////////////////////////////////////////////////////
@@ -474,13 +478,14 @@ exports.from_diff = function(old_value, new_value, mode, global_order) {
 		if (d[i][0] == 0) {
 			pos += d[i][1].length;
 		} else if (d[i][0] == -1) {
-			ret.push(exports.DEL(pos, d[i][1], global_order));
+			ret.push(new exports.DEL(pos, d[i][1], global_order));
 			// don't increment pos because next operation sees the string with this part deleted
 		} else if (d[i][0] == 1) {
-			ret.push(exports.INS(pos, d[i][1], global_order));
+			ret.push(new exports.INS(pos, d[i][1], global_order));
 			pos += d[i][1].length;
 		}
 	}
-	return jot.normalize_array(ret);
+
+	return new LIST(ret);
 }
 

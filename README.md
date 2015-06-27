@@ -82,7 +82,6 @@ Here's example code that follows the example in the introduction:
 
 	/* load libraries */
 	var jot = require("./jot");
-	function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
 	/* The Base Document */
 
@@ -91,43 +90,45 @@ Here's example code that follows the example in the introduction:
 		key2: 10,
 	};
 
-	/* User 1 Makes Changes To The Keys */
+	/* User 1 makes changes to the document's keys so
+	 * that the document becomes:
+	 *
+	 * { title: 'Hello World!', count: 10 }
+	 *
+	 */
 
-	var user1 = [
+	var user1 = jot.LIST([
 		jot.REN("key1", "title"),
 		jot.REN("key2", "count")
-	];
+	]);
 
-	jot.apply_array(user1, doc);
-		>>> { title: 'Hello World!', count: 10 }
+	/* User 2 makes changes to the document's values so
+	 * that the document becomes:
+	 *
+	 * { key1: 'My Program', key2: 20 }
+	 *
+	 */
 
-	/* User 2 Makes Changes To The Values */
-
-	var user2 = [
+	var user2 = jot.LIST([
 		jot.OBJECT_APPLY("key1", jot.SET("Hello World!", "My Program")),
 		jot.OBJECT_APPLY("key2", jot.MAP('add', 10))
-	];
+	]);
 
-	jot.apply_array(user2, doc);
-		>>> { key1: 'My Program', key2: 20 }
+	/* You can't do this! */
 
-	/* Can't Do This */
+	doc = user1.compose(user2).apply(doc);
 
-	// jot.apply_array(user1.concat(user2), doc);
-		>>> doc now has garbage because the object keys (key1, key)
-		>>> have been renamed before user2's operations are applied.
+	/* You must rebase user2's operations before composing them. */
 
-	/* Serialize the Two Changes */
+	user2 = user2.rebase(user1);
 
-	user2_rebased = jot.rebase_array(user1, user2);
-		>>> user2_rebased is now:
-		>>> [
-		>>> 	jot.OBJECT_APPLY("title", jot.SET("Hello World!", "My Program")),
-		>>> 	jot.OBJECT_APPLY("count", jot.MAP('add', 10))
-		>>> ];
+	doc = user1.compose(user2).apply(doc);
 
-	jot.apply_array(user1.concat(user2_rebased), doc);
-		>>> { title: 'My Program', count: 20 }
+	/* The document now looks like this:
+	 *
+	 * { title: 'My Program', count: 20 }
+	 *
+	 */
 
 To run:
 

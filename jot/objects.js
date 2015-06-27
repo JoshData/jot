@@ -1,23 +1,22 @@
-/* An operational transformation library for objects
-   (associative arrays).
+/* A library of operations for objects (i.e. JSON objects/Javascript associative arrays).
    
    Two operations are provided:
    
-   PROP(old_key, new_key, old_value, new_value)
+   new objects.PROP(old_key, new_key, old_value, new_value)
 
     Creates, deletes, or renames a property.
 
     Shortcuts are provided:
     
-    PUT(key, value)
+    new objects.PUT(key, value)
     
       (Equivalent to PROP(null, key, null, value).)
 
-    REM(key, old_value)
+    new objects.REM(key, old_value)
     
       (Equivalent to PROP(key, null, old_value, null).)
 
-    REN(old_key, new_key)
+    new objects.REN(old_key, new_key)
     
       (Equivalent to PROP(old_key, new_key, null, null).)
       
@@ -25,18 +24,7 @@
     in the same operation, or to change a value on an existing
     key.
       
-	The PROP operation has the following internal form:
-	
-	{
-	 module_name: "objects.js",
-	 type: "prop",
-	 old_key: ...a key name, or null to create a key...,
-	 new_key: ...a new key name, or null to delete a key...,
-	 old_value: ...the existing value of the key; null when creating or renaming a key...,
-	 new_value: ...the new value for the key; null when deleting or renaming a key...,
-	}
-   
-   APPLY(key, operation)
+   new objects.APPLY(key, operation)
 
     Applies another sort of operation to a property's value. Use any
     operation defined in any of the modules depending on the data type
@@ -49,264 +37,235 @@
     
     To replace the value of a property with a new value:
     
-      APPLY("key1", values.SET("old_value", "new_value"))
+      new objects.APPLY("key1", new values.SET("old_value", "new_value"))
       
-    You can also use the 'access' helper method to construct recursive
-    APPLY operations:
-    
-      access(["key1", subkey1"], values.SET("old_value", "new_value"))
-      or
-      access(["key1", subkey1"], "values.js", "SET", "old_value", "new_value")
-      
-      is equivalent to
-      
-      APPLY("key1", APPLY("subkey1", values.SET("old_value", "new_value")))
-
-	The APPLY operation has the following internal form:
-
-	{
-	 module_name: "objects.js",
-	 type: "apply",
-	 key: ...a key name...,
-	 op: ...operation from another module...,
-	}
-	
    */
    
-var jot_platform = require(__dirname + "/platform.js");
 var deepEqual = require("deep-equal");
+var values = require("./values.js");
 
-// constructors
-
-exports.NO_OP = function() {
-	return { "type": "no-op" }; // module_name is not required on no-ops
-}
+//////////////////////////////////////////////////////////////////////////////
 
 exports.PROP = function (old_key, new_key, old_value, new_value) {
+	if (old_key == "__hmm__") return; // used for subclassing to INS, DEL
 	if (old_key == new_key && old_ney != null && old_value != new_value) throw "invalid arguments";
-	return {
-		module_name: "objects.js",
-		type: "prop",
-		old_key: old_key,
-		new_key: new_key,
-		old_value: old_value,
-		new_value: new_value
-	};
+	this.old_key = old_key;
+	this.new_key = new_key;
+	this.old_value = old_value;
+	this.new_value = new_value;
 }
 
-exports.PUT = function (key, value) {
-	return exports.PROP(null, key, null, value);
-}
-
-exports.REM = function (key, old_value) {
-	return exports.PROP(key, null, old_value, null);
-}
-
-exports.REN = function (old_key, new_key) {
-	return exports.PROP(old_key, new_key, null, null);
-}
-
-exports.APPLY = function (key, op) {
-	if (op.type == "no-op") return op; // don't embed because it never knows its package name
-	return { // don't simplify here -- breaks tests
-		module_name: "objects.js",
-		type: "apply",
-		key: key,
-		op: op
-	};
-}
-
-exports.access = function(path, module_name, op_name /*, op_args */) {
-	// also takes an op directly passed as the second argument
-	var op;
-	if (module_name instanceof Object) {
-		op = module_name;
-	} else {
-		var op_args = [];
-		for (var i = 3; i < arguments.length; i++)
-			op_args.push(arguments[i]);
-		
-		var lib = jot_platform.load_module(module_name);
-		if (!(op_name in lib)) throw "Invalid operatio name " + op_name + " in library " + module_name + ".";
-		op = lib[op_name].apply(null, op_args);
+	// shortcuts
+	exports.PUT = function (key, value) {
+		exports.PROP.apply(this, [null, key, null, value]);
 	}
-	
-	var seqs = jot_platform.load_module('sequences.js');
-	for (var i = path.length-1; i >= 0; i--) {
-		if (typeof path[i] == 'string') {
-			op = exports.APPLY(path[i], op);
-		} else {
-			op = seqs.APPLY(path[i], op);
-		}
+	exports.PUT.prototype = new exports.PROP("__hmm__"); // inherit prototype
+
+	exports.REM = function (key, old_value) {
+		exports.PROP.apply(this, [key, null, old_value, null]);
 	}
-	return op;
+	exports.REM.prototype = new exports.PROP("__hmm__"); // inherit prototype
+
+	exports.REN = function (old_key, new_key) {
+		exports.PROP.apply(this, [old_key, new_key, null, null]);
+	}
+	exports.REN.prototype = new exports.PROP("__hmm__"); // inherit prototype
+
+exports.PROP.prototype.apply = function (document) {
+	/* Applies the operation to a document. Returns a new object that is
+	   the same type as document but with the change made. */
+
+	// Clone first.
+	var d = { };
+	for (var k in document)
+		d[k] = document[k];
+
+	// Apply.
+	if (this.old_key == null)
+		d[this.new_key] = this.new_value;
+	else if (this.new_key == null)
+		delete d[this.old_key];
+	else {
+		var v = d[this.old_key];
+		delete d[this.old_key];
+		d[this.new_key] = v;
+	}
+	return d;
 }
 
-// operations
-
-exports.apply = function (op, value) {
-	/* Applies the operation to a value. */
-		
-	if (op.type == "no-op")
-		return value;
-
-	if (op.type == "prop") {
-		if (op.old_key == null)
-			value[op.new_key] = op.new_value;
-		else if (op.new_key == null)
-			delete value[op.old_key];
-		else {
-			var v = value[op.old_key];
-			delete value[op.old_key];
-			value[op.new_key] = v;
-		}
-		return value;
-	}
-	
-	if (op.type == "apply") {
-		// modifies value in-place
-		var lib = jot_platform.load_module(op.op.module_name);
-		value[op.key] = lib.apply(op.op, value[op.key]);
-		return value;
-	}
-}
-
-exports.simplify = function (op) {
+exports.PROP.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
-		of another operation. For instance, simplify on a replace
-		operation that replaces one value with the same value
-		returns a no-op operation. If there's no simpler operation,
-		returns the op unchanged. */
-		
-	if (op.type == "prop" && op.old_key == op.new_key && deepEqual(op.old_value, op.new_value))
-		return exports.NO_OP();
-		
-	if (op.type == "apply") {
-		var lib = jot_platform.load_module(op.op.module_name);
-		var op2 = lib.simplify(op.op);
-		if (op2.type == "no-op")
-			return exports.NO_OP();
-	}
-	
-	return op; // no simplification is possible
+	   of this operation.*/
+	if (this.old_key == this.new_key && deepEqual(this.old_value, this.new_value))
+		return new values.NO_OP();
+	return this;
 }
 
-exports.invert = function (op) {
-	/* Returns a new atomic operation that is the inverse of op */
-		
-	if (op.type == "prop")
-		return exports.PROP(op.new_key, op.old_key, op.new_value, op.old_value);
-	
-	if (op.type == "apply") {
-		var lib = jot_platform.load_module(op.op.module_name);
-		return exports.APPLY(op.key, lib.invert(op.op));
-	}
+exports.PROP.prototype.invert = function () {
+	/* Returns a new atomic operation that is the inverse of this operation */
+	return new exports.PROP(this.new_key, this.old_key, this.new_value, this.old_value);
 }
 
-exports.compose = function (a, b) {
-	/* Creates a new atomic operation that combines the operations a
-		and b, if an atomic operation is possible, otherwise returns
-		null. */
+exports.PROP.prototype.compose = function (other) {
+	/* Creates a new atomic operation that has the same result as this
+	   and other applied in sequence (this first, other after). Returns
+	   null if no atomic operation is possible. */
 
-	a = exports.simplify(a);
-	b = exports.simplify(b);
+	// the next operation is a no-op, so the composition is just this
+	if (other instanceof values.NO_OP)
+		return this;
 
-	if (a.type == "no-op")
-		return b;
+	// a SET clobbers this operation
+	if (other instanceof values.SET)
+		return other.simplify();
 
-	if (b.type == "no-op")
-		return a;
-	
-	if (a.type == "prop" && b.type == "prop" && a.new_key == b.old_key) {
-		if (a.old_key == b.new_key && deepEqual(a.old_value, b.new_value))
-			return exports.NO_OP()
-		if (a.old_key != b.new_key && !deepEqual(a.old_value, b.new_value))
+	if (other instanceof exports.PROP && this.new_key == other.old_key) {
+		if (this.old_key == other.new_key && deepEqual(this.old_value, other.new_value))
+			return new values.NO_OP()
+		if (this.old_key != other.new_key && !deepEqual(this.old_value, other.new_value))
 			return null; // prevent a rename and a change in value in the same operation
-		return exports.PROP(a.old_key, b.new_key, a.old_value, b.new_value);
-	}
-		
-	if (a.type == "apply" && b.type == "apply" && a.key == b.key && a.op.module_name == b.op.module_name) {
-		var lib = jot_platform.load_module(a.op.module_name);
-		var op2 = lib.compose(a.op, b.op);
-		if (op2)
-			return exports.APPLY(a.key, op2);
-	}
-	
-	return null; // no composition is possible
-}
-	
-exports.rebase = function (a, b) {
-	/* Transforms b, an operation that was applied simultaneously as a,
-		so that it can be composed with a. rebase(a, b) == rebase(b, a).
-		If no rebase is possible (i.e. a conflict) then null is returned.
-		Or an array of operations can be returned if the rebase involves
-		multiple steps.*/
-
-	a = exports.simplify(a);
-	b = exports.simplify(b);
-	
-	if (a.type == "no-op")
-		return b;
-
-	if (b.type == "no-op")
-		return b;
-	
-	if (a.type == "prop" && b.type == "prop") {
-		if (a.old_key == b.old_key && a.new_key == b.new_key) {
-			// both deleted, or both changed the value to the same thing, or both inserted the same thing
-			if (deepEqual(a.new_value, b.new_value))
-				return exports.NO_OP();
-			
-			// values were changed differently
-			else
-				return null;
-		}
-		
-		// rename to different things (conflict)
-		if (a.old_key == b.old_key && a.new_key != b.new_key && a.old_key != null)
-			return null;
-
-		// rename different things to the same key (conflict)
-		if (a.old_key != b.old_key && a.new_key == b.new_key && a.new_key != null)
-			return null;
-		
-		// otherwise, the keys are not related so b isn't changed
-		return b;
-	}
-	
-	if (a.type == "apply" && b.type == "apply" && a.op.module_name == b.op.module_name) {
-		if (a.key != b.key) {
-			// Changes to different keys are independent.
-			return b;
-		}
-
-		var lib = jot_platform.load_module(a.op.module_name);
-		var op2 = lib.rebase(a.op, b.op);
-		if (op2)
-			return exports.APPLY(a.key, op2);
+		return new exports.PROP(this.old_key, other.new_key, this.old_value, other.new_value);
 	}
 
-	if (a.type == "prop" && b.type == "apply") {
-		// a operated on some other key that doesn't affect b
-		if (a.old_key != b.key)
-			return b;
-		
-		// a renamed the key b was working on, so revise b to use the new name
-		if (a.old_key != a.new_key)
-			return exports.APPLY(a.new_key, b.op);
-	}
-	
-	if (a.type == "apply" && b.type == "prop") {
-		// a modified a different key than prop, so b is unaffected
-		if (a.key != b.old_key)
-			return b;
-		
-		// b renamed the key, so continue to apply the rename after a
-		if (b.old_key != b.new_key)
-			return b
-	}
-	
-	// Return null indicating this is an unresolvable conflict.
+	// No composition possible.
 	return null;
 }
 
+exports.PROP.prototype.rebase = function (other) {
+	/* Transforms this operation so that it can be composed *after* the other
+	   operation to yield the same logical effect. Returns null on conflict. */
+
+	if (other instanceof values.NO_OP)
+		return this;
+
+	if (other instanceof exports.PROP) {
+		if (this.old_key == other.old_key && this.new_key == other.new_key) {
+			// both deleted, or both changed the value to the same thing, or both inserted the same thing
+			if (deepEqual(this.new_value, other.new_value))
+				return exports.NO_OP();
+			
+			// values were changed differently
+			return null;
+		}
+		
+		// rename to different things (conflict)
+		if (this.old_key == other.old_key && this.new_key != other.new_key && this.old_key != null)
+			return null;
+
+		// rename different things to the same key (conflict)
+		if (this.old_key != other.old_key && this.new_key == other.new_key && this.new_key != null)
+			return null;
+		
+		// otherwise, the keys are not related so this isn't changed
+		return this;
+	}
+
+	if (other instanceof exports.APPLY) {
+		// other modified a different key than this, so this is unaffected
+		if (this.old_key != other.key)
+			return this;
+		
+		// this renamed the key, so continue to apply the rename after other
+		if (this.old_key != this.new_key)
+			return this;
+	}
+
+	return null;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+
+exports.APPLY = function (key, op) {
+	if (key == null || op == null) throw "invalid arguments";
+	this.key = key;
+	this.op = op;
+}
+
+exports.APPLY.prototype.apply = function (document) {
+	/* Applies the operation to a document. Returns a new object that is
+	   the same type as document but with the change made. */
+
+	// Clone first.
+	var d = { };
+	for (var k in document)
+		d[k] = document[k];
+
+	// Apply.
+	d[this.key] = this.op.apply(d[this.key]);
+	return d;
+}
+
+exports.APPLY.prototype.simplify = function () {
+	/* Returns a new atomic operation that is a simpler version
+	   of this operation.*/
+	var op2 = this.op.simplify();
+	if (op2 instanceof values.NO_OP)
+		return values.NO_OP();
+	return this;
+}
+
+exports.APPLY.prototype.invert = function () {
+	/* Returns a new atomic operation that is the inverse of this operation */
+	return new exports.APPLY(this.key, this.op.invert());
+}
+
+exports.APPLY.prototype.compose = function (other) {
+	/* Creates a new atomic operation that has the same result as this
+	   and other applied in sequence (this first, other after). Returns
+	   null if no atomic operation is possible. */
+
+	// the next operation is a no-op, so the composition is just this
+	if (other instanceof values.NO_OP)
+		return this;
+
+	// a SET clobbers this operation
+	if (other instanceof values.SET)
+		return other.simplify();
+
+	// APPLY followed by a REM clobbers this operation
+	if (other instanceof exports.PROP && this.key == other.old_key && other.new_key == null)
+		return other.simplify();
+
+	// two APPLYs to the same key in a row
+	if (other instanceof exports.APPLY && this.key == other.key) {
+		var op2 = this.op.compose(other.op);
+		if (op2)
+			return exports.APPLY(this.key, op2);
+	}
+
+	// No composition possible.
+	return null;
+}
+
+exports.APPLY.prototype.rebase = function (other) {
+	/* Transforms this operation so that it can be composed *after* the other
+	   operation to yield the same logical effect. Returns null on conflict. */
+
+	if (other instanceof values.NO_OP)
+		return this;
+	
+	if (other instanceof exports.PROP) {
+		// other operated on some other key that doesn't affect this
+		if (other.old_key != this.key)
+			return this;
+		
+		// other renamed the key this was working on, so revise this to use the new name
+		if (other.old_key != other.new_key)
+			return new exports.APPLY(other.new_key, this.op);
+	}
+	
+	if (other instanceof exports.APPLY) {
+		if (this.key != other.key) {
+			// Changes to different keys are independent.
+			return this;
+		}
+
+		// Operated on the same key. Rebase the sub-operations.
+		var op2 = this.op.rebase(other.op);
+		if (op2)
+			return new exports.APPLY(this.key, op2);
+	}
+
+	return null;
+}
