@@ -15,14 +15,10 @@ but for structured data rather than just plain text. Since everything can
 be represented in JSON, this provides a superset of plain text collaboration
 functionality.
 
-This library:
-
-* Models atomic changes to JSON data structures (operations).
-* Inverts, composes, and rebases operations (transformations).
-* (experimental) Manages real-time collaborations between two or more users.
-* (highly experimental) Provides example client/server code and a working example.
-
-There's no UI here, except in the example.
+This library models atomic changes to JSON data structures (operations
+over numbers, strings, arrays, and objects) and inverts, composes, and
+rebases those operations (transformations). There is no UI or collaboration
+framework here.
 
 Introduction
 ------------
@@ -142,37 +138,6 @@ second user's changes specified "key1" and "key2", neither of which exist
 by the time the revision is applied. It's the rebase_array call that takes
 care of that.
 
-Collaboration
--------------
-
-The next step beyond merging edits through rebase is managing the state
-needed to enable real-time simultaneous collaboration between multiple
-clients. This involves some complex rebasing as well as handling the
-cases of an edit conflict when a rebase isn't possible.
-
-Interactive Example
--------------------
-
-I've packaged an interactive example of multi-user collaborative editing
-of a JSON data structure. The front-end is Jos de Jong's excellent
-JSONEditor (https://github.com/josdejong/jsoneditor).
-
-To run the interactive example, you'll also need get dependencies:
-
-	json_editor_example/get_json_editor.sh
-
-Then build jot.js, our library suitable for use within the browser:
-
-	node build_browser_lib.js > json_editor_example/jot.js
-
-Start an HTTP server which will serve the static files and also act
-as a websockets server to handle the communication between the editors.
-
-	node start.js
-
-Finally, open http://localhost:8080/ in as many browser windows as you
-like and start editing.
-
 Operations
 ----------
 
@@ -230,10 +195,9 @@ The rebase operation satisfies the constraints that 1) A ○ (B/A) == B ○ (A/B
 Real Time Collaboration
 -----------------------
   
-This is all put together in the CollaborationServer class which manages the state
-needed to pass operations around between any number of concurrent editors. The library
-is also used on the client side to merge incoming remote changes with what has already
-been changed locally.
+You could put these pieces together into a real time collaboration server, but that
+involves more complicated handling of conflicts and synchronization, which is out
+of scope for this project.
 
 Notes
 -----
