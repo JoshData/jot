@@ -3,7 +3,7 @@
    
    Three operations are provided:
    
-   new sequences.SPLICE(pos, old_value, new_value[, global_order])
+   new sequences.SPLICE(pos, count, value[, global_order])
 
     Replaces values in the sequence. Replace nothing with
     something to insert, or replace something with nothing to
@@ -11,16 +11,14 @@
     
     Shortcuts are provided:
     
-    new sequences.INS(pos, new_value[, global_order])
+    new sequences.INS(pos, value[, global_order])
     
-       (Equivalent to SPLICE(pos, [], new_value, global_order)
-       for arrays or SPLICE(pos, "", new_value, global_order)
-       for strings.)
+       (Equivalent to SPLICE(pos, 0, value, global_order).)
        
     new sequences.DEL(pos, old_value[, global_order])
     
-       (Equivalent to SPLICE(pos, old_value, [], global_order)
-       for arrays or SPLICE(pos, old_value, "", global_order)
+       (Equivalent to SPLICE(pos, old_value.length, [], global_order)
+       for arrays or SPLICE(pos, old_value.length, "", global_order)
        for strings.)
 
    new sequences.MOVE(pos, count, new_pos)
@@ -85,48 +83,40 @@ function map_index(pos, move_op) {
 
 //////////////////////////////////////////////////////////////////////////////
 
-exports.SPLICE = function (pos, old_value, new_value, global_order) {
+exports.SPLICE = function (pos, count, value, global_order) {
 	/* An operation that replaces a subrange of the sequence with new elements. */
 	if (pos == "__hmm__") return; // used for subclassing to INS, DEL
-	if (pos == null || old_value == null || new_value == null) throw "Invalid Argument";
+	if (pos == null || count == null || value == null) throw "Invalid Argument";
 	this.pos = pos;
-	this.old_value = old_value;
-	this.new_value = new_value;
+	this.count = count;
+	this.value = value;
 	this.global_order = global_order;
 }
 
 	// shortcuts
 	exports.INS = function (pos, value, global_order) {
 		if (pos == null || value == null) throw "Invalid Argument";
-		// value.slice(0,0) is a shorthand for constructing an empty string or empty list, generically
-		exports.SPLICE.apply(this, [pos, value.slice(0,0), value, global_order]);
+		exports.SPLICE.apply(this, [pos, 0, value, global_order]);
 	}
 	exports.INS.prototype = new exports.SPLICE("__hmm__"); // inherit prototype
 
 	exports.DEL = function (pos, old_value, global_order) {
 		if (pos == null || old_value == null) throw "Invalid Argument";
 		// value.slice(0,0) is a shorthand for constructing an empty string or empty list, generically
-		exports.SPLICE.apply(this, [pos, old_value, old_value.slice(0,0), global_order]);
+		exports.SPLICE.apply(this, [pos, old_value.length, old_value.slice(0,0), global_order]);
 	}
 	exports.DEL.prototype = new exports.SPLICE("__hmm__"); // inherit prototype
 
 exports.SPLICE.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
 	   the same type as document but with the subrange replaced. */
-	return concat3(document.slice(0, this.pos), this.new_value, document.slice(this.pos+this.old_value.length));
+	return concat3(document.slice(0, this.pos), this.value, document.slice(this.pos+this.count));
 }
 
 exports.SPLICE.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
 	   of this operation.*/
-	if (deepEqual(this.old_value, this.new_value))
-		return new values.NO_OP();
 	return this;
-}
-
-exports.SPLICE.prototype.invert = function () {
-	/* Returns a new atomic operation that is the inverse of this operation */
-	return new exports.SPLICE(this.pos, this.new_value, this.old_value, this.global_order);
 }
 
 exports.SPLICE.prototype.compose = function (other) {
@@ -143,30 +133,26 @@ exports.SPLICE.prototype.compose = function (other) {
 		return other.simplify();
 
 	if (other instanceof exports.SPLICE && this.global_order == other.global_order) {
-		if (this.pos <= other.pos && other.pos+other.old_value.length <= this.pos+this.new_value.length) {
+		if (this.pos <= other.pos && other.pos+other.count <= this.pos+this.value.length) {
 			// other replaces some of the values a inserts
 			// also takes care of adjacent inserts
 			return new exports.SPLICE(
 				this.pos,
-				this.old_value,
+				this.count,
 				concat3(
-					this.new_value.slice(0, other.pos-this.pos),
-					other.new_value,
-					this.new_value.slice(this.new_value.length + (other.pos+other.old_value.length)-(this.pos+this.new_value.length))
+					this.value.slice(0, other.pos-this.pos),
+					other.value,
+					this.value.slice(this.value.length + (other.pos+other.count)-(this.pos+this.value.length))
 					) // in the final component, don't use a negative index because it might be zero (which is always treated as positive)
 				);
 		}
-		if (other.pos <= this.pos && this.pos+this.new_value.length <= other.pos+other.old_value.length) {
+		if (other.pos <= this.pos && this.pos+this.value.length <= other.pos+other.count) {
 			// b replaces all of the values a inserts
 			// also takes care of adjacent deletes
 			return new exports.SPLICE(
 				other.pos,
-				concat3(
-					other.old_value.slice(0, this.pos-other.pos),
-					this.old_value,
-					other.old_value.slice(other.old_value.length + (this.pos+this.new_value.length)-(other.pos+other.old_value.length))
-					),
-				other.new_value
+				(this.pos-other.pos) + this.count - (this.pos+this.value.length) + (other.pos+other.count),
+				other.value
 				);
 		}
 		// TODO: a and b partially overlap with each other
@@ -185,38 +171,38 @@ exports.SPLICE.prototype.rebase = function (other) {
 
 	if (other instanceof exports.SPLICE) {
 		// Two insertions at the same location.
-		if (this.pos == other.pos && this.old_value.length == 0 && other.old_value.length == 0) {
+		if (this.pos == other.pos && this.count == 0 && other.count == 0) {
 			// insert to the left (i.e. index doesn't change even though something was inserted)
 			if (this.global_order > other.global_order)
 				return this;
 			
 			// insert to the right (update the index)
 			if (other.global_order > this.global_order)
-				return new exports.SPLICE(this.pos+other.new_value.length, this.old_value, this.new_value, this.global_order);
+				return new exports.SPLICE(this.pos+other.value.length, this.count, this.value, this.global_order);
 
 			// if global_order is the same, then conflict
 		}
 
 		// this operation is on a range before the range that other touches
-		if (this.pos + this.old_value.length <= other.pos)
+		if (this.pos + this.count <= other.pos)
 			return this;
 		
 		// this operation is on a range after the range that other touches
 		// - adjust the index
-		if (this.pos >= other.pos + other.old_value.length)
-			return new exports.SPLICE(this.pos+(other.new_value.length-other.old_value.length), this.old_value, this.new_value, this.global_order);
+		if (this.pos >= other.pos + other.count)
+			return new exports.SPLICE(this.pos+(other.value.length-other.count), this.count, this.value, this.global_order);
 	}
 
 	if (other instanceof exports.MOVE) {
 		// if operations don't intersect...
-		if (this.pos+this.old_value.length < other.pos || this.pos >= other.pos+other.count)
-			return new exports.SPLICE(map_index(this.pos, other), this.old_value, this.new_value, this.global_index);
+		if (this.pos+this.count < other.pos || this.pos >= other.pos+other.count)
+			return new exports.SPLICE(map_index(this.pos, other), this.count, this.value, this.global_index);
 	}
 	
 	if (other instanceof exports.APPLY) {
 		// if operations don't intersect, then this operation doesn't need to
 		// be changed because indexes haven't changed
-		if (other.pos > this.pos || other.pos < this.pos+this.old_value.length)
+		if (other.pos > this.pos || other.pos < this.pos+this.count)
 			return this;
 	}	
 
@@ -271,8 +257,8 @@ exports.MOVE.prototype.compose = function (other) {
 		return other.simplify();
 
 	// the elements are immediately deleted next
-	if (other instanceof exports.SPLICE && this.new_pos == other.pos && this.count == other.old_value.length && other.new_value.length == 0)
-		return new exports.DEL(this.pos, other.old_value);
+	if (other instanceof exports.SPLICE && this.new_pos == other.pos && this.count == other.count && other.value.length == 0)
+		return new exports.SPLICE(this.pos, this.count, other.value);
 
 	// The same range moved a second time.
 	if (other instanceof exports.MOVE && this.new_pos == other.pos && this.count == other.count)
@@ -291,16 +277,16 @@ exports.MOVE.prototype.rebase = function (other) {
 
 	if (other instanceof exports.SPLICE) {
 		// operations intersect
-		if (this.pos+this.count >= other.pos && this.pos < other.pos+other.old_value.length)
+		if (this.pos+this.count >= other.pos && this.pos < other.pos+other.count)
 			return null;
 		if (this.pos < other.pos && this.new_pos < other.pos)
 			return this; // not affected
 		if (this.pos < other.pos && this.new_pos > other.pos)
-			return new exports.MOVE(this.pos, this.count, this.new_pos + (other.new_value.length-other.old_value.length));
+			return new exports.MOVE(this.pos, this.count, this.new_pos + (other.value.length-other.count));
 		if (this.pos > other.pos && this.new_pos > other.pos)
-			return new exports.MOVE(this.pos + (other.new_value.length-other.old_value.length), this.count, this.new_pos + (other.new_value.length-other.old_value.length));
+			return new exports.MOVE(this.pos + (other.value.length-other.count), this.count, this.new_pos + (other.value.length-other.count));
 		if (this.pos > other.pos && this.new_pos < other.pos)
-			return new exports.MOVE(this.pos + (other.new_value.length-other.old_value.length), this.count, this.new_pos);
+			return new exports.MOVE(this.pos + (other.value.length-other.count), this.count, this.new_pos);
 	}
 
 	if (other instanceof exports.MOVE) {
@@ -365,7 +351,7 @@ exports.APPLY.prototype.compose = function (other) {
 		return other.simplify();
 
 	// a SPLICE that includes this operation's position clobbers the operation
-	if (other instanceof exports.SPLICE && this.pos >= other.pos && this.pos < other.pos + other.old_value.length)
+	if (other instanceof exports.SPLICE && this.pos >= other.pos && this.pos < other.pos + other.count)
 		return other;
 
 	// two APPLYs on the same element, with composable sub-operations
@@ -388,12 +374,12 @@ exports.APPLY.prototype.rebase = function (other) {
 
 	if (other instanceof exports.SPLICE) {
 		// operations intersect
-		if (this.pos >= other.pos && this.pos < other.pos+other.old_value.length)
+		if (this.pos >= other.pos && this.pos < other.pos+other.count)
 			return null;
 		if (this.pos < other.pos)
 			return this;
 		// shift the index
-		return new exports.APPLY(this.pos + (other.new_value.length-other.old_value.length), this.op);
+		return new exports.APPLY(this.pos + (other.value.length-other.count), this.op);
 	}
 
 	// shift the index
@@ -491,10 +477,10 @@ exports.from_diff = function(old_value, new_value, mode, global_order) {
 		if (d[i][0] == 0) {
 			pos += d[i][1].length;
 		} else if (d[i][0] == -1) {
-			ret.push(new exports.DEL(pos, d[i][1], global_order));
+			ret.push(new exports.SPLICE(pos, d[i][1].length, "", global_order));
 			// don't increment pos because next operation sees the string with this part deleted
 		} else if (d[i][0] == 1) {
-			ret.push(new exports.INS(pos, d[i][1], global_order));
+			ret.push(new exports.SPLICE(pos, 0, d[i][1], global_order));
 			pos += d[i][1].length;
 		}
 	}

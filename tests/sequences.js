@@ -8,16 +8,16 @@ var jot = require("../jot");
 test('sequences', function(t) {
 
 t.equal(
-	new seqs.SPLICE(0, "1", "4").apply("123"),
+	new seqs.SPLICE(0, 1, "4").apply("123"),
 	"423");
 t.equal(
-	new seqs.SPLICE(0, "1", "").apply("123"),
+	new seqs.SPLICE(0, 1, "").apply("123"),
 	"23");
 t.equal(
-	new seqs.SPLICE(0, "1", "44").apply("123"),
+	new seqs.SPLICE(0, 1, "44").apply("123"),
 	"4423");
 t.equal(
-	new seqs.SPLICE(3, "", "44").apply("123"),
+	new seqs.SPLICE(3, 0, "44").apply("123"),
 	"12344");
 
 t.equal(
@@ -50,11 +50,8 @@ t.deepEqual(
 // simplify
 
 t.deepEqual(
-	new seqs.SPLICE(3, "123", "123").simplify(),
-	new values.NO_OP());
-t.deepEqual(
-	new seqs.SPLICE(3, "123", "456").simplify(),
-	new seqs.SPLICE(3, "123", "456"));
+	new seqs.SPLICE(3, 3, "456").simplify(),
+	new seqs.SPLICE(3, 3, "456"));
 t.deepEqual(
 	new seqs.MOVE(3, 5, 3).simplify(),
 	new values.NO_OP());
@@ -70,9 +67,6 @@ t.deepEqual(
 
 // invert
 
-t.deepEqual(
-	new seqs.SPLICE(3, "123", "456").invert(),
-	new seqs.SPLICE(3, "456", "123"));
 t.deepEqual(
 	new seqs.MOVE(3, 3, 10).invert(),
 	new seqs.MOVE(7, 3, 3));
@@ -103,7 +97,7 @@ t.deepEqual(
 
 t.deepEqual(
 	new seqs.APPLY(555, new values.MAP("add", 3)).rebase(
-		new seqs.INS(555, ["NEWVALUE"])),
+		new seqs.SPLICE(555, 0, ["NEWVALUE"])),
 	new seqs.APPLY(556, new values.MAP("add", 3)));
 
 t.deepEqual(

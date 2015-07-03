@@ -24,7 +24,7 @@ t.deepEqual(
 t.deepEqual(
 	new objs.APPLY(
 		"a",
-		new seqs.SPLICE(0, "b", "Hello"))
+		new seqs.SPLICE(0, 1, "Hello"))
 		.apply({"a": "b"}),
 	{ "a": "Hello" });
 t.deepEqual(
