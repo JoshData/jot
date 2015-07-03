@@ -95,6 +95,9 @@ exports.PUT.prototype.compose = function (other) {
 	if (other instanceof exports.REN && this.key == other.old_key)
 		return new exports.PUT(other.new_key, this.value);
 
+	if (other instanceof exports.APPLY && this.key == other.key)
+		return new exports.PUT(this.key, other.op.apply(this.value));
+
 	// No composition possible.
 	return null;
 }
@@ -126,6 +129,26 @@ exports.PUT.prototype.rebase = function (other) {
 	// exist, the other operations assume the key did exist.
 
 	return null;
+}
+
+exports.PUT.prototype.rebase_inv = function (other) {
+	/* Like rebase, but on other's inverse (without having to compute
+	   other's inverse. */
+
+	if (other instanceof values.NO_OP)
+		return this;
+
+	if (other instanceof exports.PUT)
+		return this.rebase(other.invert());
+
+	if (other instanceof exports.REM)
+		return this.rebase(other.fake_invert());
+
+	if (other instanceof exports.REN)
+		return this.rebase(other.invert());
+
+	if (other instanceof exports.APPLY && other.key != this.key)
+		return this;
 }
 
 ////
@@ -174,6 +197,10 @@ exports.REM.prototype.compose = function (other) {
 	return null;
 }
 
+exports.REM.prototype.fake_invert = function (other) {
+	return new exports.PUT(this.key, "?");
+}
+
 exports.REM.prototype.rebase = function (other) {
 	/* Transforms this operation so that it can be composed *after* the other
 	   operation to yield the same logical effect. Returns null on conflict. */
@@ -206,6 +233,26 @@ exports.REM.prototype.rebase = function (other) {
 	// operation assumes the key did exist, PUT assumes the key did not exist.
 
 	return null;
+}
+
+exports.REM.prototype.rebase_inv = function (other) {
+	/* Like rebase, but on other's inverse (without having to compute
+	   other's inverse. */
+
+	if (other instanceof values.NO_OP)
+		return this;
+
+	if (other instanceof exports.PUT)
+		return this.rebase(other.invert());
+
+	if (other instanceof exports.REM)
+		return this.rebase(other.fake_invert());
+
+	if (other instanceof exports.REN)
+		return this.rebase(other.invert());
+
+	if (other instanceof exports.APPLY)
+		return this; // see rebase
 }
 
 ////
@@ -308,6 +355,26 @@ exports.REN.prototype.rebase = function (other) {
 	return null;
 }
 
+exports.REN.prototype.rebase_inv = function (other) {
+	/* Like rebase, but on other's inverse (without having to compute
+	   other's inverse. */
+
+	if (other instanceof values.NO_OP)
+		return this;
+
+	if (other instanceof exports.PUT)
+		return this.rebase(other.invert());
+
+	if (other instanceof exports.REM)
+		return this.rebase(other.fake_invert());
+
+	if (other instanceof exports.REN)
+		return this.rebase(other.invert());
+
+	if (other instanceof exports.APPLY)
+		return this; // see rebase
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 
@@ -344,7 +411,10 @@ exports.APPLY.prototype.invert = function () {
 	/* Returns a new atomic operation that is the inverse of this operation */
 	if (!this.op.invert) // inner operation does not support inverse
 		return null;
-	return new exports.APPLY(this.key, this.op.invert());
+	var op = this.op.invert();
+	if (!op)
+		return
+	return new exports.APPLY(this.key, op);
 }
 
 exports.APPLY.prototype.compose = function (other) {
@@ -405,6 +475,37 @@ exports.APPLY.prototype.rebase = function (other) {
 
 		// Operated on the same key. Rebase the sub-operations.
 		var op2 = this.op.rebase(other.op);
+		if (op2)
+			return new exports.APPLY(this.key, op2);
+	}
+
+	return null;
+}
+
+exports.APPLY.prototype.rebase_inv = function (other) {
+	/* Like rebase, but on other's inverse (without having to compute
+	   other's inverse. */
+
+	if (other instanceof values.NO_OP)
+		return this;
+
+	if (other instanceof exports.PUT)
+		return this.rebase(other.invert());
+
+	if (other instanceof exports.REM)
+		return this.rebase(other.fake_invert());
+
+	if (other instanceof exports.REN)
+		return this.rebase(other.invert());
+
+	if (other instanceof exports.APPLY) {
+		if (this.key != other.key) {
+			// Changes to different keys are independent.
+			return this;
+		}
+
+		// Operated on the same key. Rebase the sub-operations.
+		var op2 = this.op.rebase_inv(other.op);
 		if (op2)
 			return new exports.APPLY(this.key, op2);
 	}

@@ -162,6 +162,11 @@ exports.SPLICE.prototype.compose = function (other) {
 	return null;
 }
 
+exports.SPLICE.prototype.fake_invert = function (other) {
+	function repeat(s, n) { var r=""; for (var a=0;a<n;a++) r+=s; return r;}
+	return new exports.SPLICE(this.pos, this.value.length, repeat("?", this.count));
+}
+
 exports.SPLICE.prototype.rebase = function (other) {
 	/* Transforms this operation so that it can be composed *after* the other
 	   operation to yield the same logical effect. Returns null on conflict. */
@@ -205,6 +210,27 @@ exports.SPLICE.prototype.rebase = function (other) {
 		if (other.pos > this.pos || other.pos < this.pos+this.count)
 			return this;
 	}	
+
+	return null;
+}
+
+
+exports.SPLICE.prototype.rebase_inv = function (other) {
+	/* Like rebase, but on other's inverse (without having to compute
+	   other's inverse. */
+
+	if (other instanceof values.NO_OP)
+		return this;
+
+	if (other instanceof exports.SPLICE)
+		return this.rebase(other.fake_invert())
+
+	if (other instanceof exports.MOVE)
+		return this.rebase(other.invert())
+
+	// don't need to actually invert the APPLY to do this
+	if (other instanceof exports.APPLY)
+		return this.rebase(other)
 
 	return null;
 }
@@ -298,6 +324,26 @@ exports.MOVE.prototype.rebase = function (other) {
 
 	if (other instanceof exports.APPLY)
 		return this; // no impact
+
+	return null;
+}
+
+exports.MOVE.prototype.rebase_inv = function (other) {
+	/* Like rebase, but on other's inverse (without having to compute
+	   other's inverse. */
+
+	if (other instanceof values.NO_OP)
+		return this;
+
+	if (other instanceof exports.SPLICE)
+		return this.rebase(other.fake_invert())
+
+	if (other instanceof exports.MOVE)
+		return this.rebase(other.invert())
+
+	// don't need to actually invert the APPLY to do this
+	if (other instanceof exports.APPLY)
+		return this.rebase(other)
 
 	return null;
 }
@@ -398,6 +444,34 @@ exports.APPLY.prototype.rebase = function (other) {
 	}
 
 	// Return null indicating this is an unresolvable conflict.
+	return null;
+}
+
+exports.APPLY.prototype.rebase_inv = function (other) {
+	/* Like rebase, but on other's inverse (without having to compute
+	   other's inverse. */
+
+	if (other instanceof values.NO_OP)
+		return this;
+
+	if (other instanceof exports.SPLICE)
+		return this.rebase(other.fake_invert())
+
+	if (other instanceof exports.MOVE)
+		return this.rebase(other.invert())
+
+	// don't need to actually invert the APPLY to do this
+	if (other instanceof exports.APPLY) {
+		// Two APPLYs at different locations don't affect each other.
+		if (other.pos != this.pos)
+			return this;
+		
+		// If they are at the same location, then rebase_inv the sub-operations.
+		var op2 = this.op.rebase_inv(other.op);
+		if (op2)
+			return new exports.APPLY(this.pos, op2);
+	}
+
 	return null;
 }
 

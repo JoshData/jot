@@ -80,6 +80,12 @@ exports.NO_OP.prototype.rebase = function (other) {
 	return this;
 }
 
+exports.NO_OP.prototype.rebase_inv = function (other) {
+	/* Like rebase, but on other's inverse (without having to compute
+	   other's inverse. */
+	return this;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 exports.SET = function (value, global_order) {
@@ -138,6 +144,16 @@ exports.SET.prototype.rebase = function (other) {
 	}
 
 	// There's always a conflict when rebased against a MAP.
+	return null;
+}
+
+exports.SET.prototype.rebase_inv = function (other) {
+	/* Like rebase, but on other's inverse (without having to compute
+	   other's inverse. */
+
+	if (other instanceof exports.NO_OP)
+		return this;
+
 	return null;
 }
 
@@ -248,5 +264,20 @@ exports.MAP.prototype.rebase = function (other) {
 				return null; // rot must have same modulus
 			return this;
 		}
+		return null;
 	}
+}
+
+exports.MAP.prototype.rebase_inv = function (other) {
+	/* Like rebase, but on other's inverse (without having to compute
+	   other's inverse. */
+
+	if (other instanceof exports.NO_OP)
+		return this;
+
+	// invert() is defined on all MAP operations, so just use that
+	if (other instanceof exports.MAP)
+		return this.rebase(other.invert());
+
+	return null;
 }
