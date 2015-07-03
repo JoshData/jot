@@ -1,7 +1,7 @@
 /*  An operational transformation library for atomic values. This
 	library provides three operations: NO_OP (an operation that
-	does nothing), SET (replace this.operand with a new value), and
-	MAP (apply a function to this.operand). These functions are generic
+	does nothing), SET (replace the document with a new value), and
+	MAP (apply a function to the document). These functions are generic
 	over various sorts of data types that they may apply to.
 
 	new values.NO_OP()
@@ -23,7 +23,7 @@
 
 	new values.MAP(operator, operand)
 	
-	Applies a commutative, invertable function to this.operand. The supported
+	Applies a commutative, invertable function to a document. The supported
 	operators are:
 	
 	on numbers:
@@ -33,7 +33,7 @@
 	"mult": multiplication by a number (use the reciprocal to divide)
 	
 	"rot": addition by a number followed by modulus (the value is
-	       given as a list of the increment and the modulus). The document
+	       given as a tuple of the increment and the modulus). The document
 	       object must be non-negative and less than the modulus.
 	
 	Note that by commutative we mean that the operation is commutative
