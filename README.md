@@ -167,8 +167,7 @@ Note that some operations (DEL, REM, and SET) require passing the value
 being modified before the modification took place (i.e. what the value
 was before the operation).
 
-(Interally, INS and DEL are subcases of "SPLICE" and PUT, REM, and REN are subcases
-of "PROP".)
+(Interally, INS and DEL are subcases of "SPLICE".)
 
 
 Transformations
