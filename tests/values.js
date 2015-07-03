@@ -21,6 +21,15 @@ t.equal(
 t.equal(
 	new values.MAP("mult", 5).apply(2),
 	10);
+t.equal(
+	new values.MAP("xor", 12).apply(25),
+	21);
+t.equal(
+	new values.MAP("xor", 1).apply(true),
+	false);
+t.equal(
+	new values.MAP("xor", 1).apply(false),
+	true);
 
 // simplify
 
@@ -50,6 +59,9 @@ t.deepEqual(
 t.deepEqual(
 	new values.MAP("mult", 1).simplify(),
 	new values.NO_OP());
+t.deepEqual(
+	new values.MAP("xor", 0).simplify(),
+	new values.NO_OP());
 
 // invert
 
@@ -70,6 +82,9 @@ t.deepEqual(
 t.deepEqual(
 	new values.MAP("mult", 5).invert(),
 	new values.MAP("mult", 1/5));
+t.deepEqual(
+	new values.MAP("xor", 5).invert(),
+	new values.MAP("xor", 5));
 
 
 // compose
@@ -104,6 +119,10 @@ t.deepEqual(
 	new values.MAP("add", 1).compose(
 		new values.MAP("mult", 2) ),
 	null);
+t.deepEqual(
+	new values.MAP("xor", 12).compose(
+		new values.MAP("xor", 3) ),
+	new values.MAP("xor", 15));
 
 // rebase
 
@@ -136,6 +155,9 @@ t.deepEqual(
 t.notOk(
 	new values.MAP("mult", 2).rebase(new values.MAP("add", 1) )
 	);
+t.deepEqual(
+	new values.MAP("xor", 3).rebase(new values.MAP("xor", 12) ),
+	new values.MAP("xor", 3));
 
 
     t.end();

@@ -33,6 +33,9 @@
 	"rot": addition by a number followed by modulus (the value is
 	       given as a tuple of the increment and the modulus). The document
 	       object must be non-negative and less than the modulus.
+
+	"xor": bitwise exclusive or with a number (over integers and booleans
+	       only)
 	
 	Note that by commutative we mean that the operation is commutative
 	under composition, i.e. add(1)+add(2) == add(2)+add(1).
@@ -156,6 +159,12 @@ exports.MAP.prototype.apply = function (document) {
 		return (document + this.operand[0]) % this.operand[1];
 	if (this.operator == "mult")
 		return document * this.operand;
+	if (this.operator == "xor") {
+		var ret = document ^ this.operand;
+		if (typeof document == 'boolean')
+			ret = !!ret; // cast to boolean
+		return ret;
+	}
 }
 
 exports.MAP.prototype.simplify = function () {
@@ -170,6 +179,8 @@ exports.MAP.prototype.simplify = function () {
 		return new exports.MAP("rot", [this.operand[0] % this.operand[1], this.operand[1]]);
 	if (this.operator == "mult" && this.operand == 1)
 		return new exports.NO_OP();
+	if (this.operator == "xor" && this.operand == 0)
+		return new exports.NO_OP();
 	return this;
 }
 
@@ -181,6 +192,8 @@ exports.MAP.prototype.invert = function () {
 		return new exports.MAP("rot", [-this.operand[0], this.operand[1]]);
 	if (this.operator == "mult")
 		return new exports.MAP("mult", 1.0/this.operand);
+	if (this.operator == "xor")
+		return this; // is its own inverse
 }
 
 exports.MAP.prototype.compose = function (other) {
@@ -206,6 +219,10 @@ exports.MAP.prototype.compose = function (other) {
 		// two multiplications multiply the operands
 		if (this.operator == other.operator && this.operator == "mult")
 			return new exports.MAP("mult", this.operand * other.operand).simplify();
+
+		// two xor's xor the operands
+		if (this.operator == other.operator && this.operator == "xor")
+			return new exports.MAP("xor", this.operand ^ other.operand).simplify();
 	}
 	
 	return null; // no composition is possible
@@ -225,7 +242,7 @@ exports.MAP.prototype.rebase = function (other) {
 	if (other instanceof exports.MAP) {
 		// Since the map operators are commutative, it doesn't matter which order
 		// they are applied in. That makes the rebase trivial -- if the operators
-		// are the same.
+		// are the same, then nothing needs to be done.
 		if (this.operator == other.operator) {
 			if (this.operator == "rot" && this.operand[1] != other.operand[1])
 				return null; // rot must have same modulus
