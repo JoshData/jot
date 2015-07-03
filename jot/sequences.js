@@ -413,6 +413,8 @@ exports.APPLY.prototype.rebase = function (other) {
 	return null;
 }
 
+/////
+
 // Use google-diff-match-patch to convert a diff between two
 // strings into an array of SPLICE operations.
 exports.from_diff = function(old_value, new_value, mode, global_order) {

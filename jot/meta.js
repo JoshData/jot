@@ -28,19 +28,47 @@ exports.LIST.prototype.simplify = function () {
 	   would be an empty list of operations. */
 	var new_ops = [];
 	for (var i = 0; i < this.ops.length; i++) {
-		if (this.ops[i] instanceof values.NO_OP) continue; // don't put no-ops into the new list
+		var op = this.ops[i];
+		if (op instanceof values.NO_OP) continue; // don't put no-ops into the new list
+		
 		if (new_ops.length == 0) {
-			new_ops.push(this.ops[i]); // first operation
+			// first operation
+			new_ops.push(op);
+
 		} else {
-			// try to compose with the previous op
-			var c = new_ops[new_ops.length-1].compose(this.ops[i]);
-			if (c) {
-				if (c instanceof values.NO_OP)
-					new_ops.pop(); // they obliterated each other, so remove the one that we already added
-				else
-					new_ops[new_ops.length-1] = c; // replace with composition
-			} else {
-				new_ops.push(ops[i]);
+			for (var j = new_ops.length-1; j >= 0; j--) {
+				// try to compose with op[j]
+				var c = new_ops[j].compose(op);
+				if (c) {
+					if (c instanceof values.NO_OP)
+						// they obliterated each other, so remove the one that we already added
+						new_ops.splice(j, 1);
+					else
+						// replace op[j] with the composition
+						new_ops[j] = c;
+					break;
+
+				} else {
+					if (j > 0) {
+						// They do not compose, but we may be able to
+						// move it earlier in the list so that we could
+						// compose it with another operation. op can be
+						// swaped in position with new_ops[j] if op can
+						// be rebased on new_ops[j]'s inverse.
+						var r1 = op.rebase(new_ops[j].invert());
+						var r2 = new_ops[j].rebase(op);
+						if (r1 != null && r2 != null) {
+							// Can swap order. Iterate.
+							op = r1;
+							new_ops[j] = r2;
+							continue;
+						}
+					}
+
+					// We can't bring the op back any further. Insert here.
+					new_ops.splice(j+1, 0, op);
+					break;
+				}
 			}
 		}
 	}

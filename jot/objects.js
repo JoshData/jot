@@ -96,6 +96,9 @@ exports.PUT.prototype.compose = function (other) {
 	if (other instanceof exports.REN && this.key == other.old_key)
 		return new exports.PUT(other.new_key, this.value);
 
+	if (other instanceof exports.APPLY && this.key == other.key)
+		return new exports.PUT(this.key, other.op.apply(this.value));
+
 	// No composition possible.
 	return null;
 }

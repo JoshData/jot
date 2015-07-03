@@ -256,5 +256,6 @@ exports.MATH.prototype.rebase = function (other) {
 				return null; // rot must have same modulus
 			return this;
 		}
+		return null;
 	}
 }
