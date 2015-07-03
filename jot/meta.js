@@ -55,8 +55,10 @@ exports.LIST.prototype.invert = function () {
 	/* Returns a new atomic operation that is the inverse of this operation:
 	   the inverse of each operation in reverse order. */
 	var new_ops = [];
-	for (var i = this.ops.length-1; i >= 0; i--)
+	for (var i = this.ops.length-1; i >= 0; i--) {
+		if (!this.ops[i].invert) return null; // inverse not supported by inner operation
 		new_ops.push(this.ops[i].invert());
+	}
 	return new exports.LIST(new_ops);
 }
 

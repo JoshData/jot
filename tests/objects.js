@@ -18,7 +18,7 @@ t.deepEqual(
 t.deepEqual(
 	new objs.APPLY(
 		"a",
-		new values.SET("b", "c"))
+		new values.SET("c"))
 		.apply({"a": "b"}),
 	{ "a": "c" });
 t.deepEqual(
@@ -53,14 +53,14 @@ t.deepEqual(
 	new objs.APPLY("a", new values.MAP("add", 2))
 	);
 t.deepEqual(
-	new objs.APPLY("a", new values.SET(0, 1)).rebase(
-		new objs.APPLY("a", new values.SET(0, 2))),
+	new objs.APPLY("a", new values.SET(1)).rebase(
+		new objs.APPLY("a", new values.SET(2))),
 	null
 	);
 t.deepEqual(
-	new objs.APPLY("a", new values.SET(0, 2)).rebase(
-		new objs.APPLY("b", new values.SET(0, 1))),
-	new objs.APPLY("a", new values.SET(0, 2))
+	new objs.APPLY("a", new values.SET(2)).rebase(
+		new objs.APPLY("b", new values.SET(1))),
+	new objs.APPLY("a", new values.SET(2))
 	);
 
 

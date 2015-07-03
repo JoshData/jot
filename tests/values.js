@@ -9,7 +9,7 @@ t.equal(
 	"1");
 
 t.equal(
-	new values.SET("1", "2").apply("1"),
+	new values.SET("2").apply("1"),
 	"2");
 
 t.equal(
@@ -29,11 +29,8 @@ t.deepEqual(
 	new values.NO_OP());
 
 t.deepEqual(
-	new values.SET(0, 1).simplify(),
-	new values.SET(0, 1));
-t.deepEqual(
-	new values.SET(0, 0).simplify(),
-	new values.NO_OP());
+	new values.SET(1).simplify(),
+	new values.SET(1));
 
 t.deepEqual(
 	new values.MAP("add", 5).simplify(),
@@ -60,9 +57,9 @@ t.deepEqual(
 	new values.NO_OP().invert(),
 	new values.NO_OP());
 
-t.deepEqual(
-	new values.SET(0, 1).invert(),
-	new values.SET(1, 0));
+/*t.deepEqual(
+	new values.SET(1).invert(),
+	new values.SET(0));*/
 
 t.deepEqual(
 	new values.MAP("add", 5).invert(),
@@ -79,17 +76,17 @@ t.deepEqual(
 
 t.deepEqual(
 	new values.NO_OP().compose(
-		new values.SET(1, 2) ),
-	new values.SET(1, 2));
+		new values.SET(2) ),
+	new values.SET(2));
 t.deepEqual(
-	new values.SET(1, 2).compose(
+	new values.SET(2).compose(
 		new values.NO_OP() ),
-	new values.SET(1, 2));
+	new values.SET(2));
 
 t.deepEqual(
-	new values.SET(0, 1).compose(
-		new values.SET(1, 2) ),
-	new values.SET(0, 2));
+	new values.SET(1).compose(
+		new values.SET(2) ),
+	new values.SET(2));
 
 t.deepEqual(
 	new values.MAP("add", 1).compose(
@@ -118,16 +115,16 @@ t.deepEqual(
 	new values.NO_OP());
 
 t.deepEqual(
-	new values.SET(0, 1).rebase(new values.SET(0, 1) ),
+	new values.SET(1).rebase(new values.SET(1) ),
 	new values.NO_OP());
 t.deepEqual(
-	new values.SET(0, 2).rebase(new values.SET(0, 1) ),
+	new values.SET(2).rebase(new values.SET(1) ),
 	null);
 t.deepEqual(
-	new values.SET(0, 2, 1).rebase(new values.SET(0, 1, 0) ),
-	new values.SET(1, 2, 1));
+	new values.SET(2, 1).rebase(new values.SET(1, 0) ),
+	new values.SET(2, 1));
 t.deepEqual(
-	new values.SET(0, 1, 0).rebase(new values.SET(0, 2, 1) ),
+	new values.SET(1, 0).rebase(new values.SET(2, 1) ),
 	new values.NO_OP());
 
 t.deepEqual(

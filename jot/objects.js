@@ -37,7 +37,7 @@
     
     To replace the value of a property with a new value:
     
-      new objects.APPLY("key1", new values.SET("old_value", "new_value"))
+      new objects.APPLY("key1", new values.SET("new_value"))
       
    */
    
@@ -207,6 +207,8 @@ exports.APPLY.prototype.simplify = function () {
 
 exports.APPLY.prototype.invert = function () {
 	/* Returns a new atomic operation that is the inverse of this operation */
+	if (!this.op.invert) // inner operation does not support inverse
+		return null;
 	return new exports.APPLY(this.key, this.op.invert());
 }
 

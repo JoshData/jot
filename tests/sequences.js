@@ -28,23 +28,23 @@ t.equal(
 	"312");
 
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET(1, 4)).apply([1, 2, 3]),
+	new seqs.APPLY(0, new values.SET(4)).apply([1, 2, 3]),
 	[4, 2, 3]);
 t.deepEqual(
-	new seqs.APPLY(1, new values.SET(2, 4)).apply([1, 2, 3]),
+	new seqs.APPLY(1, new values.SET(4)).apply([1, 2, 3]),
 	[1, 4, 3]);
 t.deepEqual(
-	new seqs.APPLY(2, new values.SET(3, 4)).apply([1, 2, 3]),
+	new seqs.APPLY(2, new values.SET(4)).apply([1, 2, 3]),
 	[1, 2, 4]);
 
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET("a", "d")).apply("abc"),
+	new seqs.APPLY(0, new values.SET("d")).apply("abc"),
 	"dbc");
 t.deepEqual(
-	new seqs.APPLY(1, new values.SET("b", "d")).apply("abc"),
+	new seqs.APPLY(1, new values.SET("d")).apply("abc"),
 	"adc");
 t.deepEqual(
-	new seqs.APPLY(2, new values.SET("c", "d")).apply("abc"),
+	new seqs.APPLY(2, new values.SET("d")).apply("abc"),
 	"abd");
 
 // simplify
@@ -62,11 +62,11 @@ t.deepEqual(
 	new seqs.MOVE(3, 5, 4).simplify(),
 	new seqs.MOVE(3, 5, 4));
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET(1, 1)).simplify(),
-	new values.NO_OP());
+	new seqs.APPLY(0, new values.SET(1)).simplify(),
+	new seqs.APPLY(0, new values.SET(1)));
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET(1, 2)).simplify(),
-	new seqs.APPLY(0, new values.SET(1, 2)));
+	new seqs.APPLY(0, new values.SET(2)).simplify(),
+	new seqs.APPLY(0, new values.SET(2)));
 
 // invert
 
@@ -80,17 +80,17 @@ t.deepEqual(
 	new seqs.MOVE(10, 3, 3).invert(),
 	new seqs.MOVE(3, 3, 13));
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET(1, 2)).invert(),
-	new seqs.APPLY(0, new values.SET(2, 1)));
+	new seqs.APPLY(0, new values.SET(2)).invert(),
+	null);
 
 // compose
 
 // ...
 
 t.deepEqual(
-	new seqs.APPLY(555, new values.SET("A", "B"))
-		.compose(new seqs.APPLY(555, new values.SET("B", "C"))),
-	new seqs.APPLY(555, new values.SET("A", "C")));
+	new seqs.APPLY(555, new values.SET("B"))
+		.compose(new seqs.APPLY(555, new values.SET("C"))),
+	new seqs.APPLY(555, new values.SET("C")));
 
 // rebase
 

@@ -11,7 +11,7 @@
 	out.
 	
 
-	new values.SET(old_value, new_value[, global_order])
+	new values.SET(value[, global_order])
 	
 	The atomic replacement of one value with another. Works for
 	any data type.
@@ -23,10 +23,8 @@
 
 	new values.MAP(operator, operand)
 	
-	Applies a commutative, invertable function to a document. The supported
-	operators are:
-	
-	on numbers:
+	Applies a commutative, invertible function to a document.
+	The supported operators apply to numbers only:
 	
 	"add": addition by a number (use a negative number to decrement)
 	
@@ -38,11 +36,7 @@
 	
 	Note that by commutative we mean that the operation is commutative
 	under composition, i.e. add(1)+add(2) == add(2)+add(1).
-	
-	(You might think the union and relative-complement set operators
-	would work here, but relative-complement does not have a right-
-	inverse. That is, relcomp composed with union may not be a no-op
-	because the union may add keys not found in the original.)
+
 	*/
 	
 var deepEqual = require("deep-equal");
@@ -85,31 +79,22 @@ exports.NO_OP.prototype.rebase = function (other) {
 
 //////////////////////////////////////////////////////////////////////////////
 
-exports.SET = function (old_value, new_value, global_order) {
+exports.SET = function (value, global_order) {
 	/* An operation that replaces the document with a new (atomic) value. */
-	this.old_value = old_value;
-	this.new_value = new_value;
+	this.value = value;
 	this.global_order = global_order || null;
 }
 
 exports.SET.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns the new
 	   value, regardless of the document. */
-	return this.new_value;
+	return this.value;
 }
 
 exports.SET.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
-	   of another operation. If the new value is the same as the
-	   old value, returns NO_OP. */
-	if (deepEqual(this.old_value, this.new_value))
-		return new exports.NO_OP();
+	   of another operation. */
 	return this;
-}
-
-exports.SET.prototype.invert = function () {
-	/* Returns a new atomic operation that is the inverse of this operation. */
-	return new exports.SET(this.new_value, this.old_value, this.global_order);
 }
 
 exports.SET.prototype.compose = function (other) {
@@ -118,7 +103,7 @@ exports.SET.prototype.compose = function (other) {
 	   null if no atomic operation is possible.
 		   Returns a new SET operation that simply sets the value to what
 		   the value would be when the two operations are composed. */
-	return new exports.SET(this.old_value, other.apply(this.new_value), this.global_order).simplify();
+	return new exports.SET(other.apply(this.value), this.global_order).simplify();
 }
 
 exports.SET.prototype.rebase = function (other) {
@@ -131,13 +116,13 @@ exports.SET.prototype.rebase = function (other) {
 	if (other instanceof exports.SET) {
 		// If they both the the document to the same value, then this
 		// operation can become a no-op.
-		if (deepEqual(this.new_value, other.new_value))
+		if (deepEqual(this.value, other.value))
 			return new exports.NO_OP();
 		
 		// Use global_order to resolve the conflicts.
 		if (this.global_order > other.global_order)
 			// clobber other's operation
-			return new exports.SET(other.new_value, this.new_value, this.global_order).simplify();
+			return new exports.SET(this.value, this.global_order).simplify();
 			
 		else if (this.global_order < other.global_order)
 			// this gets clobbered

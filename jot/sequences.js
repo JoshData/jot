@@ -39,7 +39,7 @@
     
     To replace an element at index 2 with a new value:
     
-      APPLY(2, new values.SET("old_value", "new_value"))
+      APPLY(2, new values.SET("new_value"))
    */
    
 var deepEqual = require("deep-equal");
@@ -346,6 +346,8 @@ exports.APPLY.prototype.simplify = function () {
 
 exports.APPLY.prototype.invert = function () {
 	/* Returns a new atomic operation that is the inverse of this operation */
+	if (!this.op.invert) // inner operation does not support inverse
+		return null;
 	return new exports.APPLY(this.pos, this.op.invert());
 }
 
