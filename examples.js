@@ -37,7 +37,7 @@ console.log("")
 
 var user2 = jot.LIST([
 	jot.OBJECT_APPLY("key1", jot.SET("Hello World!", "My Program")),
-	jot.OBJECT_APPLY("key2", jot.MAP('add', 10))
+	jot.OBJECT_APPLY("key2", jot.MATH('add', 10))
 ]);
 
 console.log("User 2")

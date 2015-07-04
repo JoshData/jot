@@ -14,7 +14,7 @@ function make_obj(type, args) {
 }
 exports.NO_OP = function() { return make_obj(values.NO_OP, arguments); };
 exports.SET = function() { return make_obj(values.SET, arguments) };
-exports.MAP = function() { return make_obj(values.MAP, arguments) };
+exports.MATH = function() { return make_obj(values.MATH, arguments) };
 exports.SPLICE = function() { return make_obj(sequences.SPLICE, arguments) };
 exports.INS = function() { return make_obj(sequences.INS, arguments) };
 exports.DEL = function() { return make_obj(sequences.DEL, arguments) };

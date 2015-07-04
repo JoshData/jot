@@ -32,7 +32,7 @@ t.deepEqual(
 		"a",
 		new seqs.APPLY(
 			1,
-			new values.MAP("add", 1)
+			new values.MATH("add", 1)
 			))
 		.apply({"a": [0, 0]}),
 	{ "a": [0, 1] });
@@ -48,9 +48,9 @@ t.deepEqual(
 // rebase
 
 t.deepEqual(
-	new objs.APPLY("a", new values.MAP("add", 2)).rebase(
-		new objs.APPLY("a", new values.MAP("add", 1))),
-	new objs.APPLY("a", new values.MAP("add", 2))
+	new objs.APPLY("a", new values.MATH("add", 2)).rebase(
+		new objs.APPLY("a", new values.MATH("add", 1))),
+	new objs.APPLY("a", new values.MATH("add", 2))
 	);
 t.deepEqual(
 	new objs.APPLY("a", new values.SET(0, 1)).rebase(
@@ -72,11 +72,11 @@ t.deepEqual(
 		new meta.LIST([
 			new seqs.APPLY(
 				1,
-				new values.MAP("add", 1)
+				new values.MATH("add", 1)
 				),
 			new seqs.APPLY(
 				2,
-				new values.MAP("add", -1)
+				new values.MATH("add", -1)
 				)
 		])
 	).apply({"a": [0, 0, 0]}),

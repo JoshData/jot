@@ -1,7 +1,7 @@
 /*  An operational transformation library for atomic values. This
 	library provides three operations: NO_OP (an operation that
 	does nothing), SET (replace the document with a new value), and
-	MAP (apply a function to the document). These functions are generic
+	MATH (apply a function to the document). These functions are generic
 	over various sorts of data types that they may apply to.
 
 	new values.NO_OP()
@@ -21,31 +21,24 @@
 	favoring the operation with the higher global_order value.
 	
 
-	new values.MAP(operator, operand)
+	new values.MATH(operator, operand)
 	
-	Applies a commutative, invertable function to a document. The supported
-	operators are:
+	Applies a commutative, invertable arithmetic function to a number.
 	
-	on numbers:
+	"add": addition (use a negative number to decrement)
 	
-	"add": addition by a number (use a negative number to decrement)
+	"mult": multiplication (use the reciprocal to divide)
 	
-	"mult": multiplication by a number (use the reciprocal to divide)
-	
-	"rot": addition by a number followed by modulus (the value is
-	       given as a tuple of the increment and the modulus). The document
+	"rot": addition followed by modulus (the operand is given
+	       as a tuple of the increment and the modulus). The document
 	       object must be non-negative and less than the modulus.
 
-	"xor": bitwise exclusive or with a number (over integers and booleans
+	"xor": bitwise exclusive-or (over integers and booleans
 	       only)
 	
 	Note that by commutative we mean that the operation is commutative
 	under composition, i.e. add(1)+add(2) == add(2)+add(1).
 	
-	(You might think the union and relative-complement set operators
-	would work here, but relative-complement does not have a right-
-	inverse. That is, relcomp composed with union may not be a no-op
-	because the union may add keys not found in the original.)
 	*/
 	
 var deepEqual = require("deep-equal");
@@ -152,20 +145,20 @@ exports.SET.prototype.rebase = function (other) {
 			return null;
 	}
 
-	// There's always a conflict when rebased against a MAP.
+	// There's always a conflict when rebased against a MATH.
 	return null;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 
-exports.MAP = function (operator, operand) {
+exports.MATH = function (operator, operand) {
 	/* An operation that applies addition, multiplication, or rotation (modulus addition)
 	   to a numeric document. */
 	this.operator = operator;
 	this.operand = operand;
 }
 
-exports.MAP.prototype.apply = function (document) {
+exports.MATH.prototype.apply = function (document) {
 	/* Applies the operation to this.operand. Applies the operator/operand
 	   as a function to the document. */
 	if (this.operator == "add")
@@ -182,7 +175,7 @@ exports.MAP.prototype.apply = function (document) {
 	}
 }
 
-exports.MAP.prototype.simplify = function () {
+exports.MATH.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
 	   of another operation. If the operation is a degenerate case,
 	   return NO_OP. */
@@ -191,7 +184,7 @@ exports.MAP.prototype.simplify = function () {
 	if (this.operator == "rot" && this.operand[0] == 0)
 		return new exports.NO_OP();
 	if (this.operator == "rot") // ensure the first value is less than the modulus
-		return new exports.MAP("rot", [this.operand[0] % this.operand[1], this.operand[1]]);
+		return new exports.MATH("rot", [this.operand[0] % this.operand[1], this.operand[1]]);
 	if (this.operator == "mult" && this.operand == 1)
 		return new exports.NO_OP();
 	if (this.operator == "xor" && this.operand == 0)
@@ -199,19 +192,19 @@ exports.MAP.prototype.simplify = function () {
 	return this;
 }
 
-exports.MAP.prototype.invert = function () {
+exports.MATH.prototype.invert = function () {
 	/* Returns a new atomic operation that is the inverse of this operation */
 	if (this.operator == "add")
-		return new exports.MAP("add", -this.operand);
+		return new exports.MATH("add", -this.operand);
 	if (this.operator == "rot")
-		return new exports.MAP("rot", [-this.operand[0], this.operand[1]]);
+		return new exports.MATH("rot", [-this.operand[0], this.operand[1]]);
 	if (this.operator == "mult")
-		return new exports.MAP("mult", 1.0/this.operand);
+		return new exports.MATH("mult", 1.0/this.operand);
 	if (this.operator == "xor")
 		return this; // is its own inverse
 }
 
-exports.MAP.prototype.compose = function (other) {
+exports.MATH.prototype.compose = function (other) {
 	/* Creates a new atomic operation that has the same result as this
 	   and other applied in sequence (this first, other after). Returns
 	   null if no atomic operation is possible. */
@@ -222,28 +215,28 @@ exports.MAP.prototype.compose = function (other) {
 	if (other instanceof exports.SET)
 		return other; // wipes away this operation
 
-	if (other instanceof exports.MAP) {
+	if (other instanceof exports.MATH) {
 		// two adds just add the operands
 		if (this.operator == other.operator && this.operator == "add")
-			return new exports.MAP("add", this.operand + other.operand).simplify();
+			return new exports.MATH("add", this.operand + other.operand).simplify();
 
 		// two rots with the same modulus add the operands
 		if (this.operator == other.operator && this.operator == "rot" && this.operand[1] == other.operand[1])
-			return new exports.MAP("rot", [this.operand[0] + other.operand[0], this.operand[1]]).simplify();
+			return new exports.MATH("rot", [this.operand[0] + other.operand[0], this.operand[1]]).simplify();
 
 		// two multiplications multiply the operands
 		if (this.operator == other.operator && this.operator == "mult")
-			return new exports.MAP("mult", this.operand * other.operand).simplify();
+			return new exports.MATH("mult", this.operand * other.operand).simplify();
 
 		// two xor's xor the operands
 		if (this.operator == other.operator && this.operator == "xor")
-			return new exports.MAP("xor", this.operand ^ other.operand).simplify();
+			return new exports.MATH("xor", this.operand ^ other.operand).simplify();
 	}
 	
 	return null; // no composition is possible
 }
 
-exports.MAP.prototype.rebase = function (other) {
+exports.MATH.prototype.rebase = function (other) {
 	/* Transforms this operation so that it can be composed *after* the other
 	   operation to yield the same logical effect. Returns null on conflict. */
 
@@ -254,7 +247,7 @@ exports.MAP.prototype.rebase = function (other) {
 	if (other instanceof exports.SET)
 		return null;
 
-	if (other instanceof exports.MAP) {
+	if (other instanceof exports.MATH) {
 		// Since the map operators are commutative, it doesn't matter which order
 		// they are applied in. That makes the rebase trivial -- if the operators
 		// are the same, then nothing needs to be done.

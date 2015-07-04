@@ -97,19 +97,19 @@ t.deepEqual(
 // ...
 
 t.deepEqual(
-	new seqs.APPLY(555, new values.MAP("add", 3)).rebase(
-		new seqs.APPLY(555, new values.MAP("add", 1))),
-	new seqs.APPLY(555, new values.MAP("add", 3)));
+	new seqs.APPLY(555, new values.MATH("add", 3)).rebase(
+		new seqs.APPLY(555, new values.MATH("add", 1))),
+	new seqs.APPLY(555, new values.MATH("add", 3)));
 
 t.deepEqual(
-	new seqs.APPLY(555, new values.MAP("add", 3)).rebase(
+	new seqs.APPLY(555, new values.MATH("add", 3)).rebase(
 		new seqs.INS(555, ["NEWVALUE"])),
-	new seqs.APPLY(556, new values.MAP("add", 3)));
+	new seqs.APPLY(556, new values.MATH("add", 3)));
 
 t.deepEqual(
-	new seqs.APPLY(555, new values.MAP("add", 3)).rebase(
+	new seqs.APPLY(555, new values.MATH("add", 3)).rebase(
 		new seqs.MOVE(555, 3, 0)),
-	new seqs.APPLY(0, new values.MAP("add", 3)));
+	new seqs.APPLY(0, new values.MATH("add", 3)));
 
 // from_string_rep
 
