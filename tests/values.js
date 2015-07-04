@@ -130,8 +130,8 @@ t.deepEqual(
 // rebase
 
 t.deepEqual(
-	new values.MATH("add", 1).rebase(new values.NO_OP() ),
-	new values.MATH("add", 1));
+	new values.NO_OP().rebase(new values.NO_OP() ),
+	new values.NO_OP());
 t.deepEqual(
 	new values.NO_OP().rebase(new values.MATH("add", 1) ),
 	new values.NO_OP());
@@ -143,12 +143,25 @@ t.deepEqual(
 	new values.SET(0, 2).rebase(new values.SET(0, 1) ),
 	null);
 t.deepEqual(
-	new values.SET(0, 2, 1).rebase(new values.SET(0, 1, 0) ),
-	new values.SET(1, 2, 1));
+	new values.SET(0, 2).rebase(new values.SET(0, 1), true),
+	new values.SET(1, 2));
 t.deepEqual(
-	new values.SET(0, 1, 0).rebase(new values.SET(0, 2, 1) ),
+	new values.SET(0, 1).rebase(new values.SET(0, 2), true),
 	new values.NO_OP());
 
+t.deepEqual(
+	new values.SET(0, 2).rebase(new values.MATH("add", 3)),
+	new values.SET(3, 5));
+t.deepEqual(
+	new values.SET(0, "2").rebase(new values.MATH("add", 3)),
+	null);
+t.deepEqual(
+	new values.SET(0, "2").rebase(new values.MATH("add", 3), true),
+	new values.SET(0, "2"));
+
+t.deepEqual(
+	new values.MATH("add", 1).rebase(new values.NO_OP() ),
+	new values.MATH("add", 1));
 t.deepEqual(
 	new values.MATH("add", 2).rebase(new values.MATH("add", 1) ),
 	new values.MATH("add", 2));
@@ -161,6 +174,16 @@ t.notOk(
 t.deepEqual(
 	new values.MATH("xor", 3).rebase(new values.MATH("xor", 12) ),
 	new values.MATH("xor", 3));
+
+t.deepEqual(
+	new values.MATH("add", 3).rebase(new values.SET(0, 2) ),
+	new values.MATH("add", 3));
+t.notOk(
+	new values.MATH("add", 3).rebase(new values.SET(0, "2"))
+	);
+t.deepEqual(
+	new values.MATH("add", 3).rebase(new values.SET(0, "2"), true),
+	new values.NO_OP());
 
 
     t.end();
