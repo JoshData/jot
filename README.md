@@ -97,9 +97,9 @@ Here's example code that follows the example in the introduction:
 	 *
 	 */
 
-	var user1 = jot.LIST([
-		jot.REN("key1", "title"),
-		jot.REN("key2", "count")
+	var user1 = new jot.LIST([
+		new jot.REN("key1", "title"),
+		new jot.REN("key2", "count")
 	]);
 
 	/* User 2 makes changes to the document's values so
@@ -109,9 +109,9 @@ Here's example code that follows the example in the introduction:
 	 *
 	 */
 
-	var user2 = jot.LIST([
-		jot.OBJECT_APPLY("key1", jot.SET("Hello World!", "My Program")),
-		jot.OBJECT_APPLY("key2", jot.MATH('add', 10))
+	var user2 = new jot.LIST([
+		new jot.OBJECT_APPLY("key1", new jot.SET("Hello World!", "My Program")),
+		new jot.OBJECT_APPLY("key2", new jot.MATH('add', 10))
 	]);
 
 	/* You can't do this! */
