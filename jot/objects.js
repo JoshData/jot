@@ -134,9 +134,10 @@ exports.PUT.prototype.rebase = function (other) {
 
 ////
 
-exports.REM = function (key) {
+exports.REM = function (key, old_value) {
 	if (key == null) throw "invalid arguments";
 	this.key = key;
+	this.old_value = old_value;
 }
 
 exports.REM.prototype.apply = function (document) {
