@@ -170,7 +170,7 @@ t.deepEqual(
 	null);
 t.deepEqual(
 	new values.SET(0, "2").rebase(new values.MATH("add", 3), true),
-	new values.SET(0, "2"));
+	new values.SET(3, "2"));
 
 t.deepEqual(
 	new values.MATH("add", 1).rebase(new values.NO_OP() ),

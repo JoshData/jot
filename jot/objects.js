@@ -53,9 +53,35 @@ exports.PUT = function (key, value) {
 	this.key = key;
 	this.value = value;
 }
-
 exports.PUT.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 exports.PUT.prototype.type = ['objects', 'PUT'];
+
+exports.REM = function (key, old_value) {
+	if (key == null) throw "invalid arguments";
+	this.key = key;
+	this.old_value = old_value;
+}
+exports.REM.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.REM.prototype.type = ['objects', 'REM'];
+
+exports.REN = function (old_key, new_key) {
+	if (old_key == null || new_key == null) throw "invalid arguments";
+	this.old_key = old_key;
+	this.new_key = new_key;
+}
+exports.REN.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.REN.prototype.type = ['objects', 'REN'];
+
+
+exports.APPLY = function (key, op) {
+	if (key == null || op == null) throw "invalid arguments";
+	this.key = key;
+	this.op = op;
+}
+exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.APPLY.prototype.type = ['objects', 'APPLY'];
+
+//////////////////////////////////////////////////////////////////////////////
 
 exports.PUT.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new object that is
@@ -107,45 +133,41 @@ exports.PUT.prototype.compose = function (other) {
 	return null;
 }
 
-exports.PUT.prototype.rebase = function (other) {
-	/* Transforms this operation so that it can be composed *after* the other
-	   operation to yield the same logical effect. Returns null on conflict. */
-
-	if (other instanceof values.NO_OP)
-		return this;
-
-	if (other instanceof exports.PUT) {
+exports.PUT.prototype.rebase_functions = [
+	[exports.PUT, function(other, conflictless) {
 		if (this.key == other.key) {
 			// Two PUTs on the same key with the same value
 			//   either can become a no-op.
-			if (this.value == other.value)
-				return new values.NO_OP();
+			if (deepEqual(this.value, other.value))
+				return [new values.NO_OP(), new values.NO_OP()];
+
+			// If they set the key to different values and conflictless is
+			// true, then we clobber the one whose value has a lower sort order.
+			// The one that remains becomes an APPLY(SET) to change the value.
+			if (conflictless && jot.cmp(this.value, other.value) < 0)
+				return [
+					new values.NO_OP(), // clobbered
+					new exports.APPLY(other.key, new values.SET(this.value, other.value))
+				];
+
+			// cmp > 0 is handled by a call to this function with the arguments
+			// reversed, so we don't need to explicltly code that logic.
 
 			// But with different values it is a conflict.
 			return null;
 		} else {
 			// Two PUTs on different keys don't bother each other.
-			return this;
+			return [this, other];
 		}
-	}
+	}]
 
 	// None of the other object operations could have applied
 	// simultaneously because while PUT assumes the key did not
 	// exist, the other operations assume the key did exist.
-
-	return null;
-}
+]
 
 ////
 
-exports.REM = function (key, old_value) {
-	if (key == null) throw "invalid arguments";
-	this.key = key;
-	this.old_value = old_value;
-}
-
-exports.REM.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.REM.prototype.type = ['objects', 'REM'];
 
 exports.REM.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new object that is
@@ -191,50 +213,43 @@ exports.REM.prototype.compose = function (other) {
 	return null;
 }
 
-exports.REM.prototype.rebase = function (other) {
-	/* Transforms this operation so that it can be composed *after* the other
-	   operation to yield the same logical effect. Returns null on conflict. */
-
-	if (other instanceof values.NO_OP)
-		return this;
-
-	if (other instanceof exports.REM) {
+exports.REM.prototype.rebase_functions = [
+	[exports.REM, function(other, conflictless) {
 		// Two REMs on the same key - either can become a no-op.
 		if (this.key == other.key)
-			return new values.NO_OP();
+			return [new values.NO_OP(), new values.NO_OP()];
 
 		// Otherwise on different keys, they two REMs don't bother each other.
-		return this;
-	}
+		return [this, other];
+	}],
 
-	if (other instanceof exports.REN) {
+	[exports.REN, function(other, conflictless) {
 		// A rename on the same key - update this's key.
 		if (this.key == other.old_key)
-			return new exports.REM(other.new_key);
-		return this;
-	}
+			return [
+				new exports.REM(other.new_key, this.old_value),
+				new values.NO_OP()
+			];
+		return [this, other];
+	}],
 
-	if (other instanceof exports.APPLY) {
-		// An APPLY on the same key. The REM will take precedence.
-		return this;
-	}
+	[exports.APPLY, function(other, conflictless) {
+		// If an APPLY applied simultaneously, then update this
+		// operation's old_value. It takes precedence. The APPLY
+		// becomes a no-op.
+		if (this.key == other.key)
+			return [
+				new exports.REM(this.key, other.op.apply(this.old_value)),
+				new values.NO_OP()
+			];
+		return [this, other];
+	}]
 
 	// PUT could not have applied simultaneously because while this
 	// operation assumes the key did exist, PUT assumes the key did not exist.
-
-	return null;
-}
+]
 
 ////
-
-exports.REN = function (old_key, new_key) {
-	if (old_key == null || new_key == null) throw "invalid arguments";
-	this.old_key = old_key;
-	this.new_key = new_key;
-}
-
-exports.REN.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.REN.prototype.type = ['objects', 'REN'];
 
 exports.REN.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new object that is
@@ -281,64 +296,67 @@ exports.REN.prototype.compose = function (other) {
 	return null;
 }
 
-exports.REN.prototype.rebase = function (other) {
-	/* Transforms this operation so that it can be composed *after* the other
-	   operation to yield the same logical effect. Returns null on conflict. */
-
-	if (other instanceof values.NO_OP)
-		return this;
-
-	if (other instanceof exports.REN) {
+exports.REN.prototype.rebase_functions = [
+	[exports.REN, function(other, conflictless) {
 		// Two RENs on the same key.
 		if (this.old_key == other.old_key) {
 			// If they both rename to the same key, then either can
 			// become a no-op.
 			if (this.new_key == other.new_key)
-				return new values.NO_OP();
+				return [new values.NO_OP(), new values.NO_OP()];
+
+			// If they rename to different keys, and if conflictless
+			// is true, then rename to the one with the higher sort
+			// order.
+			if (conflictless && jot.cmp(this.new_key, other.new_key) < 0)
+				return [
+					new values.NO_OP(), // clobber
+					new exports.REN(this.new_key, other.new_key),
+				];
+
+			// cmp > 0 is handled by a call to other.rebase_functions(this).
+
 			return null; // conflict
 		}
 
 		// The two RENs rename different keys to the same thing.
-		// Conflict.
-		if (this.new_key == other.new_key)
+		if (this.new_key == other.new_key) {
+			// If conflictless is true, clobber the one that modified
+			// a key with the lower sort order.
+			if (conflictless && jot.cmp(this.old_key, other.old_key) < 0)
+				return [
+					new values.NO_OP(), // clobber
+					other,
+				];
+
+			// cmp > 0 is handled by a call to other.rebase_functions(this).
+
 			return null;
+		}
 
 		// Otherwise on different keys, they two RENs don't bother each other.
-		return this;
-	}
+		return [this, other];
+	}],
 
-	if (other instanceof exports.REM) {
-		// A simultaneous delete of the same key. The delete
-		// takes precedence.
+	[exports.APPLY, function(other, conflictless) {
+		// If an APPLY applied simultaneously, there is no conflict but
+		// the APPLY's key must be updated.
 		if (this.old_key == other.key)
-			return new values.NO_OP();
+			return [
+				this,
+				new exports.APPLY(this.new_key, other.op)
+			];
 
-		// Otherwise they don't bother each other.
-		return this;
-	}
-
-	if (other instanceof exports.APPLY) {
-		// An APPLY on the same key. The REN will take precedence.
-		return this;
-	}
+		// On different keys they don't bother each other.
+		return [this, other];
+	}]
 
 	// PUT could not have applied simultaneously because while this
 	// operation assumes the key did exist, PUT assumes the key did not exist.
-
-	return null;
-}
+];
 
 //////////////////////////////////////////////////////////////////////////////
 
-
-exports.APPLY = function (key, op) {
-	if (key == null || op == null) throw "invalid arguments";
-	this.key = key;
-	this.op = op;
-}
-
-exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.APPLY.prototype.type = ['objects', 'APPLY'];
 
 exports.APPLY.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new object that is
@@ -396,39 +414,21 @@ exports.APPLY.prototype.compose = function (other) {
 	return null;
 }
 
-exports.APPLY.prototype.rebase = function (other) {
-	/* Transforms this operation so that it can be composed *after* the other
-	   operation to yield the same logical effect. Returns null on conflict. */
-
-	if (other instanceof values.NO_OP)
-		return this;
-	
-	if (other instanceof exports.REM) {
-		// REM takes precedence
-		if (other.key == this.key)
-			return new values.NO_OP();
-		else
-			return this;
-	}
-	
-	if (other instanceof exports.REN) {
-		if (this.key == other.old_key)
-			return new exports.APPLY(other.new_key, this.op);
-		else
-			return this;
-	}
-
-	if (other instanceof exports.APPLY) {
+exports.APPLY.prototype.rebase_functions = [
+	[exports.APPLY, function(other, conflictless) {
 		if (this.key != other.key) {
 			// Changes to different keys are independent.
-			return this;
+			return [this, other];
 		}
 
 		// Operated on the same key. Rebase the sub-operations.
-		var op2 = this.op.rebase(other.op);
-		if (op2)
-			return new exports.APPLY(this.key, op2);
-	}
-
-	return null;
-}
+		// Only succeeds if the rebase both ways is possible.
+		var opa = this.op.rebase(other.op, conflictless);
+		var opb = other.op.rebase(this.op, conflictless);
+		if (opa && opb)
+			return [
+				(opa instanceof values.NO_OP) ? new values.NO_OP() : new exports.APPLY(this.key, opa),
+				(opb instanceof values.NO_OP) ? new values.NO_OP() : new exports.APPLY(other.key, opb)
+			];
+	}]
+]

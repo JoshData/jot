@@ -184,6 +184,11 @@ the character at index 6. Rebasing B against A yields a new operation B' that ca
 applied sequentially *after* A but causes the same logical effect as the original B.
 In this example, B' is the deletion of the character at index 9.
 
+To get B' from B, call `b.rebase(a)`. Not all operations can be rebased against
+all other operations. When the logical intent of both operations cannot be preserved,
+such as if there are two edits to the same character in a string, then `rebase`
+returns null, signaling a conflict. But see the section Conflictless Rebase below.
+
 Applying two operations in sequence is called composition and is denoted with the
 symbol ○. And lets denote B rebased against A as "B / A". So before the rebase we
 have two operations A and B. After the rebase we have A and B/A, such that A ○ (B/A)
@@ -191,6 +196,16 @@ combines the logical intent of both A and B.
 
 The rebase operation satisfies the constraints that 1) A ○ (B/A) == B ○ (A/B), and
 2) C / (A ○ B) == (C / A) / B.
+
+Conflictless Rebase
+-------------------
+
+The rebase method takes a second optional argument `conflictless`. When `conflictless`
+is true, `rebase` tries harder to avoid returning null. It may return an operation
+that while not preseving the logical intent of the operation at least makes a
+rebase possible, avoiding hard-to-handle conflict situations. In the case of two
+edits to the same character in a string, a conflictless rebase will cause one of
+the edits to be squashed in a predictable way.
 
 Real Time Collaboration
 -----------------------

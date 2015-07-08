@@ -14,7 +14,8 @@
 	new values.SET(old_value, new_value)
 	
 	The atomic replacement of one value with another. Works for
-	any data type.
+	any data type. Supports a conflictless rebase with other SET
+	and MATH operations.
 	
 
 	new values.MATH(operator, operand)
@@ -34,6 +35,8 @@
 	
 	Note that by commutative we mean that the operation is commutative
 	under composition, i.e. add(1)+add(2) == add(2)+add(1).
+
+	MATH supports a conflictless rebase with other MATH and SET operations.
 	
 	*/
 	
@@ -45,9 +48,28 @@ var jot = require("./index.js");
 exports.NO_OP = function() {
 	/* An operation that makes no change to the document. */
 }
-
 exports.NO_OP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 exports.NO_OP.prototype.type = ['values', 'NO_OP'];
+
+exports.SET = function(old_value, new_value) {
+	/* An operation that replaces the document with a new (atomic) value. */
+	this.old_value = old_value;
+	this.new_value = new_value;
+}
+exports.SET.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.SET.prototype.type = ['values', 'SET'];
+
+exports.MATH = function(operator, operand) {
+	/* An operation that applies addition, multiplication, or rotation (modulus addition)
+	   to a numeric document. */
+	this.operator = operator;
+	this.operand = operand;
+}
+
+exports.MATH.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.MATH.prototype.type = ['values', 'MATH'];
+
+//////////////////////////////////////////////////////////////////////////////
 
 exports.NO_OP.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns the document
@@ -73,22 +95,7 @@ exports.NO_OP.prototype.compose = function (other) {
 	return other;
 }
 
-exports.NO_OP.prototype.rebase = function (other) {
-	/* Transforms this operation so that it can be composed *after* the other
-	   operation to yield the same logical effect. Returns null on conflict. */
-	return this;
-}
-
 //////////////////////////////////////////////////////////////////////////////
-
-exports.SET = function (old_value, new_value) {
-	/* An operation that replaces the document with a new (atomic) value. */
-	this.old_value = old_value;
-	this.new_value = new_value;
-}
-
-exports.SET.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.SET.prototype.type = ['values', 'SET'];
 
 exports.SET.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns the new
@@ -119,65 +126,74 @@ exports.SET.prototype.compose = function (other) {
 	return new exports.SET(this.old_value, other.apply(this.new_value)).simplify();
 }
 
-function cmp(a, b) {
-	if (a < b)
-		return -1;
-	if (a > b)
-		return 1;
-	return 0;
-}
+exports.SET.prototype.rebase_functions = [
+	// Rebase this against other and other against this.
 
-exports.SET.prototype.rebase = function (other, conflictless) {
-	/* Transforms this operation so that it can be composed *after* the other
-	   operation to yield the same logical effect. Returns null on conflict.
-	   If conflictless is true, tries extra hard to resolve a conflict in a
-	   sensible way but possibly by killing one operation or the other. */
+	[exports.SET, function(other, conflictless) {
+		// SET and SET.
 
-	if (other instanceof exports.NO_OP)
-		return this;
-
-	if (other instanceof exports.SET) {
-		// If they both set the the document to the same value, then this
-		// operation can become a no-op.
+		// If they both set the the document to the same value, then the one
+		// applied second (the one being rebased) becomes a no-op. Since the
+		// two parts of the return value are for each rebased against the
+		// other, both are returned as no-ops.
 		if (deepEqual(this.new_value, other.new_value))
-			return new exports.NO_OP();
+			return [new exports.NO_OP(), new exports.NO_OP()];
 		
 		// If they set the document to different values and conflictless is
 		// true, then we clobber the one whose value has a lower sort order.
-		else if (conflictless && cmp(this.new_value, other.new_value) < 0)
-			return new exports.NO_OP();
-		else if (conflictless && cmp(this.new_value, other.new_value) > 0)
-			return new exports.SET(other.new_value, this.new_value);
-	}
+		if (conflictless && jot.cmp(this.new_value, other.new_value) < 0)
+			return [new exports.NO_OP(), new exports.SET(this.new_value, other.new_value)];
 
-	if (other instanceof exports.MATH) {
-		// If the MATH operation can be applied to the new value, then
-		// apply it. 
+		// cmp > 0 is handled by a call to this function with the arguments
+		// reversed, so we don't need to explicltly code that logic.
+
+		// If conflictless is false, then we can't rebase the operations
+		// because we can't preserve the meaning of both. Return null to
+		// signal conflict.
+		return null;
+	}],
+
+	[exports.MATH, function(other, conflictless) {
+		// SET (this) and MATH (other). To get a consistent effect no matter
+		// which order the operations are applied in, we say the SET comes
+		// first and the MATH second. But since MATH only works for numeric
+		// types, this isn't always possible.
+
+		// When it's the SET being rebased, we have to update its old_value
+		// so that it matches the value of the document following the application
+		// of the MATH operation. We know what the document was because that's
+		// in old_value, so we can apply the MATH operation to it. Then to
+		// get the logical effect of applying MATH second (even though it's
+		// the SET being rebased, meaning it will be composed second), we
+		// apply the MATH operation to its new value.
 		try {
-			return new exports.SET(other.apply(this.old_value), other.apply(this.new_value));
+			// If the data types make this possible...
+			return [
+				new exports.SET(other.apply(this.old_value), other.apply(this.new_value)),
+				other // no change is needed when it is the MATH being rebased
+				];
 		} catch (e) {
-			// A SET to a string value can't be rebased on a MATH operation.
-			// If conflictless is true, prefer the SET.
+			// Data type mismatch, e.g. the SET sets the value to a string and
+			// so the MATH operation can't be applied. In this case, we simply
+			// always prefer the SET if we're asked for a conflictless rebase.
+			// But we still need to adjust the SET's old value because when
+			// rebasing the SET the MATH already did apply. That should never
+			// raise an exception because if the MATH operation is valid then
+			// it must be able to apply to SET's old_value. The MATH becomes a
+			// no-op.
 			if (conflictless)
-				return this;
+				return [
+					new exports.SET(other.apply(this.old_value), this.new_value),
+					new exports.NO_OP()
+					];
 		}
-	}
 
-	// Can't resolve conflict.
-	return null;
-}
+		// Can't resolve conflict.
+		return null;
+	}]
+];
 
 //////////////////////////////////////////////////////////////////////////////
-
-exports.MATH = function (operator, operand) {
-	/* An operation that applies addition, multiplication, or rotation (modulus addition)
-	   to a numeric document. */
-	this.operator = operator;
-	this.operand = operand;
-}
-
-exports.MATH.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.MATH.prototype.type = ['values', 'MATH'];
 
 exports.MATH.prototype.apply = function (document) {
 	/* Applies the operation to this.operand. Applies the operator/operand
@@ -259,36 +275,19 @@ exports.MATH.prototype.compose = function (other) {
 	return null; // no composition is possible
 }
 
-exports.MATH.prototype.rebase = function (other, conflictless) {
-	/* Transforms this operation so that it can be composed *after* the other
-	   operation to yield the same logical effect. Returns null on conflict. */
+exports.MATH.prototype.rebase_functions = [
+	// Rebase this against other and other against this.
 
-	if (other instanceof exports.NO_OP)
-		return this;
-
-	// Symmetric with SET.rebase.
-	if (other instanceof exports.SET) {
-		// Check if the MATH operation can be applied to SET's new value.
-		try {
-			new exports.SET(this.apply(other.old_value), this.apply(other.new_value));
-			// Operations are a go, so we can return this operation unchanged.
-			return this;
-		} catch (e) {
-			// If conflictless is true, prefer the SET by clobbering this operation.
-			if (conflictless)
-				return new exports.NO_OP();
-		}
-	}
-
-	if (other instanceof exports.MATH) {
+	[exports.MATH, function(other, conflictless) {
 		// Since the map operators are commutative, it doesn't matter which order
 		// they are applied in. That makes the rebase trivial -- if the operators
 		// are the same, then nothing needs to be done.
 		if (this.operator == other.operator) {
 			if (this.operator == "rot" && this.operand[1] != other.operand[1])
 				return null; // rot must have same modulus
-			return this;
+			return [this, other];
 		}
 		return null;
-	}
-}
+	}]
+];
+

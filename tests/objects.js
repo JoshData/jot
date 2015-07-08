@@ -64,21 +64,127 @@ t.deepEqual(
 // rebase
 
 t.deepEqual(
-	new objs.APPLY("a", new values.MATH("add", 2)).rebase(
-		new objs.APPLY("a", new values.MATH("add", 1))),
-	new objs.APPLY("a", new values.MATH("add", 2))
-	);
+	new objs.PUT("key", "value").rebase(
+		new objs.PUT("key", "value")),
+	new values.NO_OP()
+	)
+t.notOk(
+	new objs.PUT("key", "value1").rebase(
+		new objs.PUT("key", "value2")))
 t.deepEqual(
-	new objs.APPLY("a", new values.SET(0, 1)).rebase(
-		new objs.APPLY("a", new values.SET(0, 2))),
-	null
-	);
+	new objs.PUT("key", "value1").rebase(
+		new objs.PUT("key", "value2"), true),
+	new values.NO_OP())
 t.deepEqual(
-	new objs.APPLY("a", new values.SET(0, 2)).rebase(
-		new objs.APPLY("b", new values.SET(0, 1))),
-	new objs.APPLY("a", new values.SET(0, 2))
-	);
+	new objs.PUT("key", "value2").rebase(
+		new objs.PUT("key", "value1"), true),
+	new objs.APPLY("key", new values.SET("value1", "value2")))
 
+t.deepEqual(
+	new objs.REM("key", "value").rebase(
+		new objs.REM("key", "value")),
+	new values.NO_OP()
+	)
+t.deepEqual(
+	new objs.REM("key1", "value1").rebase(
+		new objs.REM("key2", "value2")),
+	new objs.REM("key1", "value1")
+	)
+
+t.deepEqual(
+	new objs.REM("key", "value").rebase(
+		new objs.REN("key", "newkey")),
+	new objs.REM("newkey", "value")
+	)
+t.deepEqual(
+	new objs.REM("key1", "value1").rebase(
+		new objs.REN("key2", "newkey")),
+	new objs.REM("key1", "value1")
+	)
+t.deepEqual(
+	new objs.REN("key", "newkey").rebase(
+		new objs.REM("key", "value")),
+	new values.NO_OP()
+	)
+t.deepEqual(
+	new objs.REN("key2", "newkey").rebase(
+		new objs.REM("key1", "value1")),
+	new objs.REN("key2", "newkey")
+	)
+
+t.deepEqual(
+	new objs.REM("key", "value").rebase(
+		new objs.APPLY("key", new values.SET("value", "new_value"))),
+	new objs.REM("key", "new_value")
+	)
+t.deepEqual(
+	new objs.APPLY("key", new values.SET("value", "new_value")).rebase(
+		new objs.REM("key", "value")),
+	new values.NO_OP()
+	)
+
+t.deepEqual(
+	new objs.REN("key", "newkey").rebase(
+		new objs.REN("key", "newkey")),
+	new values.NO_OP()
+	)
+t.notOk(
+	new objs.REN("key", "newkey1").rebase(
+		new objs.REN("key", "newkey2"))
+	)
+t.deepEqual(
+	new objs.REN("key", "newkey1").rebase(
+		new objs.REN("key", "newkey2"), true),
+	new values.NO_OP()
+	)
+t.deepEqual(
+	new objs.REN("key", "newkey2").rebase(
+		new objs.REN("key", "newkey1"), true),
+	new objs.REN("newkey1", "newkey2")
+	)
+t.notOk(
+	new objs.REN("key1", "newkey").rebase(
+		new objs.REN("key2", "newkey"))
+	)
+t.deepEqual(
+	new objs.REN("key1", "newkey").rebase(
+		new objs.REN("key2", "newkey"), true),
+	new values.NO_OP()
+	)
+t.deepEqual(
+	new objs.REN("key2", "newkey").rebase(
+		new objs.REN("key1", "newkey"), true),
+	new objs.REN("key2", "newkey")
+	)
+
+t.deepEqual(
+	new objs.REN("key", "newkey").rebase(
+		new objs.APPLY("key", new values.SET("value", "new_value"))),
+	new objs.REN("key", "newkey")
+	)
+t.deepEqual(
+	new objs.APPLY("key", new values.SET("value", "new_value")).rebase(
+		new objs.REN("key", "newkey")),
+	new objs.APPLY("newkey", new values.SET("value", "new_value"))
+	)
+
+t.deepEqual(
+	new objs.APPLY('key', new values.MATH("add", 3)).rebase(
+		new objs.APPLY('key', new values.MATH("add", 1))),
+	new objs.APPLY('key', new values.MATH("add", 3)));
+t.notOk(
+	new objs.APPLY('key', new values.SET("x", "y")).rebase(
+		new objs.APPLY('key', new values.SET("x", "z"))))
+t.deepEqual(
+	new objs.APPLY('key', new values.SET("x", "y")).rebase(
+		new objs.APPLY('key', new values.SET("x", "z")), true),
+	new values.NO_OP()
+	)
+t.deepEqual(
+	new objs.APPLY('key', new values.SET("x", "z")).rebase(
+		new objs.APPLY('key', new values.SET("x", "y")), true),
+	new objs.APPLY('key', new values.SET("y", "z"))
+	)
 
 // meta
 
