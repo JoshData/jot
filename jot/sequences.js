@@ -43,6 +43,7 @@
    */
    
 var deepEqual = require("deep-equal");
+var jot = require("./index.js");
 var values = require("./values.js");
 var LIST = require("./meta.js").LIST;
 
@@ -94,6 +95,9 @@ exports.SPLICE = function (pos, old_value, new_value, global_order) {
 	this.new_value = new_value;
 	this.global_order = global_order;
 }
+
+exports.SPLICE.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.SPLICE.prototype.type = ['sequences', 'SPLICE'];
 
 	// shortcuts
 	exports.INS = function (pos, value, global_order) {
@@ -232,6 +236,9 @@ exports.MOVE = function (pos, count, new_pos) {
 	this.new_pos = new_pos;
 }
 
+exports.MOVE.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.MOVE.prototype.type = ['sequences', 'MOVE'];
+
 exports.MOVE.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
 	   the same type as document but with the subrange moved. */
@@ -324,6 +331,9 @@ exports.APPLY = function (pos, op) {
 	this.pos = pos;
 	this.op = op;
 }
+
+exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.APPLY.prototype.type = ['sequences', 'APPLY'];
 
 exports.APPLY.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is

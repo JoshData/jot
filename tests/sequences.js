@@ -3,9 +3,21 @@ var values = require("../jot/values.js");
 var seqs = require("../jot/sequences.js");
 var jot = require("../jot");
 
-// apply
-//
 test('sequences', function(t) {
+
+// inspect
+
+t.equal(
+	new seqs.SPLICE(0, "1", "4").inspect(),
+	'<sequences.SPLICE {pos:0, old_value:"1", new_value:"4"}>');
+t.equal(
+	new seqs.MOVE(0, 2, 5).inspect(),
+	'<sequences.MOVE {pos:0, count:2, new_pos:5}>');
+t.equal(
+	new seqs.APPLY(0, new values.SET(1, 2)).inspect(),
+	'<sequences.APPLY {pos:0, op:<values.SET {old_value:1, new_value:2}>}>');
+
+// apply
 
 t.equal(
 	new seqs.SPLICE(0, "1", "4").apply("123"),

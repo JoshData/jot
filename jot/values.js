@@ -38,12 +38,16 @@
 	*/
 	
 var deepEqual = require("deep-equal");
+var jot = require("./index.js");
 
 //////////////////////////////////////////////////////////////////////////////
 
 exports.NO_OP = function() {
 	/* An operation that makes no change to the document. */
 }
+
+exports.NO_OP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.NO_OP.prototype.type = ['values', 'NO_OP'];
 
 exports.NO_OP.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns the document
@@ -82,6 +86,9 @@ exports.SET = function (old_value, new_value) {
 	this.old_value = old_value;
 	this.new_value = new_value;
 }
+
+exports.SET.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.SET.prototype.type = ['values', 'SET'];
 
 exports.SET.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns the new
@@ -168,6 +175,9 @@ exports.MATH = function (operator, operand) {
 	this.operator = operator;
 	this.operand = operand;
 }
+
+exports.MATH.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.MATH.prototype.type = ['values', 'MATH'];
 
 exports.MATH.prototype.apply = function (document) {
 	/* Applies the operation to this.operand. Applies the operator/operand

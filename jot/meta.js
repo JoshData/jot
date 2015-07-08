@@ -6,6 +6,7 @@
 
 	*/
 	
+var jot = require("./index.js");
 var values = require('./values.js');
 
 exports.LIST = function (ops) {
@@ -13,6 +14,9 @@ exports.LIST = function (ops) {
 	if (!(ops instanceof Array)) throw "Invalid Argument";
 	this.ops = ops;
 }
+
+exports.LIST.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.LIST.prototype.type = ['meta', 'LIST'];
 
 exports.LIST.prototype.apply = function (document) {
 	/* Applies the operation to a document.*/

@@ -4,9 +4,25 @@ var seqs = require("../jot/sequences.js");
 var objs = require("../jot/objects.js");
 var meta = require("../jot/meta.js");
 
+test('objects', function(t) {
+
+// inspect
+
+t.equal(
+	new objs.PUT("0", "1").inspect(),
+	'<objects.PUT {key:"0", value:"1"}>');
+t.equal(
+	new objs.REM("0", "1").inspect(),
+	'<objects.REM {key:"0", old_value:"1"}>');
+t.equal(
+	new objs.REN("0", "1").inspect(),
+	'<objects.REN {old_key:"0", new_key:"1"}>');
+t.equal(
+	new objs.APPLY("0", new values.SET(1, 2)).inspect(),
+	'<objects.APPLY {key:"0", op:<values.SET {old_value:1, new_value:2}>}>');
+
 // apply
 
-test('objects', function(t) {
 t.deepEqual(
 	new objs.PUT("a", "b")
 		.apply({}),

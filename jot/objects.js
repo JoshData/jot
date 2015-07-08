@@ -34,6 +34,7 @@
    */
    
 var deepEqual = require("deep-equal");
+var jot = require("./index.js");
 var values = require("./values.js");
 
 //////////////////////////////////////////////////////////////////////////////
@@ -52,6 +53,9 @@ exports.PUT = function (key, value) {
 	this.key = key;
 	this.value = value;
 }
+
+exports.PUT.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.PUT.prototype.type = ['objects', 'PUT'];
 
 exports.PUT.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new object that is
@@ -140,6 +144,9 @@ exports.REM = function (key, old_value) {
 	this.old_value = old_value;
 }
 
+exports.REM.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.REM.prototype.type = ['objects', 'REM'];
+
 exports.REM.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new object that is
 	   the same type as document but with the change made. */
@@ -225,6 +232,9 @@ exports.REN = function (old_key, new_key) {
 	this.old_key = old_key;
 	this.new_key = new_key;
 }
+
+exports.REN.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.REN.prototype.type = ['objects', 'REN'];
 
 exports.REN.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new object that is
@@ -326,6 +336,9 @@ exports.APPLY = function (key, op) {
 	this.key = key;
 	this.op = op;
 }
+
+exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.APPLY.prototype.type = ['objects', 'APPLY'];
 
 exports.APPLY.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new object that is

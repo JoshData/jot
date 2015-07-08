@@ -1,9 +1,22 @@
 var test = require('tap').test;
 var values = require("../jot/values.js");
 
+test('values', function(t) {
+
+// inspect
+
+t.equal(
+	new values.NO_OP().inspect(),
+	"<values.NO_OP {}>");
+t.equal(
+	new values.SET(3, 4).inspect(),
+	'<values.SET {old_value:3, new_value:4}>');
+t.equal(
+	new values.MATH('add', 4).inspect(),
+	'<values.MATH {operator:"add", operand:4}>');
+
 // apply
 
-test('values', function(t) {
 t.equal(
 	new values.NO_OP().apply("1"),
 	"1");
