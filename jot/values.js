@@ -283,10 +283,35 @@ exports.MATH.prototype.rebase_functions = [
 		// they are applied in. That makes the rebase trivial -- if the operators
 		// are the same, then nothing needs to be done.
 		if (this.operator == other.operator) {
-			if (this.operator == "rot" && this.operand[1] != other.operand[1])
-				return null; // rot must have same modulus
-			return [this, other];
+			// rot must have same modulus
+			if (this.operator != "rot" || this.operand[1] == other.operand[1])
+				return [this, other];
 		}
+
+		// If we are given two operators, then we don't know which order they
+		// should be applied in. In a conflictless rebase, we can choose on
+		// arbitrarily (but predictably). They all operate over numbers so they
+		// can be applied in either order, it's just that the resulting value
+		// will depend on the order. We sort on both operator and operand because
+		// in a rot the operand contains information that distinguishes them.
+		if (conflictless) {
+			// The one with the lower sort order applies last. So if this has
+			// a lower sort order, then when rebasing this we don't make a
+			// change. But when rebasing other, we have to undo this, then
+			// apply other, then apply this again.
+			if (jot.cmp([this.operator, this.operand], [other.operator, other.operand]) < 0) {
+				return [
+					this,
+					new jot.LIST([this.invert(), other, this])
+				];
+			}
+
+			// if cmp == 0, then the operators were the same and we handled
+			// it above. if cmp > 0 then we handle this on the call to
+			// other.rebase(this).
+
+		}
+
 		return null;
 	}]
 ];

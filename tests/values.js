@@ -1,5 +1,6 @@
 var test = require('tap').test;
 var values = require("../jot/values.js");
+var LIST = require("../jot/meta.js").LIST;
 
 test('values', function(t) {
 
@@ -188,6 +189,14 @@ t.deepEqual(
 	new values.MATH("rot", [1, 3]));
 t.notOk(
 	new values.MATH("mult", 2).rebase(new values.MATH("add", 1) )
+	);
+t.deepEqual(
+	new values.MATH("mult", 2).rebase(new values.MATH("add", 1), true),
+	new LIST([new values.MATH("add", -1), new values.MATH("mult", 2), new values.MATH("add", 1)])
+	);
+t.deepEqual(
+	new values.MATH("add", 1).rebase(new values.MATH("mult", 2), true),
+	new values.MATH("add", 1)
 	);
 t.deepEqual(
 	new values.MATH("xor", 3).rebase(new values.MATH("xor", 12) ),
