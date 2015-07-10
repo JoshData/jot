@@ -157,9 +157,9 @@ exports.SPLICE.prototype.compose = function (other) {
 	if (other instanceof values.NO_OP)
 		return this;
 
-	// a SET clobbers this operation
+	// a SET clobbers this operation, but its old_value must be updated
 	if (other instanceof values.SET)
-		return other.simplify();
+		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
 
 	if (other instanceof exports.SPLICE) {
 		if (this.pos <= other.pos && other.pos+other.old_value.length <= this.pos+this.new_value.length) {
@@ -190,6 +190,19 @@ exports.SPLICE.prototype.compose = function (other) {
 		}
 		// TODO: a and b partially overlap with each other
 	}
+
+	// a SPLICE composed with an APPLY that applies within the range modified
+	// by the splice
+	if (other instanceof exports.APPLY && other.pos >= this.pos && other.pos < this.pos + this.old_value.length)
+		return new exports.SPLICE(
+			this.pos,
+			this.old_value,
+			concat3(
+				this.new_value.slice(0, other.pos-this.pos),
+				unelem(other.apply(elem(this.new_value, other.pos-this.pos))),
+				this.new_value.slice(other.pos-this.pos+1)
+				))
+				.simplify();
 
 	// No composition possible.
 	return null;
@@ -397,9 +410,9 @@ exports.MOVE.prototype.compose = function (other) {
 	if (other instanceof values.NO_OP)
 		return this;
 
-	// a SET clobbers this operation
+	// a SET clobbers this operation, but its old_value must be updated
 	if (other instanceof values.SET)
-		return other.simplify();
+		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
 
 	// the elements are immediately deleted next
 	if (other instanceof exports.SPLICE && this.new_pos == other.pos && this.count == other.old_value.length && other.new_value.length == 0)
@@ -469,13 +482,21 @@ exports.APPLY.prototype.compose = function (other) {
 	if (other instanceof values.NO_OP)
 		return this;
 
-	// a SET clobbers this operation
+	// a SET clobbers this operation, but its old_value must be updated
 	if (other instanceof values.SET)
-		return other.simplify();
+		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
 
 	// a SPLICE that includes this operation's position clobbers the operation
 	if (other instanceof exports.SPLICE && this.pos >= other.pos && this.pos < other.pos + other.old_value.length)
-		return other;
+		return new exports.SPLICE(
+			other.pos,
+			concat3(
+				other.old_value.slice(0, this.pos-other.pos),
+				unelem(this.invert().apply(elem(other.old_value, this.pos-other.pos))),
+				other.old_value.slice(this.pos-other.pos+1)
+				),
+			other.new_value)
+				.simplify();
 
 	// two APPLYs on the same element, with composable sub-operations
 	if (other instanceof exports.APPLY && this.pos == other.pos) {

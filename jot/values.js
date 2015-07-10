@@ -251,8 +251,8 @@ exports.MATH.prototype.compose = function (other) {
 	if (other instanceof exports.NO_OP)
 		return this;
 
-	if (other instanceof exports.SET)
-		return other; // wipes away this operation
+	if (other instanceof exports.SET) // wipes away this, bust must adjust old_value
+		return new exports.SET(this.invert().apply(other.old_value), other.new_value).simplify();
 
 	if (other instanceof exports.MATH) {
 		// two adds just add the operands

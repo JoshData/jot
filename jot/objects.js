@@ -116,9 +116,9 @@ exports.PUT.prototype.compose = function (other) {
 	if (other instanceof values.NO_OP)
 		return this;
 
-	// a SET clobbers this operation
+	// a SET clobbers this operation, but its old_value must be updated
 	if (other instanceof values.SET)
-		return other.simplify();
+		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
 
 	if (other instanceof exports.REM && this.key == other.key)
 		return new values.NO_OP();
@@ -202,9 +202,9 @@ exports.REM.prototype.compose = function (other) {
 	if (other instanceof values.NO_OP)
 		return this;
 
-	// a SET clobbers this operation
+	// a SET clobbers this operation, but its old_value must be updated
 	if (other instanceof values.SET)
-		return other.simplify();
+		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
 
 	if (other instanceof exports.PUT && this.key == other.key)
 		return new exports.APPLY(this.key, values.SET(other.value));
@@ -285,9 +285,9 @@ exports.REN.prototype.compose = function (other) {
 	if (other instanceof values.NO_OP)
 		return this;
 
-	// a SET clobbers this operation
+	// a SET clobbers this operation, but its old_value must be updated
 	if (other instanceof values.SET)
-		return other.simplify();
+		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
 
 	if (other instanceof exports.REM && this.new_key == other.key)
 		return new exports.REM(this.old_key);
@@ -395,9 +395,9 @@ exports.APPLY.prototype.compose = function (other) {
 	if (other instanceof values.NO_OP)
 		return this;
 
-	// a SET clobbers this operation
+	// a SET clobbers this operation, but its old_value must be updated
 	if (other instanceof values.SET)
-		return other.simplify();
+		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
 
 	// APPLY followed by a REM clobbers this operation
 	if (other instanceof exports.REM && this.key == other.key)

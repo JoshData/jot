@@ -140,6 +140,11 @@ t.deepEqual(
 		new values.MATH("xor", 3) ),
 	new values.MATH("xor", 15));
 
+t.deepEqual(
+	new values.MATH("add", 1).compose(
+		new values.SET(2, 3) ),
+	new values.SET(1, 3));
+
 // rebase
 
 t.deepEqual(
