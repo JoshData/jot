@@ -48,14 +48,18 @@ var LIST = require("./meta.js").LIST;
 // utilities
 
 function elem(seq, pos) {
-	if (seq instanceof String)
+	// get an element of the sequence
+	if (typeof seq == "string")
 		return seq.charAt(pos);
-	return seq[pos];
+	else // is an array
+		return seq[pos];
 }
-function unelem(elem) {
-	if (elem instanceof String)
-		return elem;
-	return [elem];
+function unelem(elem, seq) {
+	// turn an element into a one-item sequence
+	if (typeof seq == "string")
+		return elem; // characters and strings are all the same
+	else // is an array
+		return [elem];
 }
 function concat2(item1, item2) {
 	if (item1 instanceof String)
@@ -199,7 +203,7 @@ exports.SPLICE.prototype.compose = function (other) {
 			this.old_value,
 			concat3(
 				this.new_value.slice(0, other.pos-this.pos),
-				unelem(other.apply(elem(this.new_value, other.pos-this.pos))),
+				unelem(other.apply(elem(this.new_value, other.pos-this.pos)), this.old_value),
 				this.new_value.slice(other.pos-this.pos+1)
 				))
 				.simplify();
@@ -349,13 +353,13 @@ exports.SPLICE.prototype.rebase_functions = [
 		// operates on, use that.
 		var old_value = concat3(
 			this.old_value.slice(0, other.pos-this.pos),
-			unelem(other.op.apply(elem(this.old_value, other.pos-this.pos))),
+			unelem(other.op.apply(elem(this.old_value, other.pos-this.pos)), this.old_value),
 			this.old_value.slice(other.pos-this.pos+1));
 		if (this.new_value.length == this.old_value.length) {
 			try {
 				var new_value = concat3(
 					this.new_value.slice(0, other.pos-this.pos),
-					unelem(other.op.apply(elem(this.new_value, other.pos-this.pos))),
+					unelem(other.op.apply(elem(this.new_value, other.pos-this.pos)), this.old_value),
 					this.new_value.slice(other.pos-this.pos+1));
 				return [
 					new exports.SPLICE(this.pos, old_value, new_value),
@@ -454,7 +458,7 @@ exports.APPLY.prototype.apply = function (document) {
 	   the same type as document but with the element modified. */
 	return concat3(
 		document.slice(0, this.pos),
-		unelem(this.op.apply(elem(document, this.pos))),
+		unelem(this.op.apply(elem(document, this.pos), document)),
 		document.slice(this.pos+1, document.length));
 	return document;
 }
@@ -492,7 +496,7 @@ exports.APPLY.prototype.compose = function (other) {
 			other.pos,
 			concat3(
 				other.old_value.slice(0, this.pos-other.pos),
-				unelem(this.invert().apply(elem(other.old_value, this.pos-other.pos))),
+				unelem(this.invert().apply(elem(other.old_value, this.pos-other.pos)), other.old_value),
 				other.old_value.slice(this.pos-other.pos+1)
 				),
 			other.new_value)
