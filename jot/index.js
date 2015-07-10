@@ -39,6 +39,7 @@ exports.SPLICE = sequences.SPLICE;
 exports.INS = sequences.INS;
 exports.DEL = sequences.DEL;
 exports.ARRAY_APPLY = sequences.APPLY;
+exports.MAP = sequences.MAP;
 exports.PROP = objects.PROP;
 exports.PUT = objects.PUT;
 exports.REN = objects.REN;

@@ -219,6 +219,23 @@ t.deepEqual(
 	new seqs.SPLICE(0, [1,2,3], [4,5,6]).rebase(
 		new seqs.APPLY(0, new values.MATH("add", 1))),
 	new seqs.SPLICE(0, [2,2,3], [5,5,6]));
+t.deepEqual(
+	new seqs.SPLICE(1, [1,2,3], [4,5]).rebase(
+		new seqs.MAP(new values.MATH("add", 1))),
+	new seqs.SPLICE(1, [2,3,4], [5,6]));
+t.deepEqual(
+	new seqs.MAP(new values.MATH("add", 1)).rebase(
+		new seqs.SPLICE(1, [1,2,3], [4,5])),
+	new seqs.MAP(new values.MATH("add", 1)));
+
+t.deepEqual(
+	new seqs.MOVE(1, 1, 2).rebase(
+		new seqs.MAP(new values.MATH("add", 1))),
+	new seqs.MOVE(1, 1, 2));
+t.deepEqual(
+	new seqs.MAP(new values.MATH("add", 1)).rebase(
+		new seqs.MOVE(1, 1, 2)),
+	new seqs.MAP(new values.MATH("add", 1)));
 
 t.deepEqual(
 	new seqs.APPLY(555, new values.MATH("add", 3)).rebase(
@@ -247,6 +264,26 @@ t.deepEqual(
 	new seqs.APPLY(555, new values.MATH("add", 3)).rebase(
 		new seqs.MOVE(555, 3, 0)),
 	new seqs.APPLY(0, new values.MATH("add", 3)));
+
+t.deepEqual(
+	new seqs.APPLY(555, new values.MATH("add", 3)).rebase(
+		new seqs.MAP(new values.MATH("add", 1))),
+	new seqs.APPLY(555, new values.MATH("add", 3)));
+t.deepEqual(
+	new seqs.MAP(new values.MATH("add", 1)).rebase(
+		new seqs.APPLY(555, new values.MATH("add", 3))),
+	new seqs.MAP(new values.MATH("add", 1)));
+t.notOk(
+	new seqs.MAP(new values.MATH("add", 1)).rebase(
+		new seqs.APPLY(555, new values.MATH("mult", 2))));
+
+t.deepEqual(
+	new seqs.MAP(new values.MATH("add", 1)).rebase(
+		new seqs.MAP(new values.MATH("add", 3))),
+	new seqs.MAP(new values.MATH("add", 1)));
+t.notOk(
+	new seqs.MAP(new values.MATH("add", 1)).rebase(
+		new seqs.MAP(new values.MATH("mult", 3))));
 
 // from_string_rep
 

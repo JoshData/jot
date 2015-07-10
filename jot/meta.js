@@ -25,7 +25,7 @@ exports.LIST.prototype.apply = function (document) {
 	return document;
 }
 
-exports.LIST.prototype.simplify = function () {
+exports.LIST.prototype.simplify = function (aggressive) {
 	/* Returns a new LIST operation that is a simpler version
 	   of this operation. Composes consecutive operations where
 	   possible and removes no-ops. Returns NO_OP if the result
@@ -53,7 +53,7 @@ exports.LIST.prototype.simplify = function () {
 					break;
 
 				} else {
-					if (j > 0) {
+					if (j > 0 && aggressive) {
 						// They do not compose, but we may be able to
 						// move it earlier in the list so that we could
 						// compose it with another operation. op can be

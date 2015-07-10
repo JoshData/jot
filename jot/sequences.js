@@ -37,7 +37,12 @@
     
     To replace an element at index 2 with a new value:
     
-      APPLY(2, new values.SET("old_value", "new_value"))
+      new sequences.APPLY(2, new values.SET("old_value", "new_value"))
+
+   new sequences.MAP(operation)
+
+    Applies another sort of operation to every element of the array.
+
    */
    
 var deepEqual = require("deep-equal");
@@ -130,6 +135,13 @@ exports.APPLY = function (pos, op) {
 }
 exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 exports.APPLY.prototype.type = ['sequences', 'APPLY'];
+
+exports.MAP = function (op) {
+	if (op == null) throw "Invalid Argument";
+	this.op = op;
+}
+exports.MAP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.MAP.prototype.type = ['sequences', 'MAP'];
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -375,6 +387,35 @@ exports.SPLICE.prototype.rebase_functions = [
 				new exports.SPLICE(this.pos, old_value, this.new_value),
 				new value.NO_OP()
 			];
+	}],
+
+	[exports.MAP, function(other, conflictless) {
+		// Handle this like we handle SET and APPLY...
+		//
+		// SPLICE (this) and MAP (other). To get a consistent effect no matter
+		// which order the operations are applied in, we say the SPLICE comes
+		// first and the MAP second. But the MAP operation may not be able to
+		// apply to the new sequence values, so this may not be possible.
+
+		try {
+			// If this is possible...
+			return [
+				new exports.SPLICE(this.pos, other.apply(this.old_value), other.apply(this.new_value)),
+				other // no change is needed when it is the MAP being rebased
+				];
+		} catch (e) {
+			// Data type mismatch, e.g. the SPLICE sets an element to a value
+			// the MAP's operation can't apply to. For a conflictless rebase,
+			// prefer the SPLICE.
+			if (conflictless)
+				return [
+					new exports.SPLICE(this.pos, other.apply(this.old_value), this.new_value),
+					new exports.NO_OP()
+					];
+		}
+
+		// Can't resolve conflict.
+		return null;
 	}]
 ];
 
@@ -441,17 +482,21 @@ exports.MOVE.prototype.rebase_functions = [
 		];
 	}],
 	[exports.APPLY, function(other, conflictless) {
-		// Apply never changes indexes, so the MOVE is unaffected.
+		// APPLY never changes indexes, so the MOVE is unaffected.
 		// But the MOVE shifts indexes so the APPLY must be adjusted.
 		return [
 			this,
 			new exports.APPLY(map_index(other.pos, this), other.op)
 		];
 	}],
+	[exports.MAP, function(other, conflictless) {
+		// The MOVE changes the order but not the values and the MAP changes
+		// values but doesn't care about order, so they don't bother each other.
+		return [this, other];
+	}]
 ];
 
 //////////////////////////////////////////////////////////////////////////////
-
 
 exports.APPLY.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
@@ -526,6 +571,109 @@ exports.APPLY.prototype.rebase_functions = [
 			return [
 				(opa instanceof values.NO_OP) ? new values.NO_OP() : new exports.APPLY(this.pos, opa),
 				(opb instanceof values.NO_OP) ? new values.NO_OP() : new exports.APPLY(other.pos, opb)
+			];
+	}],
+
+	[exports.MAP, function(other, conflictless) {
+		// APPLY and MAP. The MAP is assumed to execute first, so when we rebase the APPLY
+		// we rebase it against the MAP operation that had run at that index. When
+		// we're given a MAP to rebase, we'll have to return a sequence of operations
+		// that undoes the APPLY, applies the MAP, and then applies the APPLY rebased
+		// on the map.
+
+		var opa = this.op.rebase(other.op, conflictless);
+		if (!opa) return null;
+
+		var r = (opa instanceof values.NO_OP) ? new values.NO_OP() : new exports.APPLY(this.pos, opa);
+
+		var opb = other.op.rebase(this.op, conflictless);
+		if (opa && opb && deepEqual(other.op, opb))
+			// If rebasing the MAP's inner operation yields the same operation,
+			// then the two operations can go in either order and rebasing
+			// the MAP doesn't change the MAP.
+			return [
+				r,
+				other
+			];
+		else
+			return [
+				r,
+				new LIST([ this.invert(), other, r ]).simplify()
+			];
+	}]
+];
+
+//////////////////////////////////////////////////////////////////////////////
+
+exports.MAP.prototype.apply = function (document) {
+	/* Applies the operation to a document. Returns a new sequence that is
+	   the same type as document but with the element modified. */
+
+	// Get an array we can manipulate.
+	var d;
+	if (typeof document == 'string')
+		d = document.split(/.{0}/) // turn string into array of characters
+	else
+ 		d = document.slice(); // clone
+	
+	// Apply operation.
+	for (var i = 0; i < d.length; i++)
+		d[i] = this.op.apply(d[i])
+
+	// Reform sequence.
+	if (typeof document == 'string')
+		return d.join("");
+	else
+ 		return d;
+}
+
+exports.MAP.prototype.simplify = function () {
+	/* Returns a new atomic operation that is a simpler version
+	   of this operation.*/
+	var op = this.op.simplify();
+	if (op instanceof values.NO_OP)
+		return new values.NO_OP();	   
+	return this;
+}
+
+exports.MAP.prototype.invert = function () {
+	/* Returns a new atomic operation that is the inverse of this operation */
+	return new exports.MAP(this.op.invert());
+}
+
+exports.MAP.prototype.compose = function (other) {
+	/* Creates a new atomic operation that has the same result as this
+	   and other applied in sequence (this first, other after). Returns
+	   null if no atomic operation is possible. */
+
+	// the next operation is a no-op, so the composition is just this
+	if (other instanceof values.NO_OP)
+		return this;
+
+	// a SET clobbers this operation, but its old_value must be updated
+	if (other instanceof values.SET)
+		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
+
+	// two MAPs with composable sub-operations
+	if (other instanceof exports.MAP) {
+		var op2 = this.op.compose(other.op);
+		if (op2)
+			return new exports.MAP(op2);
+	}
+
+	// No composition possible.
+	return null;
+}
+
+exports.MAP.prototype.rebase_functions = [
+	[exports.MAP, function(other, conflictless) {
+		// Two MAPs.
+		var opa = this.op.rebase(other.op, conflictless);
+		var opb = other.op.rebase(this.op, conflictless);
+		if (opa && opb)
+			return [
+				(opa instanceof values.NO_OP) ? new values.NO_OP() : new exports.MAP(opa),
+				(opb instanceof values.NO_OP) ? new values.NO_OP() : new exports.MAP(opb)
 			];
 	}]
 ];

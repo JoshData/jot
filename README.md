@@ -158,6 +158,7 @@ The operations in JOT are:
 * `OBJECT_APPLY(key, operation)`: Apply any operation to a particular property value. `operation` is any operation created by these constructors.
 * `SET(old_value, new_value)`: Set a value (an array element, an object property, or an atomic value). `old_value` is the value the document had prior to this operation, and `new_value` is the new value after the operation.
 * `MATH(op, value)`: Increment (`op`="add"), multiply (`op`="mult"), increment w/ modulus (`op`="rot"), or exclusive-or (`op`="xor") a number. For `rot`, the value is given as an array of [increment, modulus].
+* `MAP(operation)`: Apply any operation to all elements of an array (or all characters in a string). `operation` is any operation created by these constructors.
 
 The JOT model is a superset of the model you need for basic plain text concurrent
 editing. That is, it includes the entire text editing model in the INS and DEL
