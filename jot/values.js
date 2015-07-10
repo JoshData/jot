@@ -8,7 +8,9 @@
 
 	This operation does nothing. It is the return value of various
 	functions throughout the library, e.g. when operations cancel
-	out.
+	out. NO_OP is conflictless: It never creates a conflict when
+	rebased against or operations or when other operations are
+	rebased against it.
 	
 
 	new values.SET(old_value, new_value)

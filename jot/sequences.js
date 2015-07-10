@@ -21,10 +21,16 @@
        (Equivalent to SPLICE(pos, old_value, []) for arrays or
        SPLICE(pos, old_value, "") for strings.)
 
+    Supports a conflictless rebase with other SPLICE, APPLY, and
+    MAP operations.
+
+
    new sequences.MOVE(pos, count, new_pos)
 
     Moves the subsequence starting at pos and count items long
     to a new location starting at index new_pos. pos is zero-based.
+
+    Supports a conflictless rebase with other MAP operations.
 
    new sequences.APPLY(pos, operation)
 
@@ -39,9 +45,18 @@
     
       new sequences.APPLY(2, new values.SET("old_value", "new_value"))
 
+    Supports a conflictless rebase with other SPLICE operations and
+    with other APPLY and MAP operations when the inner operations
+    support a conflictless rebase.
+
+
    new sequences.MAP(operation)
 
     Applies another sort of operation to every element of the array.
+
+    Supports a conflictless rebase with other SPLICE and MOVE operations
+    and with other APPLY and MAP operations when the inner operations
+    support a conflictless rebase.
 
    */
    

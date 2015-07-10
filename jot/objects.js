@@ -7,14 +7,26 @@
     Creates a property with the given value. The property must not already
     exist in the document.
 
+    Supports a conflictless rebase with other PUT operations, and never
+    generates conflicts with the other operations in any case because
+    a PUT (to add a key) could not apply simultaneously with the other
+    operations on the same key because those operations require the key
+    exists.
+
    new objects.REM(key, old_value)
     
     Removes a property from an object. The property must exist in the document.
     The old value of the property is given as old_value.
 
+    This operation never generates conflicts with any of operations in
+    this module, including itself.
+
    new objects.REN(old_key, new_key)
     
     Renames a property in the document object.
+
+    Supports a conflictless rebase with itself and does not generate conflicts
+    with the other operations in this module.
 
    new objects.APPLY(key, operation)
 
@@ -24,7 +36,11 @@
     applied to any property. The operations in sequences.js can be used
     if the property's value is a string or array. And the operations in
     this module can be used if the value is another object.
-    
+
+    Supports a conflictless rebase with itself with the inner operations
+    themselves support a conflictless rebase. It does not generate conflicts
+    with any other operations in this module.
+
     Example:
     
     To replace the value of a property with a new value:
