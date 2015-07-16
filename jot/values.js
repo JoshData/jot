@@ -51,6 +51,7 @@ exports.module_name = 'values'; // for serialization/deserialization
 
 exports.NO_OP = function() {
 	/* An operation that makes no change to the document. */
+	Object.freeze(this);
 }
 exports.NO_OP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.NO_OP, exports, 'NO_OP', []);
@@ -59,6 +60,7 @@ exports.SET = function(old_value, new_value) {
 	/* An operation that replaces the document with a new (atomic) value. */
 	this.old_value = old_value;
 	this.new_value = new_value;
+	Object.freeze(this);
 }
 exports.SET.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.SET, exports, 'SET', ['old_value', 'new_value']);
@@ -68,6 +70,7 @@ exports.MATH = function(operator, operand) {
 	   to a numeric document. */
 	this.operator = operator;
 	this.operand = operand;
+	Object.freeze(this);
 }
 exports.MATH.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.MATH, exports, 'MATH', ['operator', 'operand']);

@@ -14,7 +14,8 @@ exports.module_name = 'meta'; // for serialization/deserialization
 exports.LIST = function (ops) {
 	if (ops == null) throw "Invalid Argument";
 	if (!(ops instanceof Array)) throw "Invalid Argument";
-	this.ops = ops;
+	this.ops = ops; // TODO: How to ensure this array is immutable?
+	Object.freeze(this);
 }
 exports.LIST.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.LIST, exports, 'LIST', ['ops']);

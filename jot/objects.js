@@ -70,6 +70,7 @@ exports.PUT = function (key, value) {
 	if (key == null) throw "invalid arguments";
 	this.key = key;
 	this.value = value;
+	Object.freeze(this);
 }
 exports.PUT.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.PUT, exports, 'PUT', ['key', 'value']);
@@ -78,6 +79,7 @@ exports.REM = function (key, old_value) {
 	if (key == null) throw "invalid arguments";
 	this.key = key;
 	this.old_value = old_value;
+	Object.freeze(this);
 }
 exports.REM.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.REM, exports, 'REM', ['key', 'old_value']);
@@ -86,6 +88,7 @@ exports.REN = function (old_key, new_key) {
 	if (old_key == null || new_key == null) throw "invalid arguments";
 	this.old_key = old_key;
 	this.new_key = new_key;
+	Object.freeze(this);
 }
 exports.REN.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.REN, exports, 'REN', ['old_key', 'new_key']);
@@ -94,6 +97,7 @@ exports.APPLY = function (key, op) {
 	if (key == null || op == null) throw "invalid arguments";
 	this.key = key;
 	this.op = op;
+	Object.freeze(this);
 }
 exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.APPLY, exports, 'APPLY', ['key', 'op']);

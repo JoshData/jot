@@ -117,6 +117,7 @@ exports.SPLICE = function (pos, old_value, new_value) {
 	this.pos = pos;
 	this.old_value = old_value;
 	this.new_value = new_value;
+	Object.freeze(this);
 }
 exports.SPLICE.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.SPLICE, exports, 'SPLICE', ['pos', 'old_value', 'new_value']);
@@ -141,6 +142,7 @@ exports.MOVE = function (pos, count, new_pos) {
 	this.pos = pos;
 	this.count = count;
 	this.new_pos = new_pos;
+	Object.freeze(this);
 }
 exports.MOVE.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.MOVE, exports, 'MOVE', ['pos', 'count', 'new_pos']);
@@ -149,6 +151,7 @@ exports.APPLY = function (pos, op) {
 	if (pos == null || op == null) throw "Invalid Argument";
 	this.pos = pos;
 	this.op = op;
+	Object.freeze(this);
 }
 exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.APPLY, exports, 'APPLY', ['pos', 'op']);
@@ -156,6 +159,7 @@ jot.add_op(exports.APPLY, exports, 'APPLY', ['pos', 'op']);
 exports.MAP = function (op) {
 	if (op == null) throw "Invalid Argument";
 	this.op = op;
+	Object.freeze(this);
 }
 exports.MAP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.MAP, exports, 'MAP', ['op']);
