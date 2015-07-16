@@ -16,6 +16,24 @@ t.equal(
 t.equal(
 	new seqs.APPLY(0, new values.SET(1, 2)).inspect(),
 	'<sequences.APPLY {pos:0, op:<values.SET {old_value:1, new_value:2}>}>');
+t.equal(
+	new seqs.MAP(new values.MATH('add', 1)).inspect(),
+	'<sequences.MAP {op:<values.MATH {operator:"add", operand:1}>}>');
+
+// serialization
+
+t.deepEqual(
+	jot.opFromJsonableObject(new seqs.SPLICE(0, "1", "4").toJsonableObject()),
+	new seqs.SPLICE(0, "1", "4"));
+t.deepEqual(
+	jot.opFromJsonableObject(new seqs.MOVE(0, 2, 5).toJsonableObject()),
+	new seqs.MOVE(0, 2, 5));
+t.deepEqual(
+	jot.opFromJsonableObject(new seqs.APPLY(0, new values.SET(1, 2)).toJsonableObject()),
+	new seqs.APPLY(0, new values.SET(1, 2)));
+t.deepEqual(
+	jot.opFromJsonableObject(new seqs.MAP(new values.MATH('add', 1)).toJsonableObject()),
+	new seqs.MAP(new values.MATH('add', 1)));
 
 // apply
 

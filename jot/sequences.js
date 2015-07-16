@@ -108,6 +108,8 @@ function map_index(pos, move_op) {
 
 //////////////////////////////////////////////////////////////////////////////
 
+exports.module_name = 'sequences'; // for serialization/deserialization
+
 exports.SPLICE = function (pos, old_value, new_value) {
 	/* An operation that replaces a subrange of the sequence with new elements. */
 	if (pos == "__hmm__") return; // used for subclassing to INS, DEL
@@ -117,7 +119,7 @@ exports.SPLICE = function (pos, old_value, new_value) {
 	this.new_value = new_value;
 }
 exports.SPLICE.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.SPLICE.prototype.type = ['sequences', 'SPLICE'];
+jot.add_op(exports.SPLICE, exports, 'SPLICE', ['pos', 'old_value', 'new_value']);
 
 	// shortcuts
 	exports.INS = function (pos, value) {
@@ -141,7 +143,7 @@ exports.MOVE = function (pos, count, new_pos) {
 	this.new_pos = new_pos;
 }
 exports.MOVE.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.MOVE.prototype.type = ['sequences', 'MOVE'];
+jot.add_op(exports.MOVE, exports, 'MOVE', ['pos', 'count', 'new_pos']);
 
 exports.APPLY = function (pos, op) {
 	if (pos == null || op == null) throw "Invalid Argument";
@@ -149,14 +151,14 @@ exports.APPLY = function (pos, op) {
 	this.op = op;
 }
 exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.APPLY.prototype.type = ['sequences', 'APPLY'];
+jot.add_op(exports.APPLY, exports, 'APPLY', ['pos', 'op']);
 
 exports.MAP = function (op) {
 	if (op == null) throw "Invalid Argument";
 	this.op = op;
 }
 exports.MAP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.MAP.prototype.type = ['sequences', 'MAP'];
+jot.add_op(exports.MAP, exports, 'MAP', ['op']);
 
 //////////////////////////////////////////////////////////////////////////////
 

@@ -64,13 +64,15 @@ function shallow_clone(document) {
 
 //////////////////////////////////////////////////////////////////////////////
 
+exports.module_name = 'objects'; // for serialization/deserialization
+
 exports.PUT = function (key, value) {
 	if (key == null) throw "invalid arguments";
 	this.key = key;
 	this.value = value;
 }
 exports.PUT.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.PUT.prototype.type = ['objects', 'PUT'];
+jot.add_op(exports.PUT, exports, 'PUT', ['key', 'value']);
 
 exports.REM = function (key, old_value) {
 	if (key == null) throw "invalid arguments";
@@ -78,7 +80,7 @@ exports.REM = function (key, old_value) {
 	this.old_value = old_value;
 }
 exports.REM.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.REM.prototype.type = ['objects', 'REM'];
+jot.add_op(exports.REM, exports, 'REM', ['key', 'old_value']);
 
 exports.REN = function (old_key, new_key) {
 	if (old_key == null || new_key == null) throw "invalid arguments";
@@ -86,8 +88,7 @@ exports.REN = function (old_key, new_key) {
 	this.new_key = new_key;
 }
 exports.REN.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.REN.prototype.type = ['objects', 'REN'];
-
+jot.add_op(exports.REN, exports, 'REN', ['old_key', 'new_key']);
 
 exports.APPLY = function (key, op) {
 	if (key == null || op == null) throw "invalid arguments";
@@ -95,7 +96,7 @@ exports.APPLY = function (key, op) {
 	this.op = op;
 }
 exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.APPLY.prototype.type = ['objects', 'APPLY'];
+jot.add_op(exports.APPLY, exports, 'APPLY', ['key', 'op']);
 
 //////////////////////////////////////////////////////////////////////////////
 

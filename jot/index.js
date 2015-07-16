@@ -2,28 +2,19 @@
 
 var util = require('util');
 
-// Must define this ahead of any imports below so that this function
+// Must define this ahead of any imports below so that this constructor
 // is available to the operation classes.
 exports.BaseOperation = function() {
 }
-exports.BaseOperation.prototype.inspect = function(depth) {
-	var repr = [ ];
-	var keys = Object.keys(this);
-	for (var i = 0; i < keys.length; i++) {
-		var v;
-		if (this[keys[i]] instanceof exports.BaseOperation)
-			v = this[keys[i]].inspect(depth-1);
-		else if (typeof this[keys[i]] != 'undefined')
-			v = util.format("%j", this[keys[i]]);
-		else
-			continue;
-		repr.push(keys[i] + ":" + v);
-	}
-	return util.format("<%s.%s {%s}>",
-		this.type[0],
-		this.type[1],
-		repr.join(", "));
+exports.add_op = function(constructor, module, opname, constructor_args) {
+	// utility.
+	constructor.prototype.type = [module.module_name, opname];
+	constructor.prototype.constructor_args = constructor_args;
+	if (!('op_map' in module))
+		module['op_map'] = { };
+	module['op_map'][opname] = constructor;
 }
+
 
 // Imports.
 var values = require("./values.js");
@@ -47,7 +38,84 @@ exports.REM = objects.REM;
 exports.OBJECT_APPLY = objects.APPLY;
 exports.LIST = meta.LIST;
 
-// Rebase helper function.
+/////////////////////////////////////////////////////////////////////
+
+exports.BaseOperation.prototype.inspect = function(depth) {
+	var repr = [ ];
+	var keys = Object.keys(this);
+	for (var i = 0; i < keys.length; i++) {
+		var v;
+		if (this[keys[i]] instanceof exports.BaseOperation)
+			v = this[keys[i]].inspect(depth-1);
+		else if (typeof this[keys[i]] != 'undefined')
+			v = util.format("%j", this[keys[i]]);
+		else
+			continue;
+		repr.push(keys[i] + ":" + v);
+	}
+	return util.format("<%s.%s {%s}>",
+		this.type[0],
+		this.type[1],
+		repr.join(", "));
+}
+
+exports.BaseOperation.prototype.toJsonableObject = function() {
+	var repr = { };
+	repr['_type'] = { 'module': this.type[0], 'class': this.type[1] };
+	var keys = Object.keys(this);
+	for (var i = 0; i < keys.length; i++) {
+		var v;
+		if (this[keys[i]] instanceof exports.BaseOperation)
+			v = this[keys[i]].toJsonableObject();
+		else if (typeof this[keys[i]] != 'undefined')
+			v = this[keys[i]];
+		else
+			continue;
+		repr[keys[i]] = v
+	}
+	return repr;
+}
+
+exports.opFromJsonableObject = function(obj, op_map) {
+	// Create a default mapping from encoded types to constructors
+	// allowing all operations to be deserialized.
+	if (!op_map) {
+		op_map = { };
+
+		function extend_op_map(module) {
+			op_map[module.module_name] = { };
+			for (var key in module.op_map)
+				op_map[module.module_name][key] = module.op_map[key];
+		}
+
+		extend_op_map(values);
+		extend_op_map(sequences);
+		extend_op_map(objects);
+		extend_op_map(meta);
+	}
+
+	// Sanity check.
+	if (!('_type' in obj)) throw "Invalid argument: Not an operation.";
+
+	// Reconstruct.
+	var constructor = op_map[obj._type.module][obj._type.class];
+	var args = constructor.prototype.constructor_args.map(function(item) {
+		if (typeof obj[item] == 'object' && '_type' in obj[item])
+			return exports.opFromJsonableObject(obj[item]);
+		return obj[item];
+	});
+	var op = Object.create(constructor.prototype);
+	constructor.apply(op, args);
+	return op;
+}
+
+exports.BaseOperation.prototype.serialize = function() {
+	return JSON.stringify(this.toJsonableObject());
+}
+exports.deserialize = function(op_json) {
+	return exports.opFromJsonableObject(JSON.parse(op_json));
+}
+
 exports.BaseOperation.prototype.rebase = function(other, conflictless) {
 	/* Transforms this operation so that it can be composed *after* the other
 	   operation to yield the same logical effect as if it had been executed

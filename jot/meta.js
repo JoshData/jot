@@ -9,14 +9,15 @@
 var jot = require("./index.js");
 var values = require('./values.js');
 
+exports.module_name = 'meta'; // for serialization/deserialization
+
 exports.LIST = function (ops) {
 	if (ops == null) throw "Invalid Argument";
 	if (!(ops instanceof Array)) throw "Invalid Argument";
 	this.ops = ops;
 }
-
 exports.LIST.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.LIST.prototype.type = ['meta', 'LIST'];
+jot.add_op(exports.LIST, exports, 'LIST', ['ops']);
 
 exports.LIST.prototype.apply = function (document) {
 	/* Applies the operation to a document.*/

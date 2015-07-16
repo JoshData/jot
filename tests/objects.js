@@ -1,4 +1,5 @@
 var test = require('tap').test;
+var jot = require("../jot");
 var values = require("../jot/values.js");
 var seqs = require("../jot/sequences.js");
 var objs = require("../jot/objects.js");
@@ -20,6 +21,21 @@ t.equal(
 t.equal(
 	new objs.APPLY("0", new values.SET(1, 2)).inspect(),
 	'<objects.APPLY {key:"0", op:<values.SET {old_value:1, new_value:2}>}>');
+
+// serialization
+
+t.deepEqual(
+	jot.opFromJsonableObject(new objs.PUT("0", "1").toJsonableObject()),
+	new objs.PUT("0", "1"));
+t.deepEqual(
+	jot.opFromJsonableObject(new objs.REM("0", "1").toJsonableObject()),
+	new objs.REM("0", "1"));
+t.deepEqual(
+	jot.opFromJsonableObject(new objs.REN("0", "1").toJsonableObject()),
+	new objs.REN("0", "1"));
+t.deepEqual(
+	jot.opFromJsonableObject(new objs.APPLY("0", new values.SET(1, 2)).toJsonableObject()),
+	new objs.APPLY("0", new values.SET(1, 2)));
 
 // apply
 

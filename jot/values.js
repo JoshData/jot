@@ -47,11 +47,13 @@ var jot = require("./index.js");
 
 //////////////////////////////////////////////////////////////////////////////
 
+exports.module_name = 'values'; // for serialization/deserialization
+
 exports.NO_OP = function() {
 	/* An operation that makes no change to the document. */
 }
 exports.NO_OP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.NO_OP.prototype.type = ['values', 'NO_OP'];
+jot.add_op(exports.NO_OP, exports, 'NO_OP', []);
 
 exports.SET = function(old_value, new_value) {
 	/* An operation that replaces the document with a new (atomic) value. */
@@ -59,7 +61,7 @@ exports.SET = function(old_value, new_value) {
 	this.new_value = new_value;
 }
 exports.SET.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.SET.prototype.type = ['values', 'SET'];
+jot.add_op(exports.SET, exports, 'SET', ['old_value', 'new_value']);
 
 exports.MATH = function(operator, operand) {
 	/* An operation that applies addition, multiplication, or rotation (modulus addition)
@@ -67,9 +69,9 @@ exports.MATH = function(operator, operand) {
 	this.operator = operator;
 	this.operand = operand;
 }
-
 exports.MATH.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-exports.MATH.prototype.type = ['values', 'MATH'];
+jot.add_op(exports.MATH, exports, 'MATH', ['operator', 'operand']);
+
 
 //////////////////////////////////////////////////////////////////////////////
 

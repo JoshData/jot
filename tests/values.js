@@ -1,4 +1,5 @@
 var test = require('tap').test;
+var jot = require('../jot')
 var values = require("../jot/values.js");
 var LIST = require("../jot/meta.js").LIST;
 
@@ -15,6 +16,21 @@ t.equal(
 t.equal(
 	new values.MATH('add', 4).inspect(),
 	'<values.MATH {operator:"add", operand:4}>');
+
+// serialization
+
+t.deepEqual(
+	jot.deserialize(new values.NO_OP().serialize()),
+	new values.NO_OP());
+t.deepEqual(
+	jot.opFromJsonableObject(new values.NO_OP().toJsonableObject()),
+	new values.NO_OP());
+t.deepEqual(
+	jot.opFromJsonableObject(new values.SET(3, 4).toJsonableObject()),
+	new values.SET(3, 4));
+t.deepEqual(
+	jot.opFromJsonableObject(new values.MATH('add', 4).toJsonableObject()),
+	new values.MATH('add', 4));
 
 // apply
 
