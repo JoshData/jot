@@ -64,16 +64,28 @@ Now you *can* apply A and B sequentially.
 Installation
 ------------
 
-The code is written for the node.js platform, and it can also be built
-for use in browsers.
+The code is written for the node.js platform.
 
-Before running anything, you'll need to install the dependencies:
+Before running anything, you'll need to install node, and then jot's dependencies:
 
+	# change to this directory
 	npm install
 
-To build the library for browsers, use:
+To build the library for browsers, do the above, and then run:
 
-	node build_browser_lib.js > jot.js
+	npm install -g browserify
+	browserify jot/index.js > jot_browser.js
+
+Then use the library in your HTML page:
+
+	<html>
+		<body>
+			<script src="jot_browser.js"></script>
+			<script>
+				// see the example below, but skip the 'require' line
+			</script>
+		</body>
+	</html>
 
 Example
 -------
@@ -81,7 +93,7 @@ Example
 Here's example code that follows the example in the introduction:
 
 	/* load libraries */
-	var jot = require("./jot");
+	var jot = require("./jot"); // omit this line when in a browser, 'jot' is defined globally
 
 	/* The Base Document */
 

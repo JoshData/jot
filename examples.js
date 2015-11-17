@@ -1,5 +1,5 @@
-/* load libraries */
-var jot = require("./jot");
+/* load libraries (test if 'jot' is defined already, so we can use this in the browser where 'require' is not available) */
+var jot = jot || require("./jot");
 
 /* The Base Document */
 
