@@ -232,5 +232,5 @@ Notes
 
 Thanks to @konklone for some inspiration and the first pull request.
 
-The Substance Operator library is very similar to this library. http://interior.substance.io/modules/operator.html
+The Substance Operator library is very similar to this library. https://github.com/substance/operator
 
