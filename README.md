@@ -148,7 +148,7 @@ To run:
 
 Note how the output applies both users' changes logically, even though the
 second user's changes specified "key1" and "key2", neither of which exist
-by the time the revision is applied. It's the rebase_array call that takes
+by the time the revision is applied. It's the `rebase` call that takes
 care of that.
 
 Operations
