@@ -6,6 +6,8 @@ var objs = require("../jot/objects.js");
 var meta = require("../jot/meta.js");
 
 test('meta', function(t) {
+
+    // (de)serialization
     t.deepEqual(
         jot.deserialize(
             new meta.LIST([
@@ -14,7 +16,6 @@ test('meta', function(t) {
                         'x', 'y'
                     )
                 ),
-
                 new jot.ARRAY_APPLY(
                     'bar', new jot.INS(
                         0, [{baz: 'quux'}]
@@ -28,7 +29,6 @@ test('meta', function(t) {
                     'x', 'y'
                 )
             ),
-
             new jot.ARRAY_APPLY(
                 'bar', new jot.INS(
                     0, [{baz: 'quux'}]
@@ -36,5 +36,6 @@ test('meta', function(t) {
             )
         ])
     );
+
     t.end();
 });
