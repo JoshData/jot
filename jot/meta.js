@@ -22,8 +22,10 @@ jot.add_op(exports.LIST, exports, 'LIST', ['ops']);
 
 exports.LIST.prototype.apply = function (document) {
 	/* Applies the operation to a document.*/
-	for (var i = 0; i < this.ops.length; i++)
+	for (var i = 0; i < this.ops.length; i++) {
+        console.log('[JOT]', this.ops[i]);
 		document = this.ops[i].apply(document);
+    }
 	return document;
 }
 
@@ -101,7 +103,7 @@ exports.LIST.prototype.compose = function (other) {
 
 	// Nothing here anyway, return the other.
 	if (this.ops.length == 0)
-		return other;
+		return new exports.LIST([other]);
 
 	// the next operation is a no-op, so the composition is just this
 	if (other instanceof values.NO_OP)

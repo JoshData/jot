@@ -65,12 +65,20 @@ exports.BaseOperation.prototype.toJsonableObject = function() {
 	var keys = Object.keys(this);
 	for (var i = 0; i < keys.length; i++) {
 		var v;
-		if (this[keys[i]] instanceof exports.BaseOperation)
+		if (this[keys[i]] instanceof exports.BaseOperation) {
 			v = this[keys[i]].toJsonableObject();
-		else if (typeof this[keys[i]] != 'undefined')
+        }
+        else if (keys[i] === 'ops' && Array.isArray(this[keys[i]])) {
+            v = this[keys[i]].map(function(ki) {
+                return ki.toJsonableObject();
+            });
+        }
+		else if (typeof this[keys[i]] !== 'undefined') {
 			v = this[keys[i]];
-		else
+        }
+		else {
 			continue;
+        }
 		repr[keys[i]] = v
 	}
 	return repr;
@@ -100,8 +108,13 @@ exports.opFromJsonableObject = function(obj, op_map) {
 	// Reconstruct.
 	var constructor = op_map[obj._type.module][obj._type.class];
 	var args = constructor.prototype.constructor_args.map(function(item) {
-		if (typeof obj[item] == 'object' && '_type' in obj[item])
+		if (typeof obj[item] == 'object' && '_type' in obj[item]) {
 			return exports.opFromJsonableObject(obj[item]);
+        } else if (item === 'ops' && Array.isArray(obj[item])) {
+            obj[item] = obj[item].map(function(op) {
+                return exports.opFromJsonableObject(op);
+            });
+        }
 		return obj[item];
 	});
 	var op = Object.create(constructor.prototype);
