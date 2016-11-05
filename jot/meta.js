@@ -22,10 +22,8 @@ jot.add_op(exports.LIST, exports, 'LIST', ['ops']);
 
 exports.LIST.prototype.apply = function (document) {
 	/* Applies the operation to a document.*/
-	for (var i = 0; i < this.ops.length; i++) {
-        console.log('[JOT]', this.ops[i]);
+	for (var i = 0; i < this.ops.length; i++)
 		document = this.ops[i].apply(document);
-    }
 	return document;
 }
 

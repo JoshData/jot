@@ -3,7 +3,30 @@ var jot = require("../jot");
 var meta = require("../jot/meta.js");
 
 test('meta', function(t) {
+	// simplify
+
+	t.deepEqual(
+		new meta.LIST([]).simplify(),
+		new jot.NO_OP());
+
+	t.deepEqual(
+		new meta.LIST([ new jot.SET("W", "X"), new jot.SET("X", "Y") ]).simplify(),
+		new meta.LIST([ new jot.SET("W", "Y") ]));
+
+	t.deepEqual(
+		new meta.LIST([ new jot.MATH("add", 1), new jot.MATH("add", 2) ]).simplify(),
+		new meta.LIST([ new jot.MATH("add", 3) ]));
+
+	t.deepEqual(
+		new meta.LIST([ new jot.MATH("add", 1), new jot.MATH("mult", 2) ]).simplify(),
+		new meta.LIST([ new jot.MATH("add", 1), new jot.MATH("mult", 2) ]));
+
+	t.deepEqual(
+		new meta.LIST([ new jot.MATH("add", 1), new jot.MATH("mult", 2), new jot.MATH("xor", 1) ]).simplify(),
+		new meta.LIST([ new jot.MATH("add", 1), new jot.MATH("mult", 2), new jot.MATH("xor", 1) ]));
+
     // compose
+
     t.deepEqual(
         new meta.LIST([ ])
             .compose(
@@ -11,6 +34,7 @@ test('meta', function(t) {
             ),
         new jot.PUT('x', 'y')
     )
+
     t.deepEqual(
         new meta.LIST([ new jot.PUT('x', 'y') ])
             .compose(
@@ -18,6 +42,7 @@ test('meta', function(t) {
             ),
         new meta.LIST([ new jot.PUT('x', 'y') ])
     )
+
     t.deepEqual(
         new meta.LIST([ new jot.PUT('x', 'y') ])
             .compose(
@@ -25,6 +50,7 @@ test('meta', function(t) {
             ),
         new meta.LIST([ new jot.PUT('x', 'y'), new jot.PUT('x', 'z') ])
     )
+
     t.deepEqual(
         new meta.LIST([ new jot.PUT('x', 'y') ])
             .compose(
@@ -33,8 +59,8 @@ test('meta', function(t) {
         new meta.LIST([ new jot.PUT('x', 'y'), new jot.PUT('x', 'z') ])
     )
 
-
     // (de)serialization
+
     t.deepEqual(
         jot.deserialize(
             new meta.LIST([
@@ -72,6 +98,7 @@ test('meta', function(t) {
             ),
         new jot.NO_OP()
     )
+
     t.deepEqual( // unrelated changes, unwrapping of the list
         new meta.LIST([ new jot.PUT('x', 'y') ])
             .rebase(
@@ -79,6 +106,7 @@ test('meta', function(t) {
             ),
         new jot.PUT('x', 'y')
     )
+
     t.deepEqual( // related changes, unwrapping of list
         new meta.LIST([ new jot.OBJECT_APPLY('x', new jot.SET('y1', 'y2')) ])
             .rebase(
@@ -86,6 +114,7 @@ test('meta', function(t) {
             ),
         new jot.OBJECT_APPLY('a', new jot.SET('y1', 'y2'))
     )
+
     t.deepEqual( // two on one
         new meta.LIST([
             new jot.OBJECT_APPLY('x', new jot.SET('y1', 'y2')),
@@ -99,6 +128,7 @@ test('meta', function(t) {
             new jot.OBJECT_APPLY('a', new jot.SET('y2', 'y3'))
         ])
     )
+
     t.deepEqual( // two on two
         new meta.LIST([
             new jot.OBJECT_APPLY('x', new jot.SET('y1', 'y2')),
@@ -115,6 +145,7 @@ test('meta', function(t) {
             new jot.OBJECT_APPLY('b', new jot.SET('y2', 'y3'))
         ])
     )
+
     t.deepEqual( // two on two - list is unchanged
         new meta.LIST([
             new jot.REN('x', 'a'),
@@ -131,6 +162,7 @@ test('meta', function(t) {
             new jot.REN('a', 'b')
         ])
     )
+
     t.deepEqual( // conflictless (A)
         new meta.LIST([
             new jot.SET('x', 'a')
@@ -143,6 +175,7 @@ test('meta', function(t) {
             ),
         new jot.NO_OP()
     )
+
     t.deepEqual( // conflictless (B)
         new meta.LIST([
             new jot.SET('x', 'b')
@@ -155,6 +188,7 @@ test('meta', function(t) {
             ),
         new jot.SET('a', 'b')
     )
+
     t.deepEqual( // two on two w/ conflictless (A)
         new meta.LIST([
             new jot.REN('x', 'a'),
@@ -169,6 +203,7 @@ test('meta', function(t) {
             ),
         new jot.NO_OP()
     );
+
     t.deepEqual( // two on two w/ conflictless (B)
         new meta.LIST([
             new jot.REN('x', 'A'),
