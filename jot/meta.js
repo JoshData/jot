@@ -97,28 +97,29 @@ exports.LIST.prototype.invert = function () {
 }
 
 exports.LIST.prototype.compose = function (other) {
-	/* Creates a new LIST operation that has the same result as this
-	   and other applied in sequence (this first, other after). Returns
-	   null if no atomic operation is possible. */
+	/* Returns a LIST operation that has the same result as this
+	   and other applied in sequence (this first, other after). */
 
-	// Nothing here anyway, return the other.
+	// Nothing here anyway, return the other. (Operations are immutable
+	// so safe to return.)
 	if (this.ops.length == 0)
-		return new exports.LIST([other]);
+		return other;
 
 	// the next operation is a no-op, so the composition is just this
 	if (other instanceof values.NO_OP)
 		return this;
 
+	// the next operation is an empty list, so the composition is just this
+	if (other instanceof exports.LIST && other.ops.length == 0)
+		return this;
+
 	// a SET clobbers this operation
 	if (other instanceof values.SET)
-		return other.simplify();
+		return other;
 
 	// concatenate
-	if (other instanceof exports.LIST) {
-		if (other.ops.length == 0)
-			return this;
+	if (other instanceof exports.LIST)
 		return new exports.LIST(this.ops.concat(other.ops));
-	}
 
 	// append
 	var new_ops = this.ops.slice(); // clone

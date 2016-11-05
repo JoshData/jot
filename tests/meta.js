@@ -6,6 +6,36 @@ var objs = require("../jot/objects.js");
 var meta = require("../jot/meta.js");
 
 test('meta', function(t) {
+    // compose
+    t.deepEqual(
+        new meta.LIST([ ])
+            .compose(
+                new jot.PUT('x', 'y')
+            ),
+        new jot.PUT('x', 'y')
+    )
+    t.deepEqual(
+        new meta.LIST([ new jot.PUT('x', 'y') ])
+            .compose(
+                new meta.LIST([ ])
+            ),
+        new meta.LIST([ new jot.PUT('x', 'y') ])
+    )
+    t.deepEqual(
+        new meta.LIST([ new jot.PUT('x', 'y') ])
+            .compose(
+                new jot.PUT('x', 'z')
+            ),
+        new meta.LIST([ new jot.PUT('x', 'y'), new jot.PUT('x', 'z') ])
+    )
+    t.deepEqual(
+        new meta.LIST([ new jot.PUT('x', 'y') ])
+            .compose(
+                new meta.LIST([ new jot.PUT('x', 'z') ])
+            ),
+        new meta.LIST([ new jot.PUT('x', 'y'), new jot.PUT('x', 'z') ])
+    )
+
 
     // (de)serialization
     t.deepEqual(
