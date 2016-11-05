@@ -127,26 +127,25 @@ exports.LIST.prototype.compose = function (other) {
 	return new exports.LIST(new_ops);
 }
 
-exports.LIST.prototype.rebase = function (other) {
+exports.LIST.prototype.rebase = function (other, conflictless) {
 	/* Transforms this operation so that it can be composed *after* the other
-	   operation to yield the same logical effect. Returns null on conflict. */
-
-	if (other instanceof values.NO_OP)
-		return this;
+	   operation to yield the same logical effect. Returns null on conflict. 
+	   The conflictless parameter tries to prevent conflicts. */
 
 	var base;
 	if (other instanceof exports.LIST)
 		base = other.ops;
 	else
-		base = other;
+		base = [other];
 
-	var ops = rebase_array(base, this.ops);
+	var ops = rebase_array(base, this.ops, conflictless);
 	if (ops == null) return null;
 	if (ops.length == 0) return new values.NO_OP();
+	if (ops.length == 1) return ops[0];
 	return new exports.LIST(ops);
 }
 
-function rebase_array(base, ops) {
+function rebase_array(base, ops, conflictless) {
 	/* This is one of the core functions of the library: rebasing a sequence
 	   of operations against another sequence of operations. */
 
@@ -194,36 +193,52 @@ function rebase_array(base, ops) {
 	if (ops.length == 0 || base.length == 0)
 		return ops;
 	
-	if (base instanceof Array) {
-		// from the second part of the rebase contract
-		for (var i = 0; i < base.length; i++) {
-			ops = rebase_array(base[i], ops);
-			if (!ops) return null;
-		}
-		return ops;
-		
-	} else {
-		// handle edge case
+	if (base.length == 1) {
+		// Rebase one or more operations (ops) against a single operation (base[0]).
+
+		// Nothing to do if it is a no-op.
+		if (base[0] instanceof values.NO_OP)
+			return ops;
+
+		// This is the recursive base case: Rebasing a single operation against a single
+		// operation.
 		if (ops.length == 1) {
-			var op = ops[0].rebase(base);
+			var op = ops[0].rebase(base[0], conflictless);
 			if (!op) return null; // conflict
+			if (op instanceof jot.NO_OP) return [];
 			return [op];
 		}
-		
-		var op1 = ops[0];
+
+		// Here we're rebasing more than one operation (ops) against a single operation (base[0]).
+		// The result is the first operation in ops rebased against the base concatenated with
+		// the remainder of ops rebased against the-base-rebased-against-the-first-operation:
+		// (op1/base) + (op2/(base/op1))
+
+		var op1 = ops.slice(0, 1); // first operation
 		var op2 = ops.slice(1); // remaining operations
 		
-		var r1 = op1.rebase(base);
-		if (!r1) return null; // rebase failed
+		var r1 = rebase_array(base, op1, conflictless);
+		if (r1 == null) return null; // rebase failed
 		
-		var r2 = base.rebase(op1);
-		if (!r2) return null; // rebase failed (must be the same as r1, so this test should never succeed)
+		var r2 = rebase_array(op1, base, conflictless);
+		if (r2 == null) return null; // rebase failed (must be the same as r1, so this test should never succeed)
 		
-		var r3 = rebase_array(r2, op2);
-		if (!r3) return null; // rebase failed
+		var r3 = rebase_array(r2, op2, conflictless);
+		if (r3 == null) return null; // rebase failed
 		
 		// returns a new array
-		return [r1].concat(r3);
+		return r1.concat(r3);
+
+	} else {
+		// Rebase one or more operations (ops) against >1 operation (base).
+		//
+		// From the second part of the rebase contract, we can rebase ops
+		// against each operation in the base sequentially (base[0], base[1], ...).
+		for (var i = 0; i < base.length; i++) {
+			ops = rebase_array([base[i]], ops, conflictless);
+			if (ops == null) return null; // conflict
+		}
+		return ops;
 	}
 }
 
