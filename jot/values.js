@@ -309,7 +309,7 @@ exports.MATH.prototype.rebase_functions = [
 			if (jot.cmp([this.operator, this.operand], [other.operator, other.operand]) < 0) {
 				return [
 					this,
-					new jot.LIST([this.invert(), other, this])
+					jot.LIST([this.invert(), other, this])
 				];
 			}
 

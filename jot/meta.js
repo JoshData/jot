@@ -143,7 +143,7 @@ exports.LIST.prototype.rebase = function (other, conflictless) {
 	if (ops == null) return null;
 	if (ops.length == 0) return new values.NO_OP();
 	if (ops.length == 1) return ops[0];
-	return new exports.LIST(ops);
+	return new exports.LIST(ops).simplify();
 }
 
 function rebase_array(base, ops, conflictless) {

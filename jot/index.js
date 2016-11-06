@@ -23,20 +23,24 @@ var objects = require("./objects.js");
 var meta = require("./meta.js");
 
 // Define aliases.
-exports.NO_OP = values.NO_OP;
-exports.SET = values.SET;
-exports.MATH = values.MATH;
-exports.SPLICE = sequences.SPLICE;
-exports.INS = sequences.INS;
-exports.DEL = sequences.DEL;
-exports.ARRAY_APPLY = sequences.APPLY;
-exports.MAP = sequences.MAP;
-exports.PROP = objects.PROP;
-exports.PUT = objects.PUT;
-exports.REN = objects.REN;
-exports.REM = objects.REM;
-exports.OBJECT_APPLY = objects.APPLY;
-exports.LIST = meta.LIST;
+function new_op(op_class, args) {
+	var op = Object.create(op_class.prototype);
+	op_class.apply(op, args);
+	return op;
+}
+exports.NO_OP = function() { return new_op(values.NO_OP, arguments) };
+exports.SET = function() { return new_op(values.SET, arguments) };
+exports.MATH = function() { return new_op(values.MATH, arguments) };
+exports.SPLICE = function() { return new_op(sequences.SPLICE, arguments) };
+exports.INS = function() { return new_op(sequences.INS, arguments) };
+exports.DEL = function() { return new_op(sequences.DEL, arguments) };
+exports.ARRAY_APPLY = function() { return new_op(sequences.APPLY, arguments) };
+exports.MAP = function() { return new_op(sequences.MAP, arguments) };
+exports.PUT = function() { return new_op(objects.PUT, arguments) };
+exports.REN = function() { return new_op(objects.REN, arguments) };
+exports.REM = function() { return new_op(objects.REM, arguments) };
+exports.OBJECT_APPLY = function() { return new_op(objects.APPLY, arguments) };
+exports.LIST = function() { return new_op(meta.LIST, arguments) };
 
 /////////////////////////////////////////////////////////////////////
 

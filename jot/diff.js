@@ -22,7 +22,7 @@ function diff(a, b, options) {
 
 	if (deepEqual(a, b)) {
 		return {
-			op: new jot.NO_OP(),
+			op: jot.NO_OP(),
 			pct: 0.0,
 			size: JSON.stringify(a).length
 		};
@@ -43,7 +43,7 @@ function diff(a, b, options) {
 	// or if we don't recognize the data type (which is
 	// not good), then only an atomic SET operation is possible.
 	return {
-		op: new jot.SET(a, b),
+		op: jot.SET(a, b),
 		pct: 1.0,
 		size: (JSON.stringify(a)+JSON.stringify(b)).length / 2
 	}
@@ -86,7 +86,7 @@ function diff_strings(a, b, options) {
 				// Create an INS or DEL operation for this change.
 				if (change.removed) old_value = change.value;
 				if (change.added) new_value = change.value;
-				ret = new jot.SPLICE(index, old_value, new_value);
+				ret = jot.SPLICE(index, old_value, new_value);
 
 				// Increment counter of changed characters.
 				changed_content += change.value.length;
@@ -101,7 +101,7 @@ function diff_strings(a, b, options) {
 		.filter(function(item) { return item != null; });
 
 	return {
-		op: new jot.LIST(ops).simplify(),
+		op: jot.LIST(ops).simplify(),
 		pct: (changed_content+1)/(total_content+1), // avoid divizion by zero
 		size: total_content
 	};
@@ -182,7 +182,7 @@ function diff_arrays(a, b, options) {
 			}
 
 			if (hunk.type == "unequal") {
-				var op = new jot.SPLICE(
+				var op = jot.SPLICE(
 					pos,
 					hunk.ai.map(function(i) { return a[i]; }),
 					hunk.bi.map(function(i) { return b[i]; }));
@@ -203,7 +203,7 @@ function diff_arrays(a, b, options) {
 
 					// Add an operation.
 					if (!(d.op instanceof jot.NO_OP))
-						ops.push(new jot.ARRAY_APPLY(hunk.bi[i], d.op));
+						ops.push(jot.ARRAY_APPLY(hunk.bi[i], d.op));
 
 					// Increment counters.
 					total_content += d.size;
@@ -220,7 +220,7 @@ function diff_arrays(a, b, options) {
 	do_diff(ai, bi, 0);
 
 	return {
-		op: new jot.LIST(ops).simplify(),
+		op: jot.LIST(ops).simplify(),
 		pct: (changed_content+1)/(total_content+1), // avoid divizion by zero
 		size: total_content
 	};		
@@ -242,7 +242,7 @@ function diff_objects(a, b, options) {
 
 			// Add operation if there were any changes.
 			if (!(d.op instanceof jot.NO_OP))
-				ops.push(new jot.OBJECT_APPLY(key, d.op));
+				ops.push(jot.OBJECT_APPLY(key, d.op));
 
 			// Increment counters.
 			total_content += d.size;
@@ -283,9 +283,9 @@ function diff_objects(a, b, options) {
 		used_b[item.b_key] = 1;
 
 		// Use this pair.
-		ops.push(new jot.REN(item.a_key, item.b_key));
+		ops.push(jot.REN(item.a_key, item.b_key));
 		if (!(item.diff.op instanceof jot.NO_OP))
-			ops.push(new jot.OBJECT_APPLY(item.b_key, item.diff.op));
+			ops.push(jot.OBJECT_APPLY(item.b_key, item.diff.op));
 
 		// Increment counters.
 		total_content += item.diff.size;
@@ -295,15 +295,15 @@ function diff_objects(a, b, options) {
 	// Delete/create any keys that didn't match up.
 	for (var key in a) {
 		if (key in b || key in used_a) continue;
-		ops.push(new jot.REM(key));
+		ops.push(jot.REM(key));
 	}
 	for (var key in b) {
 		if (key in a || key in used_b) continue;
-		ops.push(new jot.PUT(key, b[key]));
+		ops.push(jot.PUT(key, b[key]));
 	}
 
 	return {
-		op: new jot.LIST(ops).simplify(),
+		op: jot.LIST(ops).simplify(),
 		pct: (changed_content+1)/(total_content+1), // avoid divizion by zero
 		size: total_content
 	};
