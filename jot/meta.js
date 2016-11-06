@@ -28,10 +28,11 @@ exports.LIST.prototype.apply = function (document) {
 }
 
 exports.LIST.prototype.simplify = function (aggressive) {
-	/* Returns a new LIST operation that is a simpler version
+	/* Returns a new operation that is a simpler version
 	   of this operation. Composes consecutive operations where
 	   possible and removes no-ops. Returns NO_OP if the result
-	   would be an empty list of operations. */
+	   would be an empty list of operations. Returns an
+	   atomic (non-LIST) operation if possible. */
 	var new_ops = [];
 	for (var i = 0; i < this.ops.length; i++) {
 		var op = this.ops[i];
@@ -81,6 +82,8 @@ exports.LIST.prototype.simplify = function (aggressive) {
 
 	if (new_ops.length == 0)
 		return new values.NO_OP();
+	if (new_ops.length == 1)
+		return new_ops[0];
 
 	return new exports.LIST(new_ops);
 }

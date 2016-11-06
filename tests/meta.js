@@ -11,11 +11,11 @@ test('meta', function(t) {
 
 	t.deepEqual(
 		new meta.LIST([ new jot.SET("W", "X"), new jot.SET("X", "Y") ]).simplify(),
-		new meta.LIST([ new jot.SET("W", "Y") ]));
+		new jot.SET("W", "Y") );
 
 	t.deepEqual(
 		new meta.LIST([ new jot.MATH("add", 1), new jot.MATH("add", 2) ]).simplify(),
-		new meta.LIST([ new jot.MATH("add", 3) ]));
+		new jot.MATH("add", 3) );
 
 	t.deepEqual(
 		new meta.LIST([ new jot.MATH("add", 1), new jot.MATH("mult", 2) ]).simplify(),
