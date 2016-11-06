@@ -122,8 +122,8 @@ Here's example code that follows the example in the introduction:
 	 */
 
 	var user2 = jot.LIST([
-		jot.OBJECT_APPLY("key1", jot.SET("Hello World!", "My Program")),
-		jot.OBJECT_APPLY("key2", jot.MATH('add', 10))
+		jot.APPLY("key1", jot.SET("Hello World!", "My Program")),
+		jot.APPLY("key2", jot.MATH('add', 10))
 	]);
 
 	/* You can't do this! */
@@ -166,8 +166,7 @@ The operations in JOT are:
 * `REM(key, old_value)`: Remove a property from an object. `key` is a string and `old_value` is the value of the property before the property is removed.
 * `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings.
 * `MOVE(index, count, new_index)`: Move consecutive elements of an array from one index to another.
-* `ARRAY_APPLY(index, operation)`: Apply any operation to a particular array element. `operation` is any operation created by these constructors.
-* `OBJECT_APPLY(key, operation)`: Apply any operation to a particular property value. `operation` is any operation created by these constructors.
+* `APPLY(index | key, operation)`: Apply any operation to a particular array element (`index`, for arrays) or property (`key`, for objects). `operation` is any operation created by these constructors.
 * `SET(old_value, new_value)`: Set a value (an array element, an object property, or an atomic value). `old_value` is the value the document had prior to this operation, and `new_value` is the new value after the operation.
 * `MATH(op, value)`: Increment (`op`="add"), multiply (`op`="mult"), increment w/ modulus (`op`="rot"), or exclusive-or (`op`="xor") a number. For `rot`, the value is given as an array of [increment, modulus].
 * `MAP(operation)`: Apply any operation to all elements of an array (or all characters in a string). `operation` is any operation created by these constructors.

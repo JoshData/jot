@@ -64,12 +64,12 @@ test('meta', function(t) {
     t.deepEqual(
         jot.deserialize(
             new meta.LIST([
-                jot.OBJECT_APPLY(
+                jot.APPLY(
                     'foo', jot.PUT(
                         'x', 'y'
                     )
                 ),
-                jot.ARRAY_APPLY(
+                jot.APPLY(
                     'bar', jot.INS(
                         0, [{baz: 'quux'}]
                     )
@@ -77,12 +77,12 @@ test('meta', function(t) {
             ]).serialize()
         ),
         new meta.LIST([
-            jot.OBJECT_APPLY(
+            jot.APPLY(
                 'foo', jot.PUT(
                     'x', 'y'
                 )
             ),
-            jot.ARRAY_APPLY(
+            jot.APPLY(
                 'bar', jot.INS(
                     0, [{baz: 'quux'}]
                 )
@@ -108,31 +108,31 @@ test('meta', function(t) {
     )
 
     t.deepEqual( // related changes, unwrapping of list
-        new meta.LIST([ jot.OBJECT_APPLY('x', jot.SET('y1', 'y2')) ])
+        new meta.LIST([ jot.APPLY('x', jot.SET('y1', 'y2')) ])
             .rebase(
                 jot.REN('x', 'a')
             ),
-        jot.OBJECT_APPLY('a', jot.SET('y1', 'y2'))
+        jot.APPLY('a', jot.SET('y1', 'y2'))
     )
 
     t.deepEqual( // two on one
         new meta.LIST([
-            jot.OBJECT_APPLY('x', jot.SET('y1', 'y2')),
-            jot.OBJECT_APPLY('x', jot.SET('y2', 'y3'))
+            jot.APPLY('x', jot.SET('y1', 'y2')),
+            jot.APPLY('x', jot.SET('y2', 'y3'))
         ])
             .rebase(
                 jot.REN('x', 'a')
             ),
         new meta.LIST([
-            jot.OBJECT_APPLY('a', jot.SET('y1', 'y2')),
-            jot.OBJECT_APPLY('a', jot.SET('y2', 'y3'))
+            jot.APPLY('a', jot.SET('y1', 'y2')),
+            jot.APPLY('a', jot.SET('y2', 'y3'))
         ])
     )
 
     t.deepEqual( // two on two
         new meta.LIST([
-            jot.OBJECT_APPLY('x', jot.SET('y1', 'y2')),
-            jot.OBJECT_APPLY('x', jot.SET('y2', 'y3'))
+            jot.APPLY('x', jot.SET('y1', 'y2')),
+            jot.APPLY('x', jot.SET('y2', 'y3'))
         ])
             .rebase(
                 new meta.LIST([
@@ -141,8 +141,8 @@ test('meta', function(t) {
                 ])
             ),
         new meta.LIST([
-            jot.OBJECT_APPLY('b', jot.SET('y1', 'y2')),
-            jot.OBJECT_APPLY('b', jot.SET('y2', 'y3'))
+            jot.APPLY('b', jot.SET('y1', 'y2')),
+            jot.APPLY('b', jot.SET('y2', 'y3'))
         ])
     )
 
@@ -153,8 +153,8 @@ test('meta', function(t) {
         ])
             .rebase(
                 new meta.LIST([
-                    jot.OBJECT_APPLY('x', jot.SET('y1', 'y2')),
-                    jot.OBJECT_APPLY('x', jot.SET('y2', 'y3'))
+                    jot.APPLY('x', jot.SET('y1', 'y2')),
+                    jot.APPLY('x', jot.SET('y2', 'y3'))
                 ])
             ),
         new meta.LIST([

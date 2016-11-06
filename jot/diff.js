@@ -203,7 +203,7 @@ function diff_arrays(a, b, options) {
 
 					// Add an operation.
 					if (!(d.op instanceof jot.NO_OP))
-						ops.push(jot.ARRAY_APPLY(hunk.bi[i], d.op));
+						ops.push(jot.APPLY(hunk.bi[i], d.op));
 
 					// Increment counters.
 					total_content += d.size;
@@ -242,7 +242,7 @@ function diff_objects(a, b, options) {
 
 			// Add operation if there were any changes.
 			if (!(d.op instanceof jot.NO_OP))
-				ops.push(jot.OBJECT_APPLY(key, d.op));
+				ops.push(jot.APPLY(key, d.op));
 
 			// Increment counters.
 			total_content += d.size;
@@ -285,7 +285,7 @@ function diff_objects(a, b, options) {
 		// Use this pair.
 		ops.push(jot.REN(item.a_key, item.b_key));
 		if (!(item.diff.op instanceof jot.NO_OP))
-			ops.push(jot.OBJECT_APPLY(item.b_key, item.diff.op));
+			ops.push(jot.APPLY(item.b_key, item.diff.op));
 
 		// Increment counters.
 		total_content += item.diff.size;

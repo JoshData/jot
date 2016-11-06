@@ -34,13 +34,18 @@ exports.MATH = function() { return new_op(values.MATH, arguments) };
 exports.SPLICE = function() { return new_op(sequences.SPLICE, arguments) };
 exports.INS = function() { return new_op(sequences.INS, arguments) };
 exports.DEL = function() { return new_op(sequences.DEL, arguments) };
-exports.ARRAY_APPLY = function() { return new_op(sequences.APPLY, arguments) };
 exports.MAP = function() { return new_op(sequences.MAP, arguments) };
 exports.PUT = function() { return new_op(objects.PUT, arguments) };
 exports.REN = function() { return new_op(objects.REN, arguments) };
 exports.REM = function() { return new_op(objects.REM, arguments) };
-exports.OBJECT_APPLY = function() { return new_op(objects.APPLY, arguments) };
 exports.LIST = function() { return new_op(meta.LIST, arguments) };
+exports.APPLY = function(pos_or_key) {
+	if (typeof pos_or_key == "number")
+		return new_op(sequences.APPLY, arguments);
+	if (typeof pos_or_key == "string")
+		return new_op(objects.APPLY, arguments);
+	throw "Invalid Argument";
+};
 
 /////////////////////////////////////////////////////////////////////
 
