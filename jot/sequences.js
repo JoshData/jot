@@ -230,7 +230,7 @@ exports.SPLICE.prototype.compose = function (other) {
 
 	// a SPLICE composed with an APPLY that applies within the range modified
 	// by the splice
-	if (other instanceof exports.APPLY && other.pos >= this.pos && other.pos < this.pos + this.old_value.length)
+	if (other instanceof exports.APPLY && other.pos >= this.pos && other.pos < this.pos + this.new_value.length)
 		return new exports.SPLICE(
 			this.pos,
 			this.old_value,
