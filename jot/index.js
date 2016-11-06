@@ -47,6 +47,10 @@ exports.BaseOperation.prototype.inspect = function(depth) {
 		var v;
 		if (this[keys[i]] instanceof exports.BaseOperation)
 			v = this[keys[i]].inspect(depth-1);
+		else if (Array.isArray(this[keys[i]]))
+			v = "[" + this[keys[i]].map(function(item) {
+				return item.inspect ? item.inspect() : util.format("%j", item)
+			}) + "]";
 		else if (typeof this[keys[i]] != 'undefined')
 			v = util.format("%j", this[keys[i]]);
 		else
