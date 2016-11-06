@@ -303,13 +303,6 @@ t.notOk(
 	new seqs.MAP(new values.MATH("add", 1)).rebase(
 		new seqs.MAP(new values.MATH("mult", 3))));
 
-// from_string_rep
-
-t.equal(
-	seqs.from_diff("this is a test", "calculus was a hard test")
-		.apply("this is a test"),
-	"calculus was a hard test");
-
 t.end();
 
 });

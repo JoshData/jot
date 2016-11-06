@@ -3,14 +3,15 @@
   "version": "0.0.1",
   "description": "JSON Operational Transformation",
   "dependencies": {
-    "googlediff": "*",
-    "deep-equal": "*"
+    "deep-equal": "*",
+    "diff": "3.0.1",
+    "generic-diff": "1.0.1"
   },
   "repository": {
     "type": "git",
     "url": "git://github.com/joshdata/jot.git"
   },
-  "author": "Josh Tauberer",
+  "author": "Joshua Tauberer",
   "scripts": {
     "test": "tap tests/*.js"
   },
