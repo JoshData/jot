@@ -226,6 +226,8 @@ exports.cmp = function(a, b) {
 		return 0;
 	}
 
-	throw "Type " + type_name(a) + " not comparable."
+	// Compare on strings.
+	// TODO: Find a better way to sort objects.
+	return JSON.stringify(a).localeCompare(JSON.stringify(b));
 }
 
