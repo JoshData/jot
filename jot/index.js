@@ -121,7 +121,7 @@ exports.opFromJsonableObject = function(obj, op_map) {
 	// Reconstruct.
 	var constructor = op_map[obj._type.module][obj._type.class];
 	var args = constructor.prototype.constructor_args.map(function(item) {
-		if (typeof obj[item] == 'object' && '_type' in obj[item]) {
+		if (obj[item] !== null && typeof obj[item] == 'object' && '_type' in obj[item]) {
 			return exports.opFromJsonableObject(obj[item]);
         } else if (item === 'ops' && Array.isArray(obj[item])) {
             obj[item] = obj[item].map(function(op) {

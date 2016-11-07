@@ -29,14 +29,27 @@ function diff(a, b, options) {
 	}
 
 	// Run the diff method appropriate for the pair of data types.
+
+	function typename(val) {
+		if (val === null)
+			return "null";
+		if (typeof val == "string" || typeof val == "number")
+			return typeof a;
+		if (Array.isArray(val))
+			return "array";
+		return "object";
+	}
+
+	var ta = typename(a);
+	var tb = typename(b);
 	
-	if (typeof a == "string" && typeof b == "string")
+	if (ta == "string" && tb == "string")
 		return diff_strings(a, b, options);
 
-	if (Array.isArray(a) && Array.isArray(b))
+	if (ta == "array" && tb == "array")
 		return diff_arrays(a, b, options);
 	
-	if (typeof a == "object" && typeof b == "object")
+	if (ta == "object" && tb == "object")
 		return diff_objects(a, b, options);
 
 	// If the data types of the two values are different,
