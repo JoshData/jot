@@ -4,6 +4,7 @@
 var deepEqual = require("deep-equal");
 
 var jot = require("./index.js");
+var sequences = require("./sequences.js");
 
 function diff(a, b, options) {
 	// Compares two JSON-able data instances and returns
@@ -113,8 +114,21 @@ function diff_strings(a, b, options) {
 		})
 		.filter(function(item) { return item != null; });
 
+	// Merge consecutive INS/DELs into SPLICES.
+	var op = jot.LIST(ops).simplify();
+
+	// If the change is a single operation that replaces the whole content
+	// of the string, use a SET operation rather than a SPLICE operation.
+	if (op instanceof sequences.SPLICE && op.old_value == a && op.new_value == b) {
+		return {
+			op: jot.SET(a, b),
+			pct: 1.0,
+			size: total_content
+		};
+	}
+
 	return {
-		op: jot.LIST(ops).simplify(),
+		op: op,
 		pct: (changed_content+1)/(total_content+1), // avoid divizion by zero
 		size: total_content
 	};
