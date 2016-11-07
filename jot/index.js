@@ -177,6 +177,11 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless) {
 		}
 	}
 
+	// Everything case rebase against a LIST.
+	if (other instanceof meta.LIST) {
+		return meta.rebase(other, this, conflictless);
+	}
+
 	return null;
 }
 

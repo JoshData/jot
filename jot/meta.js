@@ -132,14 +132,21 @@ exports.LIST.prototype.rebase = function (other, conflictless) {
 	/* Transforms this operation so that it can be composed *after* the other
 	   operation to yield the same logical effect. Returns null on conflict. 
 	   The conflictless parameter tries to prevent conflicts. */
+	return exports.rebase(other, this, conflictless);
+}
 
-	var base;
-	if (other instanceof exports.LIST)
-		base = other.ops;
+exports.rebase = function(base, ops, conflictless) {
+	if (base instanceof exports.LIST)
+		base = base.ops;
 	else
-		base = [other];
+		base = [base];
 
-	var ops = rebase_array(base, this.ops, conflictless);
+	if (ops instanceof exports.LIST)
+		ops = ops.ops;
+	else
+		ops = [ops];
+
+	var ops = rebase_array(base, ops, conflictless);
 	if (ops == null) return null;
 	if (ops.length == 0) return new values.NO_OP();
 	if (ops.length == 1) return ops[0];
