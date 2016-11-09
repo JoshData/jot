@@ -47,7 +47,13 @@ exports.APPLY = function(pos_or_key) {
 	throw "Invalid Argument";
 };
 
+exports.diff = require('./diff.js').diff;
+
 /////////////////////////////////////////////////////////////////////
+
+exports.BaseOperation.prototype.isNoOp = function() {
+	return this instanceof values.NO_OP;
+}
 
 exports.BaseOperation.prototype.inspect = function(depth) {
 	var repr = [ ];

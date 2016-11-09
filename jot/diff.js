@@ -34,8 +34,8 @@ function diff(a, b, options) {
 	function typename(val) {
 		if (val === null)
 			return "null";
-		if (typeof val == "string" || typeof val == "number")
-			return typeof a;
+		if (typeof val == "string" || typeof val == "number" || typeof val == "boolean")
+			return typeof val;
 		if (Array.isArray(val))
 			return "array";
 		return "object";
@@ -87,7 +87,7 @@ function diff_strings(a, b, options) {
 	var index = 0;
 	var total_content = 0;
 	var changed_content = 0;
-	
+
 	var ops = diff["diff" + method](a, b)
 		.map(function(change) {
 			var ret = null;
