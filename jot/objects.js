@@ -52,6 +52,7 @@
 var deepEqual = require("deep-equal");
 var jot = require("./index.js");
 var values = require("./values.js");
+var LIST = require("./meta.js").LIST;
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -426,9 +427,16 @@ exports.APPLY.prototype.compose = function (other) {
 
 	// two APPLYs to the same key in a row
 	if (other instanceof exports.APPLY && this.key == other.key) {
+		// Can the sub-operations be composed atomically?
 		var op2 = this.op.compose(other.op);
-		if (op2)
-			return exports.APPLY(this.key, op2);
+		if (op2) {
+			if (op2 instanceof values.NO_OP)
+				return new values.NO_OP();
+			return new exports.APPLY(this.key, op2);
+		}
+
+		// If not, compose using a LIST.
+		return new exports.APPLY(this.key, new LIST([this.op, other.op]));
 	}
 
 	// No composition possible.

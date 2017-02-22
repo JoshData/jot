@@ -570,9 +570,16 @@ exports.APPLY.prototype.compose = function (other) {
 
 	// two APPLYs on the same element, with composable sub-operations
 	if (other instanceof exports.APPLY && this.pos == other.pos) {
+		// Can the sub-operations be composed atomically?
 		var op2 = this.op.compose(other.op);
-		if (op2)
+		if (op2) {
+			if (op2 instanceof values.NO_OP)
+				return new values.NO_OP();
 			return new exports.APPLY(this.pos, op2);
+		}
+
+		// If not, compose using a LIST.
+		return new exports.APPLY(this.pos, new LIST([this.op, other.op]));
 	}
 
 	// No composition possible.

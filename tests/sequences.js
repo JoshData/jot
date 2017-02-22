@@ -135,6 +135,16 @@ t.deepEqual(
 	new seqs.APPLY(555, new values.SET("A", "B"))
 		.compose(new seqs.APPLY(555, new values.SET("B", "C"))),
 	new seqs.APPLY(555, new values.SET("A", "C")));
+t.deepEqual(
+	new seqs.APPLY(555, new values.SET("A", 1))
+		.compose(new seqs.APPLY(555, new values.SET(1, "A"))),
+	new values.NO_OP());
+t.deepEqual(
+	new seqs.APPLY(555, new values.MATH("add", 1))
+		.compose(new seqs.APPLY(555, new values.MATH("mult", 1))),
+	new seqs.APPLY(555, new jot.LIST([
+		new values.MATH("add", 1), new values.MATH("mult", 1)
+	])));
 
 // rebase
 

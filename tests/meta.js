@@ -123,10 +123,7 @@ test('meta', function(t) {
             .rebase(
                 jot.REN('x', 'a')
             ),
-        new meta.LIST([
-            jot.APPLY('a', jot.SET('y1', 'y2')),
-            jot.APPLY('a', jot.SET('y2', 'y3'))
-        ])
+        jot.APPLY('a', jot.SET('y1', 'y3'))
     )
 
     t.deepEqual( // two on two
@@ -140,10 +137,7 @@ test('meta', function(t) {
                     jot.REN('a', 'b')
                 ])
             ),
-        new meta.LIST([
-            jot.APPLY('b', jot.SET('y1', 'y2')),
-            jot.APPLY('b', jot.SET('y2', 'y3'))
-        ])
+        jot.APPLY('b', jot.SET('y1', 'y3'))
     )
 
     t.deepEqual( // two on two - list is unchanged

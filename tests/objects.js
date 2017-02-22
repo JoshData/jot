@@ -87,6 +87,15 @@ t.deepEqual(
 t.deepEqual(
 	new objs.APPLY("key", new values.MATH('add', 1)).compose(new values.SET({ key: 2 }, "123")),
 	new values.SET({ key: 1 }, "123"));
+t.deepEqual(
+	new objs.APPLY("key", new values.MATH('add', 1)).compose(new objs.APPLY("key", new values.MATH('add', 1))),
+	new objs.APPLY("key", new values.MATH('add', 2)));
+t.deepEqual(
+	new objs.APPLY("key", new values.MATH('add', 1)).compose(new objs.APPLY("key", new values.MATH('add', -1))),
+	new values.NO_OP());
+t.deepEqual(
+	new objs.APPLY("key", new values.MATH('add', 1)).compose(new objs.APPLY("key", new values.MATH('mult', 1))),
+	new objs.APPLY("key", new meta.LIST([new values.MATH('add', 1), new values.MATH('mult', 1)])));
 
 // rebase
 
