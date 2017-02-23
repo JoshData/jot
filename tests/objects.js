@@ -20,7 +20,7 @@ t.equal(
 	'<objects.REN {old_key:"0", new_key:"1"}>');
 t.equal(
 	new objs.APPLY("0", new values.SET(1, 2)).inspect(),
-	'<objects.APPLY {key:"0", op:<values.SET {old_value:1, new_value:2}>}>');
+	'<objects.APPLY {ops:{"0":<values.SET {old_value:1, new_value:2}>}}>');
 
 // serialization
 
@@ -96,6 +96,10 @@ t.deepEqual(
 t.deepEqual(
 	new objs.APPLY("key", new values.MATH('add', 1)).compose(new objs.APPLY("key", new values.MATH('mult', 1))),
 	new objs.APPLY("key", new meta.LIST([new values.MATH('add', 1), new values.MATH('mult', 1)])));
+t.deepEqual(
+	new objs.APPLY("key1", new values.MATH('add', 1)).compose(new objs.APPLY("key2", new values.MATH('mult', 2))),
+	new objs.APPLY({ "key1": new values.MATH('add', 1), "key2": new values.MATH('mult', 2)}));
+
 
 // rebase
 

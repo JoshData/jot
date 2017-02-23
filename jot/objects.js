@@ -29,9 +29,12 @@
     with the other operations in this module.
 
    new objects.APPLY(key, operation)
+   new objects.APPLY({key: operation, ...})
 
-    Applies another sort of operation to a property's value. Use any
-    operation defined in any of the modules depending on the data type
+    Applies any operation to a property, or multiple operations to various
+    properties, on the object.
+
+    Use any operation defined in any of the modules depending on the data type
     of the property. For instance, the operations in values.js can be
     applied to any property. The operations in sequences.js can be used
     if the property's value is a string or array. And the operations in
@@ -46,7 +49,11 @@
     To replace the value of a property with a new value:
     
       new objects.APPLY("key1", new values.SET("old_value", "new_value"))
-      
+
+	or
+
+      new objects.APPLY({ key1: new values.SET("old_value", "new_value") })
+
    */
    
 var deepEqual = require("deep-equal");
@@ -94,14 +101,22 @@ exports.REN = function (old_key, new_key) {
 exports.REN.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.REN, exports, 'REN', ['old_key', 'new_key']);
 
-exports.APPLY = function (key, op) {
-	if (key == null || op == null) throw "invalid arguments";
-	this.key = key;
-	this.op = op;
+exports.APPLY = function () {
+	if (arguments.length == 1 && typeof arguments[0] == "object") {
+		// Dict form.
+		this.ops = arguments[0];
+	} else if (arguments.length == 2 && typeof arguments[0] == "string") {
+		// key & operation form.
+		this.ops = { };
+		this.ops[arguments[0]] = arguments[1];
+	} else {
+		throw "invalid arguments";
+	}
 	Object.freeze(this);
+	Object.freeze(this.ops);
 }
 exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.APPLY, exports, 'APPLY', ['key', 'op']);
+jot.add_op(exports.APPLY, exports, 'APPLY', ['ops']);
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -148,8 +163,8 @@ exports.PUT.prototype.compose = function (other) {
 	if (other instanceof exports.REN && this.key == other.old_key)
 		return new exports.PUT(other.new_key, this.value);
 
-	if (other instanceof exports.APPLY && this.key == other.key)
-		return new exports.PUT(this.key, other.op.apply(this.value));
+	if (other instanceof exports.APPLY && this.key in other.ops)
+		return new exports.PUT(this.key, other.ops[this.key].apply(this.value));
 
 	// No composition possible.
 	return null;
@@ -259,9 +274,9 @@ exports.REM.prototype.rebase_functions = [
 		// If an APPLY applied simultaneously, then update this
 		// operation's old_value. It takes precedence. The APPLY
 		// becomes a no-op.
-		if (this.key == other.key)
+		if (this.key in other.ops)
 			return [
-				new exports.REM(this.key, other.op.apply(this.old_value)),
+				new exports.REM(this.key, other.ops[this.key].apply(this.old_value)),
 				new values.NO_OP()
 			];
 		return [this, other];
@@ -363,10 +378,17 @@ exports.REN.prototype.rebase_functions = [
 	[exports.APPLY, function(other, conflictless) {
 		// If an APPLY applied simultaneously, there is no conflict but
 		// the APPLY's key must be updated.
-		if (this.old_key == other.key)
+		if (this.old_key in other.ops)
+			// Clone the other operations, delete the old key, add the
+			// new key. The new key can't already exist since the REM
+			// would have been invalid in that state.
+			var new_apply_ops = shallow_clone(other.ops);
+			new_apply_ops[this.new_key] = new_apply_ops[this.old_key];
+			delete new_apply_ops[this.old_key];
+
 			return [
 				this,
-				new exports.APPLY(this.new_key, other.op)
+				new exports.APPLY(new_apply_ops)
 			];
 
 		// On different keys they don't bother each other.
@@ -390,22 +412,37 @@ exports.APPLY.prototype.apply = function (document) {
 		d[k] = document[k];
 
 	// Apply.
-	d[this.key] = this.op.apply(d[this.key]);
+	for (var key in this.ops) {
+		d[key] = this.ops[key].apply(d[key]);
+	}
 	return d;
 }
 
 exports.APPLY.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
-	   of this operation.*/
-	var op2 = this.op.simplify();
-	if (op2 instanceof values.NO_OP)
-		return values.NO_OP();
-	return this;
+	   of this operation. If there is no sub-operation that is
+	   not a NO_OP, then return a NO_OP. Otherwise, simplify all
+	   of the sub-operations. */
+	var new_ops = { };
+	var had_non_noop = false;
+	for (var key in this.ops) {
+		new_ops[key] = this.ops[key].simplify();
+		if (!(new_ops[key] instanceof values.NO_OP))
+			had_non_noop = true;
+	}
+	if (!had_non_noop)
+		return new values.NO_OP();
+	return new exports.APPLY(new_ops);
 }
 
 exports.APPLY.prototype.invert = function () {
-	/* Returns a new atomic operation that is the inverse of this operation */
-	return new exports.APPLY(this.key, this.op.invert());
+	/* Returns a new atomic operation that is the inverse of this operation.
+	   All of the sub-operations get inverted. */
+	var new_ops = { };
+	for (var key in this.ops) {
+		new_ops[key] = this.ops[key].invert();
+	}
+	return new exports.APPLY(new_ops);
 }
 
 exports.APPLY.prototype.compose = function (other) {
@@ -425,18 +462,38 @@ exports.APPLY.prototype.compose = function (other) {
 	if (other instanceof exports.REM && this.key == other.key)
 		return other.simplify();
 
-	// two APPLYs to the same key in a row
-	if (other instanceof exports.APPLY && this.key == other.key) {
-		// Can the sub-operations be composed atomically?
-		var op2 = this.op.compose(other.op);
-		if (op2) {
-			if (op2 instanceof values.NO_OP)
-				return new values.NO_OP();
-			return new exports.APPLY(this.key, op2);
+	// two APPLYs
+	if (other instanceof exports.APPLY) {
+		// Start with a clone of this operation's suboperations.
+		var new_ops = shallow_clone(this.ops);
+
+		// Now compose with other.
+		for (var key in other.ops) {
+			if (!(key in new_ops)) {
+				// Operation in other applies to a key not present
+				// in this, so we can just merge - the operations
+				// happen in parallel and don't affect each other.
+				new_ops[key] = other.ops[key];
+			} else {
+				// Compose.
+				var op2 = new_ops[key].compose(other.ops[key]);
+				if (op2) {
+					// They composed to a no-op, so delete the
+					// first operation.
+					if (op2 instanceof values.NO_OP)
+						delete new_ops[key];
+
+					// They composed to something atomic, so replace.
+					else
+						new_ops[key] = op2;
+				} else {
+					// They don't compose to something atomic, so use a LIST.
+					new_ops[key] = new LIST([new_ops[key], other.ops[key]]);
+				}
+			}
 		}
 
-		// If not, compose using a LIST.
-		return new exports.APPLY(this.key, new LIST([this.op, other.op]));
+		return new exports.APPLY(new_ops).simplify();
 	}
 
 	// No composition possible.
@@ -445,19 +502,29 @@ exports.APPLY.prototype.compose = function (other) {
 
 exports.APPLY.prototype.rebase_functions = [
 	[exports.APPLY, function(other, conflictless) {
-		if (this.key != other.key) {
-			// Changes to different keys are independent.
-			return [this, other];
+		// Rebase the sub-operations on corresponding keys.
+		// If any rebase fails, the whole rebase fails.
+		var new_ops_left = { };
+		for (var key in this.ops) {
+			new_ops_left[key] = this.ops[key];
+			if (key in other.ops)
+				new_ops_left[key] = new_ops_left[key].rebase(other.ops[key], conflictless);
+			if (new_ops_left[key] === null)
+				return null;
 		}
 
-		// Operated on the same key. Rebase the sub-operations.
-		// Only succeeds if the rebase both ways is possible.
-		var opa = this.op.rebase(other.op, conflictless);
-		var opb = other.op.rebase(this.op, conflictless);
-		if (opa && opb)
-			return [
-				(opa instanceof values.NO_OP) ? new values.NO_OP() : new exports.APPLY(this.key, opa),
-				(opb instanceof values.NO_OP) ? new values.NO_OP() : new exports.APPLY(other.key, opb)
-			];
+		var new_ops_right = { };
+		for (var key in other.ops) {
+			new_ops_right[key] = other.ops[key];
+			if (key in this.ops)
+				new_ops_right[key] = new_ops_right[key].rebase(this.ops[key], conflictless);
+			if (new_ops_right[key] === null)
+				return null;
+		}
+
+		return [
+			new exports.APPLY(new_ops_left).simplify(),
+			new exports.APPLY(new_ops_right).simplify()
+		];
 	}]
 ]

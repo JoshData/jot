@@ -59,18 +59,27 @@ exports.BaseOperation.prototype.inspect = function(depth) {
 	var repr = [ ];
 	var keys = Object.keys(this);
 	for (var i = 0; i < keys.length; i++) {
-		var v;
-		if (this[keys[i]] instanceof exports.BaseOperation)
-			v = this[keys[i]].inspect(depth-1);
-		else if (Array.isArray(this[keys[i]]))
-			v = "[" + this[keys[i]].map(function(item) {
+		var value = this[keys[i]];
+		var s;
+		if (value instanceof exports.BaseOperation)
+			// The value is an operation.
+			s = value.inspect(depth-1);
+		else if (Array.isArray(value))
+			// The value is a list (maybe containing operations).
+			s = "[" + value.map(function(item) {
 				return item.inspect ? item.inspect() : util.format("%j", item)
 			}) + "]";
-		else if (typeof this[keys[i]] != 'undefined')
-			v = util.format("%j", this[keys[i]]);
+		else if (typeof value == 'object')
+			// The value is an Object (maybe containing operations as values).
+			s = "{" + Object.keys(value).map(function(key) {
+				var item = value[key];
+				return util.format("%j", key) + ":" + (item.inspect ? item.inspect() : util.format("%j", item))
+			}) + "}";
+		else if (typeof value != 'undefined')
+			s = util.format("%j", value);
 		else
 			continue;
-		repr.push(keys[i] + ":" + v);
+		repr.push(keys[i] + ":" + s);
 	}
 	return util.format("<%s.%s {%s}>",
 		this.type[0],
@@ -83,17 +92,23 @@ exports.BaseOperation.prototype.toJsonableObject = function() {
 	repr['_type'] = { 'module': this.type[0], 'class': this.type[1] };
 	var keys = Object.keys(this);
 	for (var i = 0; i < keys.length; i++) {
+		var value = this[keys[i]];
 		var v;
-		if (this[keys[i]] instanceof exports.BaseOperation) {
-			v = this[keys[i]].toJsonableObject();
+		if (value instanceof exports.BaseOperation) {
+			v = value.toJsonableObject();
         }
-        else if (keys[i] === 'ops' && Array.isArray(this[keys[i]])) {
-            v = this[keys[i]].map(function(ki) {
+        else if (keys[i] === 'ops' && Array.isArray(value)) {
+            v = value.map(function(ki) {
                 return ki.toJsonableObject();
             });
         }
-		else if (typeof this[keys[i]] !== 'undefined') {
-			v = this[keys[i]];
+        else if (keys[i] === 'ops' && typeof value === "object") {
+            v = { };
+            for (var key in value)
+            	v[key] = value[key].toJsonableObject();
+        }
+		else if (typeof value !== 'undefined') {
+			v = value;
         }
 		else {
 			continue;
@@ -129,10 +144,15 @@ exports.opFromJsonableObject = function(obj, op_map) {
 	var args = constructor.prototype.constructor_args.map(function(item) {
 		if (obj[item] !== null && typeof obj[item] == 'object' && '_type' in obj[item]) {
 			return exports.opFromJsonableObject(obj[item]);
+        
         } else if (item === 'ops' && Array.isArray(obj[item])) {
             obj[item] = obj[item].map(function(op) {
                 return exports.opFromJsonableObject(op);
             });
+
+        } else if (item === 'ops' && typeof obj[item] === "object") {
+        	for (var key in obj[item])
+        		obj[item][key] = exports.opFromJsonableObject(obj[item][key]);
         }
 		return obj[item];
 	});
