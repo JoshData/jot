@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "JSON Operational Transformation",
   "dependencies": {
-    "deep-equal": "*",
+    "deep-equal": "1.0.1",
     "diff": "3.0.1",
     "generic-diff": "1.0.1"
   },
