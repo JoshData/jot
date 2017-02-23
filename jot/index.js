@@ -64,6 +64,9 @@ exports.BaseOperation.prototype.inspect = function(depth) {
 		if (value instanceof exports.BaseOperation)
 			// The value is an operation.
 			s = value.inspect(depth-1);
+		else if (value === objects.MISSING)
+			// The value is a special sentinel.
+			s = "~";
 		else if (Array.isArray(value))
 			// The value is a list (maybe containing operations).
 			s = "[" + value.map(function(item) {
@@ -96,6 +99,10 @@ exports.BaseOperation.prototype.toJsonableObject = function() {
 		var v;
 		if (value instanceof exports.BaseOperation) {
 			v = value.toJsonableObject();
+        }
+		if (value === objects.MISSING) {
+			repr[keys[i] + "_missing"] = true;
+			continue;
         }
         else if (keys[i] === 'ops' && Array.isArray(value)) {
             v = value.map(function(ki) {
@@ -139,20 +146,34 @@ exports.opFromJsonableObject = function(obj, op_map) {
 	// Sanity check.
 	if (!('_type' in obj)) throw "Invalid argument: Not an operation.";
 
+	// Put "missing" values back.
+	Object.keys(obj).forEach(function(key) {
+		if (/_missing$/.test(key) && obj[key] === true) {
+			delete obj[key];
+			obj[key.substr(0, key.length-8)] = objects.MISSING;
+		}
+	})
+
 	// Reconstruct.
 	var constructor = op_map[obj._type.module][obj._type.class];
 	var args = constructor.prototype.constructor_args.map(function(item) {
 		if (obj[item] !== null && typeof obj[item] == 'object' && '_type' in obj[item]) {
+			// Value is an operation.
 			return exports.opFromJsonableObject(obj[item]);
         
         } else if (item === 'ops' && Array.isArray(obj[item])) {
+        	// Value is an array of operations.
             obj[item] = obj[item].map(function(op) {
                 return exports.opFromJsonableObject(op);
             });
 
         } else if (item === 'ops' && typeof obj[item] === "object") {
+        	// Value is a mapping array of operations.
         	for (var key in obj[item])
         		obj[item][key] = exports.opFromJsonableObject(obj[item][key]);
+        
+        } else {
+        	// Value is just a raw JSON value.
         }
 		return obj[item];
 	});
@@ -223,6 +244,16 @@ function type_name(x) {
 // Utility function to compare values for the purposes of
 // setting sort orders that resolve conflicts.
 exports.cmp = function(a, b) {
+	// For objects.MISSING, make sure we try object identity.
+	if (a === b)
+		return 0;
+
+	// objects.MISSING has a lower sort order so that it tends to get clobbered.
+	if (a === objects.MISSING)
+		return -1;
+	if (b === objects.MISSING)
+		return 1;
+
 	// Comparing strings to numbers, numbers to objects, etc.
 	// just sort based on the type name.
 	if (type_name(a) != type_name(b)) {

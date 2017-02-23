@@ -11,10 +11,10 @@ test('objects', function(t) {
 
 t.equal(
 	new objs.PUT("0", "1").inspect(),
-	'<objects.PUT {key:"0", value:"1"}>');
+	'<objects.APPLY {ops:{"0":<values.SET {old_value:~, new_value:"1"}>}}>');
 t.equal(
 	new objs.REM("0", "1").inspect(),
-	'<objects.REM {key:"0", old_value:"1"}>');
+	'<objects.APPLY {ops:{"0":<values.SET {old_value:"1", new_value:~}>}}>');
 t.equal(
 	new objs.REN("0", "1").inspect(),
 	'<objects.REN {old_key:"0", new_key:"1"}>');
@@ -144,7 +144,7 @@ t.deepEqual(
 t.deepEqual(
 	new objs.REN("key", "newkey").rebase(
 		new objs.REM("key", "value")),
-	new values.NO_OP()
+	new objs.REN("key", "newkey") // it doesn't know key was deleted
 	)
 t.deepEqual(
 	new objs.REN("key2", "newkey").rebase(
@@ -153,14 +153,14 @@ t.deepEqual(
 	)
 
 t.deepEqual(
-	new objs.REM("key", "value").rebase(
-		new objs.APPLY("key", new values.SET("value", "new_value"))),
-	new objs.REM("key", "new_value")
+	new objs.REM("key", "old_value").rebase(
+		new objs.APPLY("key", new values.SET("old_value", "new_value")), true),
+	new values.NO_OP()
 	)
 t.deepEqual(
-	new objs.APPLY("key", new values.SET("value", "new_value")).rebase(
-		new objs.REM("key", "value")),
-	new values.NO_OP()
+	new objs.APPLY("key", new values.SET("old_value", "new_value")).rebase(
+		new objs.REM("key", "old_value"), true),
+	new objs.PUT("key", "new_value")
 	)
 
 t.deepEqual(
@@ -244,5 +244,17 @@ t.deepEqual(
 	).apply({"a": [0, 0, 0]}),
 	{ "a": [0, 1, -1] });
 
+// serialization
+
+function test_serialization(op) {
+	t.deepEqual(op.toJsonableObject(), jot.opFromJsonableObject(op.toJsonableObject()).toJsonableObject());
+}
+
+test_serialization(new objs.PUT("key", "value"))
+test_serialization(new objs.REM("key", "old_value"))
+
+//
+
     t.end();
 });
+

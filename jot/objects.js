@@ -1,25 +1,20 @@
 /* A library of operations for objects (i.e. JSON objects/Javascript associative arrays).
-   
-   Four operations are provided:
+
+   Two operation aliases are provided:
    
    new objects.PUT(key, value)
     
     Creates a property with the given value. The property must not already
-    exist in the document.
-
-    Supports a conflictless rebase with other PUT operations, and never
-    generates conflicts with the other operations in any case because
-    a PUT (to add a key) could not apply simultaneously with the other
-    operations on the same key because those operations require the key
-    exists.
+    exist in the document. This is an alias for
+    new objects.APPLY(key, new values.SET(MISSING, value)).
 
    new objects.REM(key, old_value)
     
     Removes a property from an object. The property must exist in the document.
-    The old value of the property is given as old_value.
+    The old value of the property is given as old_value. This is an alias for
+    new objects.APPLY(key, new values.SET(old_value, MISSING)).
 
-    This operation never generates conflicts with any of operations in
-    this module, including itself.
+   Two new operation are provided:
 
    new objects.REN(old_key, new_key)
     
@@ -74,24 +69,6 @@ function shallow_clone(document) {
 
 exports.module_name = 'objects'; // for serialization/deserialization
 
-exports.PUT = function (key, value) {
-	if (key == null) throw "invalid arguments";
-	this.key = key;
-	this.value = value;
-	Object.freeze(this);
-}
-exports.PUT.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.PUT, exports, 'PUT', ['key', 'value']);
-
-exports.REM = function (key, old_value) {
-	if (key == null) throw "invalid arguments";
-	this.key = key;
-	this.old_value = old_value;
-	Object.freeze(this);
-}
-exports.REM.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.REM, exports, 'REM', ['key', 'old_value']);
-
 exports.REN = function (old_key, new_key) {
 	if (old_key == null || new_key == null) throw "invalid arguments";
 	this.old_key = old_key;
@@ -118,179 +95,32 @@ exports.APPLY = function () {
 exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.APPLY, exports, 'APPLY', ['ops']);
 
+// The MISSING object is a sentinel to signal the state of an Object property
+// that does not exist. It is the old_value to SET when adding a new property
+// and the new_value when removing a property.
+exports.MISSING = new Object();
+Object.freeze(exports.MISSING);
+
+exports.PUT = function (key, value) {
+	exports.APPLY.apply(this, [key, new values.SET(exports.MISSING, value)]);
+}
+exports.PUT.prototype = Object.create(exports.APPLY.prototype); // inherit prototype
+
+exports.REM = function (key, old_value) {
+	exports.APPLY.apply(this, [key, new values.SET(old_value, exports.MISSING)]);
+}
+exports.REM.prototype = Object.create(exports.APPLY.prototype); // inherit prototype
+
 //////////////////////////////////////////////////////////////////////////////
-
-exports.PUT.prototype.apply = function (document) {
-	/* Applies the operation to a document. Returns a new object that is
-	   the same type as document but with the change made. */
-
-	// Clone first.
-	var d = shallow_clone(document);
-
-	// Apply.
-	d[this.key] = this.value;
-
-	return d;
-}
-
-exports.PUT.prototype.simplify = function () {
-	/* Returns a new atomic operation that is a simpler version
-	   of this operation.*/
-	return this;
-}
-
-exports.PUT.prototype.invert = function () {
-	/* Returns a new atomic operation that is the inverse of this operation */
-	return new exports.REM(this.key, this.value);
-}
-
-exports.PUT.prototype.compose = function (other) {
-	/* Creates a new atomic operation that has the same result as this
-	   and other applied in sequence (this first, other after). Returns
-	   null if no atomic operation is possible. */
-
-	// the next operation is a no-op, so the composition is just this
-	if (other instanceof values.NO_OP)
-		return this;
-
-	// a SET clobbers this operation, but its old_value must be updated
-	if (other instanceof values.SET)
-		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
-
-	if (other instanceof exports.REM && this.key == other.key)
-		return new values.NO_OP();
-
-	if (other instanceof exports.REN && this.key == other.old_key)
-		return new exports.PUT(other.new_key, this.value);
-
-	if (other instanceof exports.APPLY && this.key in other.ops)
-		return new exports.PUT(this.key, other.ops[this.key].apply(this.value));
-
-	// No composition possible.
-	return null;
-}
-
-exports.PUT.prototype.rebase_functions = [
-	[exports.PUT, function(other, conflictless) {
-		if (this.key == other.key) {
-			// Two PUTs on the same key with the same value
-			//   either can become a no-op.
-			if (deepEqual(this.value, other.value))
-				return [new values.NO_OP(), new values.NO_OP()];
-
-			// If they set the key to different values and conflictless is
-			// true, then we clobber the one whose value has a lower sort order.
-			// The one that remains becomes an APPLY(SET) to change the value.
-			if (conflictless && jot.cmp(this.value, other.value) < 0)
-				return [
-					new values.NO_OP(), // clobbered
-					new exports.APPLY(other.key, new values.SET(this.value, other.value))
-				];
-
-			// cmp > 0 is handled by a call to this function with the arguments
-			// reversed, so we don't need to explicltly code that logic.
-
-			// But with different values it is a conflict.
-			return null;
-		} else {
-			// Two PUTs on different keys don't bother each other.
-			return [this, other];
-		}
-	}]
-
-	// None of the other object operations could have applied
-	// simultaneously because while PUT assumes the key did not
-	// exist, the other operations assume the key did exist.
-]
-
-////
-
-
-exports.REM.prototype.apply = function (document) {
-	/* Applies the operation to a document. Returns a new object that is
-	   the same type as document but with the change made. */
-
-	// Clone first.
-	var d = shallow_clone(document);
-
-	// Apply.
-	delete d[this.key];
-
-	return d;
-}
-
-exports.REM.prototype.simplify = function () {
-	/* Returns a new atomic operation that is a simpler version
-	   of this operation.*/
-	return this;
-}
-
-exports.REM.prototype.invert = function () {
-	/* Returns a new atomic operation that is the inverse of this operation */
-	return new exports.PUT(this.key, this.old_value);
-}
-
-exports.REM.prototype.compose = function (other) {
-	/* Creates a new atomic operation that has the same result as this
-	   and other applied in sequence (this first, other after). Returns
-	   null if no atomic operation is possible. */
-
-	// the next operation is a no-op, so the composition is just this
-	if (other instanceof values.NO_OP)
-		return this;
-
-	// a SET clobbers this operation, but its old_value must be updated
-	if (other instanceof values.SET)
-		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
-
-	if (other instanceof exports.PUT && this.key == other.key)
-		return new exports.APPLY(this.key, values.SET(other.value));
-
-	// No composition possible.
-	return null;
-}
-
-exports.REM.prototype.rebase_functions = [
-	[exports.REM, function(other, conflictless) {
-		// Two REMs on the same key - either can become a no-op.
-		if (this.key == other.key)
-			return [new values.NO_OP(), new values.NO_OP()];
-
-		// Otherwise on different keys, they two REMs don't bother each other.
-		return [this, other];
-	}],
-
-	[exports.REN, function(other, conflictless) {
-		// A rename on the same key - update this's key.
-		if (this.key == other.old_key)
-			return [
-				new exports.REM(other.new_key, this.old_value),
-				new values.NO_OP()
-			];
-		return [this, other];
-	}],
-
-	[exports.APPLY, function(other, conflictless) {
-		// If an APPLY applied simultaneously, then update this
-		// operation's old_value. It takes precedence. The APPLY
-		// becomes a no-op.
-		if (this.key in other.ops)
-			return [
-				new exports.REM(this.key, other.ops[this.key].apply(this.old_value)),
-				new values.NO_OP()
-			];
-		return [this, other];
-	}]
-
-	// PUT could not have applied simultaneously because while this
-	// operation assumes the key did exist, PUT assumes the key did not exist.
-]
-
-////
 
 exports.REN.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new object that is
 	   the same type as document but with the change made. */
+
+	// It's allowable to rename a key that doesn't exist -- that
+	// is a no-op.
+	if (!(this.old_key in document))
+		return document;
 
 	// Clone first.
 	var d = shallow_clone(document);
@@ -325,9 +155,6 @@ exports.REN.prototype.compose = function (other) {
 	// a SET clobbers this operation, but its old_value must be updated
 	if (other instanceof values.SET)
 		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
-
-	if (other instanceof exports.REM && this.new_key == other.key)
-		return new exports.REM(this.old_key);
 
 	// No composition possible.
 	return null;
@@ -376,11 +203,20 @@ exports.REN.prototype.rebase_functions = [
 	}],
 
 	[exports.APPLY, function(other, conflictless) {
+		// An APPLY applied simultaneously and may have created the
+		// key that the old key is being renamed to. That's a conflict.
+		if (this.new_key in other.ops) {
+			return null;
+		}
+
 		// If an APPLY applied simultaneously, there is no conflict but
-		// the APPLY's key must be updated.
-		if (this.old_key in other.ops)
+		// the APPLY's key must be updated. If the apply's operation
+		// deletes the key then the REN is left renaming a key that
+		// doesn't exist... but we can't detect that so we'll let that
+		// be ok.
+		if (this.old_key in other.ops) {
 			// Clone the other operations, delete the old key, add the
-			// new key. The new key can't already exist since the REM
+			// new key. The new key can't already exist since the REN
 			// would have been invalid in that state.
 			var new_apply_ops = shallow_clone(other.ops);
 			new_apply_ops[this.new_key] = new_apply_ops[this.old_key];
@@ -390,13 +226,11 @@ exports.REN.prototype.rebase_functions = [
 				this,
 				new exports.APPLY(new_apply_ops)
 			];
+		}
 
 		// On different keys they don't bother each other.
 		return [this, other];
 	}]
-
-	// PUT could not have applied simultaneously because while this
-	// operation assumes the key did exist, PUT assumes the key did not exist.
 ];
 
 //////////////////////////////////////////////////////////////////////////////
@@ -411,9 +245,15 @@ exports.APPLY.prototype.apply = function (document) {
 	for (var k in document)
 		d[k] = document[k];
 
-	// Apply.
+	// Apply. Pass the object and key down in the second argument
+	// to apply so that values.SET can handle the special MISSING
+	// value.
 	for (var key in this.ops) {
-		d[key] = this.ops[key].apply(d[key]);
+		var value = this.ops[key].apply(d[key], [d, key]);
+		if (value === exports.MISSING)
+			delete d[key]; // key was removed
+		else
+			d[key] = value;
 	}
 	return d;
 }
@@ -457,10 +297,6 @@ exports.APPLY.prototype.compose = function (other) {
 	// a SET clobbers this operation, but its old_value must be updated
 	if (other instanceof values.SET)
 		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
-
-	// APPLY followed by a REM clobbers this operation
-	if (other instanceof exports.REM && this.key == other.key)
-		return other.simplify();
 
 	// two APPLYs
 	if (other instanceof exports.APPLY) {

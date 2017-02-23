@@ -179,7 +179,7 @@ Note that some operations (DEL, REM, and SET) require passing the value
 being modified before the modification took place (i.e. what the value
 was before the operation).
 
-(Interally, INS and DEL are subcases of "SPLICE".)
+(Also note that interally, INS and DEL are subcases of "SPLICE" and PUT and REM are subcases of SET that use a special value to signal the absense of an object property.)
 
 
 Transformations
