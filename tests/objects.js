@@ -17,7 +17,7 @@ t.equal(
 	'<objects.APPLY {ops:{"0":<values.SET {old_value:"1", new_value:~}>}}>');
 t.equal(
 	new objs.REN("0", "1").inspect(),
-	'<objects.REN {old_key:"0", new_key:"1"}>');
+	'<objects.REN {map:{"1":"0"}}>');
 t.equal(
 	new objs.APPLY("0", new values.SET(1, 2)).inspect(),
 	'<objects.APPLY {ops:{"0":<values.SET {old_value:1, new_value:2}>}}>');
@@ -84,6 +84,12 @@ t.deepEqual(
 t.deepEqual(
 	new objs.REN("key", "newkey").compose(new values.SET({ newkey: "value" }, "123")),
 	new values.SET({ key: "value" }, "123"));
+t.deepEqual(
+	new objs.REN("key", "newkey").compose(new objs.REN("newkey", "lastkey")),
+	new objs.REN("key", "lastkey"));
+t.deepEqual(
+	new objs.REN("key", "newkey").compose(new objs.REN("other", "newother")),
+	new objs.REN({ "newkey": "key", "newother": "other" }));
 t.deepEqual(
 	new objs.APPLY("key", new values.MATH('add', 1)).compose(new values.SET({ key: 2 }, "123")),
 	new values.SET({ key: 1 }, "123"));
@@ -165,6 +171,11 @@ t.deepEqual(
 
 t.deepEqual(
 	new objs.REN("key", "newkey").rebase(
+		new objs.REN("key2", "newkey2")),
+	new objs.REN("key", "newkey")
+	)
+t.deepEqual(
+	new objs.REN("key", "newkey").rebase(
 		new objs.REN("key", "newkey")),
 	new values.NO_OP()
 	)
@@ -174,13 +185,13 @@ t.notOk(
 	)
 t.deepEqual(
 	new objs.REN("key", "newkey1").rebase(
-		new objs.REN("key", "newkey2"), true),
-	new values.NO_OP()
+		new objs.REN("key", "newkey2")),
+	null
 	)
 t.deepEqual(
 	new objs.REN("key", "newkey2").rebase(
-		new objs.REN("key", "newkey1"), true),
-	new objs.REN("newkey1", "newkey2")
+		new objs.REN("key", "newkey1")),
+	null
 	)
 t.notOk(
 	new objs.REN("key1", "newkey").rebase(
@@ -188,13 +199,13 @@ t.notOk(
 	)
 t.deepEqual(
 	new objs.REN("key1", "newkey").rebase(
-		new objs.REN("key2", "newkey"), true),
-	new values.NO_OP()
+		new objs.REN("key2", "newkey")),
+	null
 	)
 t.deepEqual(
 	new objs.REN("key2", "newkey").rebase(
-		new objs.REN("key1", "newkey"), true),
-	new objs.REN("key2", "newkey")
+		new objs.REN("key1", "newkey")),
+	null
 	)
 
 t.deepEqual(

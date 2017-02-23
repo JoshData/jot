@@ -164,9 +164,9 @@ The operations in JOT are:
 * `DEL(index, old_value)`: Delete text from a string or removes array elements from an array. When applied to strings, `old_value` is the substring being deleted. When applied to arrays, `old_value` is an array of the items being deleted.
 * `PUT(key, value)`: Add a new property to an object. `key` is any valid JSON key (a string) and `value` is any valid JSON object.
 * `REM(key, old_value)`: Remove a property from an object. `key` is a string and `old_value` is the value of the property before the property is removed.
-* `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings.
+* `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings. It can also take a mapping from new keys to old keys they are renamed from, as `REN({new_name: key, ...})`, which also allows for the duplication of property values.
 * `MOVE(index, count, new_index)`: Move consecutive elements of an array from one index to another.
-* `APPLY(index | key, operation)`: Apply any operation to a particular array element (`index`, for arrays) or property (`key`, for objects). `operation` is any operation created by these constructors. The operation for objects can also take a mapping from keys to operations such as `APPLY({key: operation})`.
+* `APPLY(index | key, operation)`: Apply any operation to a particular array element (`index`, for arrays) or property (`key`, for objects). `operation` is any operation created by these constructors. The operation for objects can also take a mapping from keys to operations such as `APPLY({key: operation, ...})`.
 * `SET(old_value, new_value)`: Set a value (an array element, an object property, or an atomic value). `old_value` is the value the document had prior to this operation, and `new_value` is the new value after the operation.
 * `MATH(op, value)`: Increment (`op`="add"), multiply (`op`="mult"), increment w/ modulus (`op`="rot"), or exclusive-or (`op`="xor") a number. For `rot`, the value is given as an array of [increment, modulus].
 * `MAP(operation)`: Apply any operation to all elements of an array (or all characters in a string). `operation` is any operation created by these constructors.

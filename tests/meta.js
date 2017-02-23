@@ -151,10 +151,7 @@ test('meta', function(t) {
                     jot.APPLY('x', jot.SET('y2', 'y3'))
                 ])
             ),
-        new meta.LIST([
-            jot.REN('x', 'a'),
-            jot.REN('a', 'b')
-        ])
+        jot.REN('x', 'b')
     )
 
     t.deepEqual( // conflictless (A)
@@ -192,10 +189,9 @@ test('meta', function(t) {
                 new meta.LIST([
                     jot.REN('x', 'A'),
                     jot.REN('y', 'B')
-                ]),
-                true
+                ])
             ),
-        jot.NO_OP()
+        null
     );
 
     t.deepEqual( // two on two w/ conflictless (B)
@@ -207,13 +203,9 @@ test('meta', function(t) {
                 new meta.LIST([
                     jot.REN('x', 'a'),
                     jot.REN('y', 'b')
-                ]),
-                true
+                ])
             ),
-        new meta.LIST([
-            jot.REN('a', 'A'),
-            jot.REN('b', 'B')
-        ])
+        null
     );
 
     t.end();

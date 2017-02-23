@@ -17,8 +17,11 @@
    Two new operation are provided:
 
    new objects.REN(old_key, new_key)
+   new objects.REN({ new_key: old_key })
     
-    Renames a property in the document object.
+    Renames a property in the document object, renames multiple properties,
+    or duplicates properties. In the second form, all old keys that are not
+    mentioned as new keys are deleted.
 
     Supports a conflictless rebase with itself and does not generate conflicts
     with the other operations in this module.
@@ -69,14 +72,22 @@ function shallow_clone(document) {
 
 exports.module_name = 'objects'; // for serialization/deserialization
 
-exports.REN = function (old_key, new_key) {
-	if (old_key == null || new_key == null) throw "invalid arguments";
-	this.old_key = old_key;
-	this.new_key = new_key;
+exports.REN = function () {
+	if (arguments.length == 1 && typeof arguments[0] == "object") {
+		// Dict form.
+		this.map = arguments[0];
+	} else if (arguments.length == 2 && typeof arguments[0] == "string" && typeof arguments[1] == "string") {
+		// key & operation form.
+		this.map = { };
+		this.map[arguments[1]] = arguments[0];
+	} else {
+		throw "invalid arguments";
+	}
 	Object.freeze(this);
+	Object.freeze(this.map);
 }
 exports.REN.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.REN, exports, 'REN', ['old_key', 'new_key']);
+jot.add_op(exports.REN, exports, 'REN', ['map']);
 
 exports.APPLY = function () {
 	if (arguments.length == 1 && typeof arguments[0] == "object") {
@@ -115,19 +126,28 @@ exports.REM.prototype = Object.create(exports.APPLY.prototype); // inherit proto
 
 exports.REN.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new object that is
-	   the same type as document but with the change made. */
-
-	// It's allowable to rename a key that doesn't exist -- that
-	// is a no-op.
-	if (!(this.old_key in document))
-		return document;
+	   the same type as document but with the changes made. */
 
 	// Clone first.
 	var d = shallow_clone(document);
 
-	var v = d[this.old_key];
-	delete d[this.old_key];
-	d[this.new_key] = v;
+	// Apply duplications.
+	for (var new_key in this.map) {
+		var old_key = this.map[new_key];
+		if (old_key in d)
+			d[new_key] = d[old_key];
+	}
+
+	// Delete old keys. Must do this after the above since duplications
+	// might refer to the same old key multiple times. Delete any old_keys
+	// in the mapping that are not mentioned as new keys. This allows us
+	// to duplicate and preserve by mapping a key to itself and to new
+	// keys.
+	for (var new_key in this.map) {
+		var old_key = this.map[new_key];
+		if (!(old_key in this.map))
+			delete d[old_key];
+	}
 
 	return d;
 }
@@ -135,12 +155,23 @@ exports.REN.prototype.apply = function (document) {
 exports.REN.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
 	   of this operation.*/
-	return this;
+
+	// If there are any non-identity mappings, then
+	// preserve this object.
+	for (var key in this.map) {
+		if (key != this.map[key])
+			return this;
+	}
+
+	return new values.NO_OP();
 }
 
 exports.REN.prototype.invert = function () {
 	/* Returns a new atomic operation that is the inverse of this operation */
-	return new exports.REN(this.new_key, this.old_key);
+	var inv_map = { };
+	for (var key in this.map)
+		inv_map[this.map[key]] = key;
+	return new exports.REN(inv_map);
 }
 
 exports.REN.prototype.compose = function (other) {
@@ -156,80 +187,115 @@ exports.REN.prototype.compose = function (other) {
 	if (other instanceof values.SET)
 		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
 
+	// merge
+	if (other instanceof exports.REN) {
+		var map = { };
+		for (var key in this.map)
+			map[key] = this.map[key];
+		for (var key in other.map) {
+			if (other.map[key] in map) {
+				// The rename is chained.
+				map[key] = this.map[other.map[key]];
+				delete map[other.map[key]];
+			} else {
+				// The rename is on another key.
+				map[key] = other.map[key];
+			}
+		}
+		return new exports.REN(map);
+	}
+	
 	// No composition possible.
 	return null;
 }
 
 exports.REN.prototype.rebase_functions = [
 	[exports.REN, function(other, conflictless) {
-		// Two RENs on the same key.
-		if (this.old_key == other.old_key) {
-			// If they both rename to the same key, then either can
-			// become a no-op.
-			if (this.new_key == other.new_key)
-				return [new values.NO_OP(), new values.NO_OP()];
+		// Two RENs at the same time.
 
-			// If they rename to different keys, and if conflictless
-			// is true, then rename to the one with the higher sort
-			// order.
-			if (conflictless && jot.cmp(this.new_key, other.new_key) < 0)
-				return [
-					new values.NO_OP(), // clobber
-					new exports.REN(this.new_key, other.new_key),
-				];
+		// Fast path: If the renames are identical, then each goes
+		// to a NO_OP when rebased against the other.
+		if (deepEqual(this.map, other.map))
+			return [new values.NO_OP(), new values.NO_OP()];
 
-			// cmp > 0 is handled by a call to other.rebase_functions(this).
-
-			return null; // conflict
+		function inner_rebase(a, b) {
+			// Rebase a against b. Keep all of a's renames.
+			// Just stop if there is a conflict.
+			var new_map = shallow_clone(a.map);
+			for (var new_key in b.map) {
+				var old_key = b.map[new_key];
+				if (new_key in a.map) {
+					if (a.map[new_key] != b.map[new_key]) {
+						// Both RENs create a property of the same name
+						// and not by renaming the same property.
+						return null;
+					} else {
+						// Both RENs renamed the same property to the same
+						// new key. So each goes to a no-op on that key since
+						// the rename was already made.
+						delete new_map[new_key];
+					}
+				} else {
+					// Since a rename has taken place, update any renames
+					// in a that are affected.
+					for (var a_key in new_map) {
+						if (new_map[a_key] == old_key) {
+							// Both RENs renamed the same property, but
+							// to different keys (if they were the same
+							// key then new_key would be in a.map which
+							// we already checked).
+							return null;
+						}
+					}
+				}
+			}
+			return new exports.REN(new_map);
 		}
 
-		// The two RENs rename different keys to the same thing.
-		if (this.new_key == other.new_key) {
-			// If conflictless is true, clobber the one that modified
-			// a key with the lower sort order.
-			if (conflictless && jot.cmp(this.old_key, other.old_key) < 0)
-				return [
-					new values.NO_OP(), // clobber
-					other,
-				];
-
-			// cmp > 0 is handled by a call to other.rebase_functions(this).
-
+		var x = inner_rebase(this, other);
+		var y = inner_rebase(other, this);
+		if (!x || !y)
 			return null;
-		}
 
-		// Otherwise on different keys, they two RENs don't bother each other.
-		return [this, other];
+		return [x, y];
 	}],
 
 	[exports.APPLY, function(other, conflictless) {
 		// An APPLY applied simultaneously and may have created the
-		// key that the old key is being renamed to. That's a conflict.
-		if (this.new_key in other.ops) {
-			return null;
+		// key that this operation is also creating through a rename
+		// or duplication. That's a conflict.
+		// TODO: How to do this in a conflictless way?
+		for (var new_key in this.map)
+			if (new_key in other.ops)
+				return null;
+
+		// If an APPLY applied simultaneously to a key that is not
+		// mentioned as a new key in map, there is no conflict but
+		// the APPLY's keys may need to be renamed. If a key in the
+		// APPLY is involved in duplication, then we must duplicate
+		// the operations too.
+		//
+		// The logic here parallels the logic of REN.apply.
+
+		// Apply duplications.
+		var new_apply_ops = shallow_clone(other.ops);
+		for (var new_key in this.map) {
+			var old_key = this.map[new_key];
+			if (old_key in new_apply_ops)
+				new_apply_ops[new_key] = new_apply_ops[old_key];
 		}
 
-		// If an APPLY applied simultaneously, there is no conflict but
-		// the APPLY's key must be updated. If the apply's operation
-		// deletes the key then the REN is left renaming a key that
-		// doesn't exist... but we can't detect that so we'll let that
-		// be ok.
-		if (this.old_key in other.ops) {
-			// Clone the other operations, delete the old key, add the
-			// new key. The new key can't already exist since the REN
-			// would have been invalid in that state.
-			var new_apply_ops = shallow_clone(other.ops);
-			new_apply_ops[this.new_key] = new_apply_ops[this.old_key];
-			delete new_apply_ops[this.old_key];
-
-			return [
-				this,
-				new exports.APPLY(new_apply_ops)
-			];
+		// Delete old keys.
+		for (var new_key in this.map) {
+			var old_key = this.map[new_key];
+			if (!(old_key in this.map))
+				delete new_apply_ops[old_key];
 		}
 
-		// On different keys they don't bother each other.
-		return [this, other];
+		return [
+			this,
+			new exports.APPLY(new_apply_ops)
+		];
 	}]
 ];
 
