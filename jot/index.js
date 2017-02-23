@@ -46,6 +46,21 @@ exports.APPLY = function(pos_or_key) {
 		return new_op(objects.APPLY, arguments);
 	throw "Invalid Argument";
 };
+exports.UNAPPLY = function(op, pos_or_key) {
+	if (typeof pos_or_key == "number"
+		&& op instanceof sequences.APPLY
+		&& op.pos == pos_or_key)
+		return op.op;
+	if (typeof pos_or_key == "string"
+		&& op instanceof objects.APPLY
+		&& pos_or_key in op.ops)
+		return op.ops[pos_or_key];
+	if (op instanceof meta.LIST)
+		return new meta.LIST(op.ops.map(function(op) {
+			return exports.UNAPPLY(op, pos_or_key)
+		}));
+	return new values.NO_OP();
+};
 
 exports.diff = require('./diff.js').diff;
 
