@@ -334,7 +334,11 @@ exports.APPLY.prototype.simplify = function () {
 	for (var key in this.ops) {
 		new_ops[key] = this.ops[key].simplify();
 		if (!(new_ops[key] instanceof values.NO_OP))
+			// Remember that we have a substantive operation.
 			had_non_noop = true;
+		else
+			// Drop internal NO_OPs.
+			delete new_ops[key];
 	}
 	if (!had_non_noop)
 		return new values.NO_OP();
