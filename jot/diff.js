@@ -21,7 +21,7 @@ function diff(a, b, options) {
 	// Return fast if the objects are equal. This is muuuuuch
 	// faster than doing our stuff recursively.
 
-	if (deepEqual(a, b)) {
+	if (deepEqual(a, b, { strict: true })) {
 		return {
 			op: jot.NO_OP(),
 			pct: 0.0,

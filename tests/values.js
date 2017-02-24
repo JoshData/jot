@@ -70,6 +70,9 @@ t.deepEqual(
 t.deepEqual(
 	new values.SET(0, 1).simplify(),
 	new values.SET(0, 1));
+t.deepEqual( // Test that deepEqual has strict mode on inside simplify.
+	new values.SET(0, '0').simplify(),
+	new values.SET(0, '0'));
 t.deepEqual(
 	new values.SET(0, 0).simplify(),
 	new values.NO_OP());

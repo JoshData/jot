@@ -175,7 +175,7 @@ exports.SPLICE.prototype.apply = function (document) {
 exports.SPLICE.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
 	   of this operation.*/
-	if (deepEqual(this.old_value, this.new_value))
+	if (deepEqual(this.old_value, this.new_value, { strict: true }))
 		return new values.NO_OP();
 	return this;
 }
@@ -254,7 +254,7 @@ exports.SPLICE.prototype.rebase_functions = [
 		// applied second (the one being rebased) becomes a no-op. Since the
 		// two parts of the return value are for each rebased against the
 		// other, both are returned as no-ops.
-		if (deepEqual(this, other))
+		if (deepEqual(this, other, { strict: true }))
 			return [new values.NO_OP(), new values.NO_OP()];
 		
 		// Two insertions at the same location.
@@ -615,7 +615,7 @@ exports.APPLY.prototype.rebase_functions = [
 		var r = (opa instanceof values.NO_OP) ? new values.NO_OP() : new exports.APPLY(this.pos, opa);
 
 		var opb = other.op.rebase(this.op, conflictless);
-		if (opa && opb && deepEqual(other.op, opb))
+		if (opa && opb && deepEqual(other.op, opb, { strict: true }))
 			// If rebasing the MAP's inner operation yields the same operation,
 			// then the two operations can go in either order and rebasing
 			// the MAP doesn't change the MAP.

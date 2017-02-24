@@ -159,7 +159,7 @@ exports.opFromJsonableObject = function(obj, op_map) {
 	}
 
 	// Sanity check.
-	if (!('_type' in obj)) throw "Invalid argument: Not an operation.";
+	if (!('_type' in obj)) throw "Not an operation.";
 
 	// Put "missing" values back.
 	Object.keys(obj).forEach(function(key) {
@@ -192,6 +192,7 @@ exports.opFromJsonableObject = function(obj, op_map) {
         }
 		return obj[item];
 	});
+	
 	var op = Object.create(constructor.prototype);
 	constructor.apply(op, args);
 	return op;

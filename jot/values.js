@@ -114,7 +114,7 @@ exports.SET.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
 	   of another operation. If the new value is the same as the
 	   old value, returns NO_OP. */
-	if (deepEqual(this.old_value, this.new_value))
+	if (deepEqual(this.old_value, this.new_value, { strict: true }))
 		return new exports.NO_OP();
 	return this;
 }
@@ -143,7 +143,7 @@ exports.SET.prototype.rebase_functions = [
 		// applied second (the one being rebased) becomes a no-op. Since the
 		// two parts of the return value are for each rebased against the
 		// other, both are returned as no-ops.
-		if (deepEqual(this.new_value, other.new_value))
+		if (deepEqual(this.new_value, other.new_value, { strict: true }))
 			return [new exports.NO_OP(), new exports.NO_OP()];
 		
 		// If they set the document to different values and conflictless is
