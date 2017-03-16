@@ -23,16 +23,16 @@ t.equal(
 // serialization
 
 t.deepEqual(
-	jot.opFromJsonableObject(new seqs.SPLICE(0, "1", "4").toJsonableObject()),
+	jot.opFromJSON(new seqs.SPLICE(0, "1", "4").toJSON()),
 	new seqs.SPLICE(0, "1", "4"));
 t.deepEqual(
-	jot.opFromJsonableObject(new seqs.MOVE(0, 2, 5).toJsonableObject()),
+	jot.opFromJSON(new seqs.MOVE(0, 2, 5).toJSON()),
 	new seqs.MOVE(0, 2, 5));
 t.deepEqual(
-	jot.opFromJsonableObject(new seqs.APPLY(0, new values.SET(1, 2)).toJsonableObject()),
+	jot.opFromJSON(new seqs.APPLY(0, new values.SET(1, 2)).toJSON()),
 	new seqs.APPLY(0, new values.SET(1, 2)));
 t.deepEqual(
-	jot.opFromJsonableObject(new seqs.MAP(new values.MATH('add', 1)).toJsonableObject()),
+	jot.opFromJSON(new seqs.MAP(new values.MATH('add', 1)).toJSON()),
 	new seqs.MAP(new values.MATH('add', 1)));
 
 // apply

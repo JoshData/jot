@@ -25,16 +25,16 @@ t.equal(
 // serialization
 
 t.deepEqual(
-	jot.opFromJsonableObject(new objs.PUT("0", "1").toJsonableObject()),
+	jot.opFromJSON(new objs.PUT("0", "1").toJSON()),
 	new objs.PUT("0", "1"));
 t.deepEqual(
-	jot.opFromJsonableObject(new objs.REM("0", "1").toJsonableObject()),
+	jot.opFromJSON(new objs.REM("0", "1").toJSON()),
 	new objs.REM("0", "1"));
 t.deepEqual(
-	jot.opFromJsonableObject(new objs.REN("0", "1").toJsonableObject()),
+	jot.opFromJSON(new objs.REN("0", "1").toJSON()),
 	new objs.REN("0", "1"));
 t.deepEqual(
-	jot.opFromJsonableObject(new objs.APPLY("0", new values.SET(1, 2)).toJsonableObject()),
+	jot.opFromJSON(new objs.APPLY("0", new values.SET(1, 2)).toJSON()),
 	new objs.APPLY("0", new values.SET(1, 2)));
 
 // apply
@@ -258,7 +258,7 @@ t.deepEqual(
 // serialization
 
 function test_serialization(op) {
-	t.deepEqual(op.toJsonableObject(), jot.opFromJsonableObject(op.toJsonableObject()).toJsonableObject());
+	t.deepEqual(op.toJSON(), jot.opFromJSON(op.toJSON()).toJSON());
 }
 
 test_serialization(new objs.PUT("key", "value"))

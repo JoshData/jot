@@ -105,7 +105,7 @@ exports.BaseOperation.prototype.inspect = function(depth) {
 		repr.join(", "));
 }
 
-exports.BaseOperation.prototype.toJsonableObject = function() {
+exports.BaseOperation.prototype.toJSON = function() {
 	var repr = { };
 	repr['_type'] = { 'module': this.type[0], 'class': this.type[1] };
 	var keys = Object.keys(this);
@@ -113,7 +113,7 @@ exports.BaseOperation.prototype.toJsonableObject = function() {
 		var value = this[keys[i]];
 		var v;
 		if (value instanceof exports.BaseOperation) {
-			v = value.toJsonableObject();
+			v = value.toJSON();
         }
 		if (value === objects.MISSING) {
 			repr[keys[i] + "_missing"] = true;
@@ -121,13 +121,13 @@ exports.BaseOperation.prototype.toJsonableObject = function() {
         }
         else if (keys[i] === 'ops' && Array.isArray(value)) {
             v = value.map(function(ki) {
-                return ki.toJsonableObject();
+                return ki.toJSON();
             });
         }
         else if (keys[i] === 'ops' && typeof value === "object") {
             v = { };
             for (var key in value)
-            	v[key] = value[key].toJsonableObject();
+            	v[key] = value[key].toJSON();
         }
 		else if (typeof value !== 'undefined') {
 			v = value;
@@ -140,7 +140,7 @@ exports.BaseOperation.prototype.toJsonableObject = function() {
 	return repr;
 }
 
-exports.opFromJsonableObject = function(obj, op_map) {
+exports.opFromJSON = function(obj, op_map) {
 	// Create a default mapping from encoded types to constructors
 	// allowing all operations to be deserialized.
 	if (!op_map) {
@@ -174,18 +174,18 @@ exports.opFromJsonableObject = function(obj, op_map) {
 	var args = constructor.prototype.constructor_args.map(function(item) {
 		if (obj[item] !== null && typeof obj[item] == 'object' && '_type' in obj[item]) {
 			// Value is an operation.
-			return exports.opFromJsonableObject(obj[item]);
+			return exports.opFromJSON(obj[item]);
         
         } else if (item === 'ops' && Array.isArray(obj[item])) {
         	// Value is an array of operations.
             obj[item] = obj[item].map(function(op) {
-                return exports.opFromJsonableObject(op);
+                return exports.opFromJSON(op);
             });
 
         } else if (item === 'ops' && typeof obj[item] === "object") {
         	// Value is a mapping array of operations.
         	for (var key in obj[item])
-        		obj[item][key] = exports.opFromJsonableObject(obj[item][key]);
+        		obj[item][key] = exports.opFromJSON(obj[item][key]);
         
         } else {
         	// Value is just a raw JSON value.
@@ -199,10 +199,10 @@ exports.opFromJsonableObject = function(obj, op_map) {
 }
 
 exports.BaseOperation.prototype.serialize = function() {
-	return JSON.stringify(this.toJsonableObject());
+	return JSON.stringify(this.toJSON());
 }
 exports.deserialize = function(op_json) {
-	return exports.opFromJsonableObject(JSON.parse(op_json));
+	return exports.opFromJSON(JSON.parse(op_json));
 }
 
 exports.BaseOperation.prototype.rebase = function(other, conflictless) {

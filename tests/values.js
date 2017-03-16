@@ -23,13 +23,13 @@ t.deepEqual(
 	jot.deserialize(new values.NO_OP().serialize()),
 	new values.NO_OP());
 t.deepEqual(
-	jot.opFromJsonableObject(new values.NO_OP().toJsonableObject()),
+	jot.opFromJSON(new values.NO_OP().toJSON()),
 	new values.NO_OP());
 t.deepEqual(
-	jot.opFromJsonableObject(new values.SET(3, 4).toJsonableObject()),
+	jot.opFromJSON(new values.SET(3, 4).toJSON()),
 	new values.SET(3, 4));
 t.deepEqual(
-	jot.opFromJsonableObject(new values.MATH('add', 4).toJsonableObject()),
+	jot.opFromJSON(new values.MATH('add', 4).toJSON()),
 	new values.MATH('add', 4));
 
 // apply
