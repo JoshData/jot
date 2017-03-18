@@ -122,6 +122,9 @@ t.deepEqual(
 	new seqs.SPLICE(0, "1234", "5678").compose(new seqs.APPLY(0, new values.SET("5", "0"))),
 	new seqs.SPLICE(0, "1234", "0678"));
 t.deepEqual(
+	new seqs.SPLICE(0, "1234", "5678").compose(new seqs.APPLY(1, new values.SET("6", "0"))),
+	new seqs.SPLICE(0, "1234", "5078"));
+t.deepEqual(
 	new seqs.MOVE(0, 2, 4).compose(new values.SET("1234", "5678")),
 	new values.SET("3412", "5678"));
 t.deepEqual(

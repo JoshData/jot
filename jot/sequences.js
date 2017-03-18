@@ -236,7 +236,7 @@ exports.SPLICE.prototype.compose = function (other) {
 			this.old_value,
 			concat3(
 				this.new_value.slice(0, other.pos-this.pos),
-				unelem(other.apply(elem(this.new_value, other.pos-this.pos)), this.old_value),
+				unelem(other.op.apply(elem(this.new_value, other.pos-this.pos)), this.old_value),
 				this.new_value.slice(other.pos-this.pos+1)
 				))
 				.simplify();
