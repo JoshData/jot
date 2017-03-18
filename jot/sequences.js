@@ -38,12 +38,20 @@
     any of the operations in values.js on an element. Or if the
     element is an array or object, use the operators in this module
     or the objects.js module, respectively. pos is zero-based.
+    The APPLY operation also accepts a mapping from positions to
+    operations.
 
     Example:
     
     To replace an element at index 2 with a new value:
     
       new sequences.APPLY(2, new values.SET("old_value", "new_value"))
+
+    To apply multiple operations on different elements:
+    
+      new sequences.APPLY({
+        "2": new values.SET("old_value", "new_value"),
+        "4": new values.MATH("add", 5))
 
     Supports a conflictless rebase with other SPLICE operations and
     with other APPLY and MAP operations when the inner operations
@@ -147,14 +155,18 @@ exports.MOVE = function (pos, count, new_pos) {
 exports.MOVE.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.MOVE, exports, 'MOVE', ['pos', 'count', 'new_pos']);
 
-exports.APPLY = function (pos, op) {
-	if (pos == null || op == null) throw "Invalid Argument";
-	this.pos = pos;
-	this.op = op;
+exports.APPLY = function () {
+	if (arguments.length == 2) {
+		if (arguments[0] == null || arguments[1] == null) throw "Invalid Argument";
+		this.ops = { };
+		this.ops[arguments[0]] = arguments[1];
+	} else {
+		this.ops = arguments[0];
+	}
 	Object.freeze(this);
 }
 exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.APPLY, exports, 'APPLY', ['pos', 'op']);
+jot.add_op(exports.APPLY, exports, 'APPLY', ['ops']);
 
 exports.MAP = function (op) {
 	if (op == null) throw "Invalid Argument";
@@ -230,16 +242,26 @@ exports.SPLICE.prototype.compose = function (other) {
 
 	// a SPLICE composed with an APPLY that applies within the range modified
 	// by the splice
-	if (other instanceof exports.APPLY && other.pos >= this.pos && other.pos < this.pos + this.new_value.length)
+	if (other instanceof exports.APPLY) {
+		// Run the APPLY's inner operation on any subelement of the new value.
+		// TOOD: This inefficiently re-constructs the new_value for each element
+		// that the APPLY operation applies to.
+		var new_value = this.new_value;
+		for (var i = 0; i < new_value.length; i++) {
+			if ((this.pos + i) in other.ops) {
+				var op = other.ops[this.pos + i];
+				new_value = concat3(
+					this.new_value.slice(0, i),
+					unelem(op.apply(elem(this.new_value, i)), this.old_value),
+					this.new_value.slice(i+1)
+					);
+			}
+		}
 		return new exports.SPLICE(
 			this.pos,
 			this.old_value,
-			concat3(
-				this.new_value.slice(0, other.pos-this.pos),
-				unelem(other.op.apply(elem(this.new_value, other.pos-this.pos)), this.old_value),
-				this.new_value.slice(other.pos-this.pos+1)
-				))
-				.simplify();
+			new_value).simplify();
+	}
 
 	// No composition possible.
 	return null;
@@ -371,43 +393,108 @@ exports.SPLICE.prototype.rebase_functions = [
 	}],
 	
 	[exports.APPLY, function(other, conflictless) {
-		// other is after the spliced range
-		if (other.pos >= this.pos + this.old_value.length)
-			return [this, new exports.APPLY(other.pos+this.new_value.length-this.old_value, other.op)];
-
-		// other is before the spliced range
-		if (other.pos < this.pos)
-			return [this, other];
-
-		// other is intersecting the spliced range -- handle like
-		// we handle SET and MATH (see values.js). If the spliced
-		// range isn't changing in length and the APPLY operation
-		// can apply to the new value of the element that the APPLY
-		// operates on, use that.
-		var old_value = concat3(
-			this.old_value.slice(0, other.pos-this.pos),
-			unelem(other.op.apply(elem(this.old_value, other.pos-this.pos)), this.old_value),
-			this.old_value.slice(other.pos-this.pos+1));
+		// If this SPLICE operation isn't changing the length of
+		// the array, then we can assume the SPLICE represents
+		// element-by-element changes that we can decompose into
+		// lots of SETs, and then we can rebase the inner operations.
 		if (this.new_value.length == this.old_value.length) {
-			try {
-				var new_value = concat3(
-					this.new_value.slice(0, other.pos-this.pos),
-					unelem(other.op.apply(elem(this.new_value, other.pos-this.pos)), this.old_value),
-					this.new_value.slice(other.pos-this.pos+1));
-				return [
-					new exports.SPLICE(this.pos, old_value, new_value),
-					other
-				];
-			} catch (e) {
+			var left = [];
+			var right = {};
+			var all_sets = true;
+			for (var i = 0; i < this.old_value.length; i++) {
+				// Decompose the SPLICE to an operation on the i'th element
+				// and then rebase the corresponding inner operations.
+				var left_op = new jot.SET(elem(this.old_value, i), elem(this.new_value, i));
+				if ((this.pos + i) in other.ops) {
+					var right_op = other.ops[this.pos + i];
+
+					var left_op_rebased = left_op.rebase(right_op, conflictless);
+					var right_op_rebased = right_op.rebase(left_op, conflictless);
+					if (!left_op_rebased || !right_op_rebased)
+						return null; // rebase failed
+
+					left_op = left_op_rebased;
+					right[this.pos+i] = right_op_rebased;
+				}
+
+				// Add it to the new decomposition.
+				left.push(left_op);
+
+				// Was it a set?
+				if (!(left_op instanceof values.SET))
+					all_sets = false;
+			}
+
+			// If all of the decomposed+rebased operations of the SPLICE were
+			// SETs, then we can re-compose into a SPLICE again.
+			if (all_sets) {
+				var old_value = this.old_value.slice(0, 0);
+				var new_value = this.new_value.slice(0, 0);
+				for (var i = 0; i < this.old_value.length; i++) {
+					old_value = concat2(old_value, unelem(left[i].old_value, old_value));
+					new_value = concat2(new_value, unelem(left[i].new_value, new_value));
+				}
+				left = new exports.SPLICE(this.pos, old_value, new_value);
+
+			} else {
+				// Turn the decomposed+rebased operations into a LIST.
+				var me = this;
+				left = left.map(function(op, i) { return new exports.APPLY(me.pos+i, op); })
+				left = new jot.LIST(left).simplify();
+			}
+
+			// Add in any sub-operations in other that didn't overlap with the SPLICE.
+			for (var index in other.ops)
+				if (index < this.pos || index >= (this.pos+i))
+					right[index] = other.ops[index];
+
+			// Return the new operations.
+			return [left, new exports.APPLY(right)];
+		}
+
+		// If any of APPLY's operations applied to the same index affected
+		// by the SPLICE, then the rebase fails because we can't line up
+		// the elements when the SPLICE is changing substring lengths.
+		// Except for deletes --- since we know what happens when a substring
+		// is deleted entirely.
+		if (this.new_value.length > 0) {
+			for (var i = 0; i < this.old_value.length; i++)
+				if ((this.pos + i) in other.ops)
+					return null;
+		}
+
+		// Either the two operations did not apply to the same indexes, or they
+		// did but the SPLICE deleted the element. Reconstruct the operations. The
+		// APPLY indexes may need to be shifted if they occur after the splice
+		// or deleted if they occured within a splice. The SPLICE's old_value must
+		// be updated to account for the APPLY having already happened.
+		var new_old_value = this.old_value;
+		var new_right_ops = { };
+		for (var index in other.ops) {
+			// Adjust the old_value.
+			if (index >= this.pos && index < this.pos + this.old_value.length) {
+				// The APPLY and the SPLICE affected the same index. If we're
+				// here, then the SPLICE must be a deletion. Re-construct the
+				// splice and drop the APPLY.
+				new_old_value = concat3(
+					new_old_value.slice(0, index-this.pos),
+					unelem(other.ops[index].invert().apply(elem(new_old_value, index-this.pos)), new_old_value),
+					new_old_value.slice(index-this.pos+1)
+				)
+			} else {
+				// Adjust the index.
+				var new_index = parseInt(index); // indexes are stored as strings in objects
+				if (new_index >= this.pos)
+					new_index += this.new_value.length - this.old_value.length;
+				new_right_ops[new_index] = other.ops[index];
 			}
 		}
 
-		// Otherwise, in conflictless mode, the SPLICE takes precedence.
-		if (conflictless)
-			return [
-				new exports.SPLICE(this.pos, old_value, this.new_value),
-				new value.NO_OP()
-			];
+
+		// If the SPLICE is changing the array length, then we don't know
+		// how to line up the changes with the APPLY operations.
+		return [new exports.SPLICE(this.pos, new_old_value, this.new_value), new exports.APPLY(new_right_ops)];
+
 	}],
 
 	[exports.MAP, function(other, conflictless) {
@@ -505,9 +592,12 @@ exports.MOVE.prototype.rebase_functions = [
 	[exports.APPLY, function(other, conflictless) {
 		// APPLY never changes indexes, so the MOVE is unaffected.
 		// But the MOVE shifts indexes so the APPLY must be adjusted.
+		var new_ops = { };
+		for (var index in other.ops)
+			new_ops[map_index(index, this)] = other.ops[index];
 		return [
 			this,
-			new exports.APPLY(map_index(other.pos, this), other.op)
+			new exports.APPLY(new_ops)
 		];
 	}],
 	[exports.MAP, function(other, conflictless) {
@@ -522,25 +612,46 @@ exports.MOVE.prototype.rebase_functions = [
 exports.APPLY.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
 	   the same type as document but with the element modified. */
-	return concat3(
-		document.slice(0, this.pos),
-		unelem(this.op.apply(elem(document, this.pos), document)),
-		document.slice(this.pos+1, document.length));
-	return document;
+	var doc = document;
+	for (var index in this.ops) { // TODO: Inefficient.
+		index = parseInt(index);
+		doc = concat3(
+			doc.slice(0, index),
+			unelem(this.ops[index].apply(elem(doc, index), doc)),
+			doc.slice(index+1, doc.length));
+	}
+	return doc;
 }
 
 exports.APPLY.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
-	   of this operation.*/
-	var op = this.op.simplify();
-	if (op instanceof values.NO_OP)
-		return new values.NO_OP();	   
-	return this;
+	   of this operation. If there is no sub-operation that is
+	   not a NO_OP, then return a NO_OP. Otherwise, simplify all
+	   of the sub-operations. */
+	var new_ops = { };
+	var had_non_noop = false;
+	for (var key in this.ops) {
+		new_ops[key] = this.ops[key].simplify();
+		if (!(new_ops[key] instanceof values.NO_OP))
+			// Remember that we have a substantive operation.
+			had_non_noop = true;
+		else
+			// Drop internal NO_OPs.
+			delete new_ops[key];
+	}
+	if (!had_non_noop)
+		return new values.NO_OP();
+	return new exports.APPLY(new_ops);
 }
 
 exports.APPLY.prototype.invert = function () {
-	/* Returns a new atomic operation that is the inverse of this operation */
-	return new exports.APPLY(this.pos, this.op.invert());
+	/* Returns a new atomic operation that is the inverse of this operation.
+	   All of the sub-operations get inverted. */
+	var new_ops = { };
+	for (var key in this.ops) {
+		new_ops[key] = this.ops[key].invert();
+	}
+	return new exports.APPLY(new_ops);
 }
 
 exports.APPLY.prototype.compose = function (other) {
@@ -556,30 +667,40 @@ exports.APPLY.prototype.compose = function (other) {
 	if (other instanceof values.SET)
 		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
 
-	// a SPLICE that includes this operation's position clobbers the operation
-	if (other instanceof exports.SPLICE && this.pos >= other.pos && this.pos < other.pos + other.old_value.length)
-		return new exports.SPLICE(
-			other.pos,
-			concat3(
-				other.old_value.slice(0, this.pos-other.pos),
-				unelem(this.invert().apply(elem(other.old_value, this.pos-other.pos)), other.old_value),
-				other.old_value.slice(this.pos-other.pos+1)
-				),
-			other.new_value)
-				.simplify();
+	// two APPLYs
+	if (other instanceof exports.APPLY) {
+		// Start with a clone of this operation's suboperations.
+		var new_ops = { };
+		for (var index in this.ops)
+			new_ops[index] = this.ops[index];
 
-	// two APPLYs on the same element, with composable sub-operations
-	if (other instanceof exports.APPLY && this.pos == other.pos) {
-		// Can the sub-operations be composed atomically?
-		var op2 = this.op.compose(other.op);
-		if (op2) {
-			if (op2 instanceof values.NO_OP)
-				return new values.NO_OP();
-			return new exports.APPLY(this.pos, op2);
+		// Now compose with other.
+		for (var index in other.ops) {
+			if (!(index in new_ops)) {
+				// Operation in other applies to an index not present
+				// in this, so we can just merge - the operations
+				// happen in parallel and don't affect each other.
+				new_ops[index] = other.ops[index];
+			} else {
+				// Compose.
+				var op2 = new_ops[index].compose(other.ops[index]);
+				if (op2) {
+					// They composed to a no-op, so delete the
+					// first operation.
+					if (op2 instanceof values.NO_OP)
+						delete new_ops[index];
+
+					// They composed to something atomic, so replace.
+					else
+						new_ops[index] = op2;
+				} else {
+					// They don't compose to something atomic, so use a LIST.
+					new_ops[index] = new LIST([new_ops[index], other.ops[index]]);
+				}
+			}
 		}
 
-		// If not, compose using a LIST.
-		return new exports.APPLY(this.pos, new LIST([this.op, other.op]));
+		return new exports.APPLY(new_ops).simplify();
 	}
 
 	// No composition possible.
@@ -588,46 +709,59 @@ exports.APPLY.prototype.compose = function (other) {
 
 exports.APPLY.prototype.rebase_functions = [
 	[exports.APPLY, function(other, conflictless) {
-		// Two APPLYs at different locations don't affect each other.
-		if (other.pos != this.pos)
-			return [this, other];
-		
-		// If they are at the same location, then rebase the sub-operations.
-		var opa = this.op.rebase(other.op, conflictless);
-		var opb = other.op.rebase(this.op, conflictless);
-		if (opa && opb)
-			return [
-				(opa instanceof values.NO_OP) ? new values.NO_OP() : new exports.APPLY(this.pos, opa),
-				(opb instanceof values.NO_OP) ? new values.NO_OP() : new exports.APPLY(other.pos, opb)
-			];
+		// Rebase the sub-operations on corresponding indexes.
+		// If any rebase fails, the whole rebase fails.
+		var new_ops_left = { };
+		for (var key in this.ops) {
+			new_ops_left[key] = this.ops[key];
+			if (key in other.ops)
+				new_ops_left[key] = new_ops_left[key].rebase(other.ops[key], conflictless);
+			if (new_ops_left[key] === null)
+				return null;
+		}
+
+		var new_ops_right = { };
+		for (var key in other.ops) {
+			new_ops_right[key] = other.ops[key];
+			if (key in this.ops)
+				new_ops_right[key] = new_ops_right[key].rebase(this.ops[key], conflictless);
+			if (new_ops_right[key] === null)
+				return null;
+		}
+
+		return [
+			new exports.APPLY(new_ops_left).simplify(),
+			new exports.APPLY(new_ops_right).simplify()
+		];
 	}],
 
 	[exports.MAP, function(other, conflictless) {
-		// APPLY and MAP. The MAP is assumed to execute first, so when we rebase the APPLY
-		// we rebase it against the MAP operation that had run at that index. When
-		// we're given a MAP to rebase, we'll have to return a sequence of operations
-		// that undoes the APPLY, applies the MAP, and then applies the APPLY rebased
-		// on the map.
+		// APPLY and MAP. Since MAP applies to all indexes, this is
+		// like APPLY and APPLY but MAP's inner operation must rebase
+		// to the *same* thing when it is rebased against each operation
+		// within the APPLY.
+		var new_ops_left = { };
+		var new_op_right = null;
+		for (var key in this.ops) {
+			// Rebase left to right.
+			new_ops_left[key] = this.ops[key].rebase(other.op, conflictless);
+			if (new_ops_left[key] === null)
+				return null;
 
-		var opa = this.op.rebase(other.op, conflictless);
-		if (!opa) return null;
+			// Rebase right to left.
+			var op = other.op.rebase(this.ops[key]);
+			if (op === null)
+				return null;
+			if (new_op_right !== null)
+				if (!deepEqual(op.toJSON(), new_op_right.toJSON(), { strict: true }))
+					return null;
+			new_op_right = op;
+		}
 
-		var r = (opa instanceof values.NO_OP) ? new values.NO_OP() : new exports.APPLY(this.pos, opa);
-
-		var opb = other.op.rebase(this.op, conflictless);
-		if (opa && opb && deepEqual(other.op, opb, { strict: true }))
-			// If rebasing the MAP's inner operation yields the same operation,
-			// then the two operations can go in either order and rebasing
-			// the MAP doesn't change the MAP.
-			return [
-				r,
-				other
-			];
-		else
-			return [
-				r,
-				new LIST([ this.invert(), other, r ]).simplify()
-			];
+		return [
+			new exports.APPLY(new_ops_left).simplify(),
+			new exports.MAP(new_op_right)
+		];
 	}]
 ];
 

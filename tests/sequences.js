@@ -15,7 +15,7 @@ t.equal(
 	'<sequences.MOVE {pos:0, count:2, new_pos:5}>');
 t.equal(
 	new seqs.APPLY(0, new values.SET(1, 2)).inspect(),
-	'<sequences.APPLY {pos:0, op:<values.SET {old_value:1, new_value:2}>}>');
+	'<sequences.APPLY {ops:{"0":<values.SET {old_value:1, new_value:2}>}}>');
 t.equal(
 	new seqs.MAP(new values.MATH('add', 1)).inspect(),
 	'<sequences.MAP {op:<values.MATH {operator:"add", operand:1}>}>');
@@ -132,7 +132,7 @@ t.deepEqual(
 	new values.SET("0234", "5678"));
 t.deepEqual(
 	new seqs.APPLY(0, new values.SET("0", "1")).compose(new seqs.SPLICE(0, "1234", "5678")),
-	new seqs.SPLICE(0, "0234", "5678"));
+	null);
 
 t.deepEqual(
 	new seqs.APPLY(555, new values.SET("A", "B"))
@@ -246,10 +246,15 @@ t.deepEqual(
 		new seqs.SPLICE(3, "123", "46"), true),
 	new seqs.SPLICE(5, "4", "ABC"));
 
+// splice vs apply
+
 t.deepEqual(
 	new seqs.SPLICE(0, [1,2,3], [4,5,6]).rebase(
 		new seqs.APPLY(0, new values.MATH("add", 1))),
 	new seqs.SPLICE(0, [2,2,3], [5,5,6]));
+
+// splice vs map
+
 t.deepEqual(
 	new seqs.SPLICE(1, [1,2,3], [4,5]).rebase(
 		new seqs.MAP(new values.MATH("add", 1))),
