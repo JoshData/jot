@@ -215,9 +215,22 @@ Conflictless Rebase
 The rebase method takes a second optional argument `conflictless`. When `conflictless`
 is true, `rebase` tries harder to avoid returning null. It may return an operation
 that while not preseving the logical intent of the operation at least makes a
-rebase possible, avoiding hard-to-handle conflict situations. In the case of two
+rebase consistent, avoiding hard-to-handle conflict situations. In the case of two
 edits to the same character in a string, a conflictless rebase will cause one of
 the edits to be squashed in a predictable way.
+
+The following operations support conflictless rebase with each other:
+
+* On numbers: SET, MATH
+
+* On strings and arrays: SET, INS, DEL, SPLICE, APPLY
+
+* On objects: SET, PUT, REM, APPLY
+
+If you stick to those operations, you can have merges without ever experiencing a conflict.
+
+(MAP, MOVE, and REN still need work.)
+
 
 Real Time Collaboration
 -----------------------

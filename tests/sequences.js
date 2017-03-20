@@ -9,7 +9,7 @@ test('sequences', function(t) {
 
 t.equal(
 	new seqs.SPLICE(0, "1", "4").inspect(),
-	'<sequences.SPLICE @0 "1" => "4">');
+	'<sequences.SPLICE +0 "1" => "4">');
 t.equal(
 	new seqs.MOVE(0, 2, 5).inspect(),
 	'<sequences.MOVE @0x2 => @5>');
@@ -142,8 +142,8 @@ t.deepEqual(
 	new seqs.SPLICE(0, "", "123").compose(new values.SET("123", "456")),
 	new values.SET("", "456"));
 t.deepEqual(
-	new seqs.SPLICE(0, "1234", "5678").compose(new seqs.APPLY(0, new values.SET("5", "0"))),
-	new seqs.SPLICE(0, "1234", "0678"));
+	new seqs.SPLICE([{offset: 0, old_value: "1234", new_value: "ab"}, {offset: 1, old_value: "5678", new_value: "cdef"}]).compose(new seqs.APPLY(4, new values.SET("d", "D"))),
+	new seqs.SPLICE([{offset: 0, old_value: "1234", new_value: "ab"}, {offset: 1, old_value: "5678", new_value: "cDef"}]));
 t.deepEqual(
 	new seqs.SPLICE(0, "1234", "5678").compose(new seqs.APPLY(1, new values.SET("6", "0"))),
 	new seqs.SPLICE(0, "1234", "5078"));
@@ -223,7 +223,7 @@ t.deepEqual(
 t.deepEqual(
 	new seqs.SPLICE(3, "123", "456").rebase(
 		new seqs.SPLICE(3, "1", "ABC"), true),
-	new seqs.SPLICE(3, "ABC23", "456"));
+	new seqs.SPLICE(6, "23", "456"));
 t.deepEqual(
 	new seqs.SPLICE(3, "123", "456").rebase(
 		new seqs.SPLICE(4, "2", "ABC"), true),
@@ -231,11 +231,11 @@ t.deepEqual(
 t.deepEqual(
 	new seqs.SPLICE(3, "123", "456").rebase(
 		new seqs.SPLICE(5, "3", "ABC"), true),
-	new seqs.SPLICE(3, "12ABC", "456"));
+	new seqs.SPLICE(3, "12", "456"));
 t.deepEqual(
 	new seqs.SPLICE(3, "1", "ABC").rebase(
 		new seqs.SPLICE(3, "123", "456"), true),
-	new values.NO_OP());
+	new seqs.SPLICE(3, "", "ABC"));
 t.deepEqual(
 	new seqs.SPLICE(4, "2", "ABC").rebase(
 		new seqs.SPLICE(3, "123", "456"), true),
@@ -243,11 +243,11 @@ t.deepEqual(
 t.deepEqual(
 	new seqs.SPLICE(5, "3", "ABC").rebase(
 		new seqs.SPLICE(3, "123", "456"), true),
-	new values.NO_OP());
+	new seqs.SPLICE(6, "", "ABC"));
 t.deepEqual(
 	new seqs.SPLICE(3, "123", "456").rebase(
 		new seqs.SPLICE(2, "0123", "ABC"), true),
-	new values.NO_OP());
+	new seqs.SPLICE(5, "", "456"));
 t.deepEqual(
 	new seqs.SPLICE(3, "123", "456").rebase(
 		new seqs.SPLICE(2, "01234", "ABC"), true),
@@ -257,7 +257,7 @@ t.deepEqual(
 t.deepEqual(
 	new seqs.SPLICE(3, "123", "456").rebase(
 		new seqs.SPLICE(2, "01", "ABC"), true),
-	new seqs.SPLICE(5, "23", "456"));
+	new seqs.SPLICE(6, "23", "456"));
 t.deepEqual(
 	new seqs.SPLICE(3, "123", "456").rebase(
 		new seqs.SPLICE(5, "34", "ABC"), true),
@@ -273,29 +273,27 @@ t.deepEqual(
 t.deepEqual(
 	new seqs.SPLICE(5, "34", "ABC").rebase(
 		new seqs.SPLICE(3, "123", "46"), true),
-	new seqs.SPLICE(5, "4", "ABC"));
+	new seqs.SPLICE(6, "4", "ABC"));
 t.deepEqual(
 	new seqs.SPLICE(4, "234", "ABC").rebase(
 		new seqs.SPLICE(3, "123", "46"), true),
-	new seqs.SPLICE(5, "4", "ABC"));
+	new seqs.SPLICE(7, "4", "ABC"));
 
 // splice vs apply
 
 t.deepEqual(
 	new seqs.SPLICE(0, [1,2,3], [4,5,6]).rebase(
 		new seqs.APPLY(0, new values.MATH("add", 1))),
-	new seqs.SPLICE(0, [2,2,3], [5,5,6]));
+	new seqs.SPLICE(0, [2,2,3], [4,5,6]));
 
 // splice vs map
 
-t.deepEqual(
+t.notOk(
 	new seqs.SPLICE(1, [1,2,3], [4,5]).rebase(
-		new seqs.MAP(new values.MATH("add", 1))),
-	new seqs.SPLICE(1, [2,3,4], [5,6]));
-t.deepEqual(
+		new seqs.MAP(new values.MATH("add", 1))));
+t.notOk(
 	new seqs.MAP(new values.MATH("add", 1)).rebase(
-		new seqs.SPLICE(1, [1,2,3], [4,5])),
-	new seqs.MAP(new values.MATH("add", 1)));
+		new seqs.SPLICE(1, [1,2,3], [4,5])));
 
 t.deepEqual(
 	new seqs.MOVE(1, 1, 2).rebase(
@@ -310,7 +308,7 @@ t.deepEqual(
 
 t.deepEqual(
 	new seqs.APPLY(555, new values.MATH("add", 3)).rebase(
-		new seqs.INS(555, ["NEWVALUE"])),
+		new seqs.INS(555, [5])),
 	new seqs.APPLY(556, new values.MATH("add", 3)));
 
 // apply vs apply

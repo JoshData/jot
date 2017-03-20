@@ -17,6 +17,6 @@
   },
   "devDependencies": {
     "connect": "*",
-    "tap": "~0.4.9"
+    "tap": "*"
   }
 }

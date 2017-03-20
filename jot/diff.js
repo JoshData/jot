@@ -84,42 +84,41 @@ function diff_strings(a, b, options) {
 	if (options.sentences)
 		method = "Sentences";
 	
-	var index = 0;
 	var total_content = 0;
 	var changed_content = 0;
 
-	var ops = diff["diff" + method](a, b)
+	var offset = 0;
+	var hunks = diff["diff" + method](a, b)
 		.map(function(change) {
-			var ret = null;
-			var old_value = "", new_value = "";
-
 			// Increment counter of total characters encountered.
 			total_content += change.value.length;
 			
 			if (change.added || change.removed) {
-				// Create an INS or DEL operation for this change.
-				if (change.removed) old_value = change.value;
-				if (change.added) new_value = change.value;
-				ret = jot.SPLICE(index, old_value, new_value);
-
 				// Increment counter of changed characters.
 				changed_content += change.value.length;
-			}
 
-			// Advance character position index.
-			if (!change.removed)
-				index += change.value.length;
-			
-			return ret;
+				// Create an INS or DEL operation for this change.
+				var old_value = "", new_value = "";
+				if (change.removed) old_value = change.value;
+				if (change.added) new_value = change.value;
+				var ret = { offset: offset, old_value: old_value, new_value: new_value };
+				offset = 0;
+				return ret;
+			} else {
+				// Advance character position index. Don't generate a hunk here.
+				offset += change.value.length;
+				return null;
+			}
 		})
 		.filter(function(item) { return item != null; });
 
-	// Merge consecutive INS/DELs into SPLICES.
-	var op = jot.LIST(ops).simplify();
+	// Form the SPLICE operation.
+	var op = jot.SPLICE(hunks).simplify();
 
 	// If the change is a single operation that replaces the whole content
 	// of the string, use a SET operation rather than a SPLICE operation.
-	if (op instanceof sequences.SPLICE && op.old_value == a && op.new_value == b) {
+	if (op instanceof sequences.SPLICE && op.hunks.length == 1 
+		&& op.hunks[0].old_value == a && op.hunks[0].new_value == b) {
 		return {
 			op: jot.SET(a, b),
 			pct: 1.0,
