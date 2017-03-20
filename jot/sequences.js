@@ -252,8 +252,10 @@ exports.SPLICE.prototype.compose = function (other) {
 		// TOOD: This inefficiently re-constructs the new_value for each element
 		// that the APPLY operation applies to.
 		var new_value = this.new_value;
+		var seen_indexes = { };
 		for (var i = 0; i < new_value.length; i++) {
 			if ((this.pos + i) in other.ops) {
+				seen_indexes[this.pos + i] = true;
 				var op = other.ops[this.pos + i];
 				new_value = concat3(
 					this.new_value.slice(0, i),
@@ -262,6 +264,16 @@ exports.SPLICE.prototype.compose = function (other) {
 					);
 			}
 		}
+
+		// If there are any indexes modified by the APPLY that were not within
+		// the range of the SPLICE, then we can't compose the operations.
+		var any_bad = false;
+		Object.keys(other.ops).forEach(function(index) {
+			if (!(index in seen_indexes))
+				any_bad = true;
+		})
+		if (any_bad) return null;
+
 		return new exports.SPLICE(
 			this.pos,
 			this.old_value,
