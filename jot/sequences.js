@@ -714,6 +714,7 @@ exports.APPLY.prototype.rebase_functions = [
 		var new_ops_left = { };
 		for (var key in this.ops) {
 			new_ops_left[key] = this.ops[key];
+			console.log(key, this.ops, new_ops_left);
 			if (key in other.ops)
 				new_ops_left[key] = new_ops_left[key].rebase(other.ops[key], conflictless);
 			if (new_ops_left[key] === null)
