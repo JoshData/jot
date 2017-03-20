@@ -6,6 +6,8 @@
 
 	*/
 	
+var util = require("util");
+
 var jot = require("./index.js");
 var values = require('./values.js');
 
@@ -19,6 +21,11 @@ exports.LIST = function (ops) {
 }
 exports.LIST.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.LIST, exports, 'LIST', ['ops']);
+
+exports.LIST.prototype.inspect = function(depth) {
+	return util.format("<meta.LIST [%s]>",
+		this.ops.map(function(item) { return item.inspect(depth-1) }).join(", "));
+}
 
 exports.LIST.prototype.apply = function (document) {
 	/* Applies the operation to a document.*/

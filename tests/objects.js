@@ -11,16 +11,16 @@ test('objects', function(t) {
 
 t.equal(
 	new objs.PUT("0", "1").inspect(),
-	'<objects.APPLY {ops:{"0":<values.SET {old_value:~, new_value:"1"}>}}>');
+	'<objects.APPLY "0":<values.SET ~ => "1">>');
 t.equal(
 	new objs.REM("0", "1").inspect(),
-	'<objects.APPLY {ops:{"0":<values.SET {old_value:"1", new_value:~}>}}>');
+	'<objects.APPLY "0":<values.SET "1" => ~>>');
 t.equal(
 	new objs.REN("0", "1").inspect(),
-	'<objects.REN {map:{"1":"0"}}>');
+	'<objects.REN {"1":"0"}>');
 t.equal(
 	new objs.APPLY("0", new values.SET(1, 2)).inspect(),
-	'<objects.APPLY {ops:{"0":<values.SET {old_value:1, new_value:2}>}}>');
+	'<objects.APPLY "0":<values.SET 1 => 2>>');
 
 // serialization
 

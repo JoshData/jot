@@ -3,6 +3,20 @@ var jot = require("../jot");
 var meta = require("../jot/meta.js");
 
 test('meta', function(t) {
+    // inspect
+
+    t.deepEqual(
+        new meta.LIST([]).inspect(),
+        "<meta.LIST []>");
+
+    t.deepEqual(
+        new meta.LIST([jot.SET("W", "X")]).inspect(),
+        "<meta.LIST [<values.SET \"W\" => \"X\">]>");
+
+    t.deepEqual(
+        new meta.LIST([jot.SET("W", "X"), jot.SET("X", "Y")]).inspect(),
+        "<meta.LIST [<values.SET \"W\" => \"X\">, <values.SET \"X\" => \"Y\">]>");
+
 	// simplify
 
 	t.deepEqual(

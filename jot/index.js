@@ -70,41 +70,6 @@ exports.BaseOperation.prototype.isNoOp = function() {
 	return this instanceof values.NO_OP;
 }
 
-exports.BaseOperation.prototype.inspect = function(depth) {
-	var repr = [ ];
-	var keys = Object.keys(this);
-	for (var i = 0; i < keys.length; i++) {
-		var value = this[keys[i]];
-		var s;
-		if (value instanceof exports.BaseOperation)
-			// The value is an operation.
-			s = value.inspect(depth-1);
-		else if (value === objects.MISSING)
-			// The value is a special sentinel.
-			s = "~";
-		else if (Array.isArray(value))
-			// The value is a list (maybe containing operations).
-			s = "[" + value.map(function(item) {
-				return item.inspect ? item.inspect() : util.format("%j", item)
-			}) + "]";
-		else if (typeof value == 'object')
-			// The value is an Object (maybe containing operations as values).
-			s = "{" + Object.keys(value).map(function(key) {
-				var item = value[key];
-				return util.format("%j", key) + ":" + (item.inspect ? item.inspect() : util.format("%j", item))
-			}) + "}";
-		else if (typeof value != 'undefined')
-			s = util.format("%j", value);
-		else
-			continue;
-		repr.push(keys[i] + ":" + s);
-	}
-	return util.format("<%s.%s {%s}>",
-		this.type[0],
-		this.type[1],
-		repr.join(", "));
-}
-
 exports.BaseOperation.prototype.toJSON = function() {
 	var repr = { };
 	repr['_type'] = { 'module': this.type[0], 'class': this.type[1] };

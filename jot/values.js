@@ -42,8 +42,10 @@
 	
 	*/
 	
+var util = require('util');
 var deepEqual = require("deep-equal");
 var jot = require("./index.js");
+var MISSING = require("./objects.js").MISSING;
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -78,6 +80,10 @@ jot.add_op(exports.MATH, exports, 'MATH', ['operator', 'operand']);
 
 //////////////////////////////////////////////////////////////////////////////
 
+exports.NO_OP.prototype.inspect = function(depth) {
+	return "<values.NO_OP>"
+}
+
 exports.NO_OP.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns the document
 	   unchanged. */
@@ -103,6 +109,19 @@ exports.NO_OP.prototype.compose = function (other) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+
+exports.SET.prototype.inspect = function(depth) {
+	function str(v) {
+		// Render the special MISSING value from objects.js
+		// not as a JSON object.
+		if (v === MISSING)
+			return "~";
+
+		// Render any other value as a JSON string.
+		return util.format("%j", v);
+	}
+	return util.format("<values.SET %s => %s>", str(this.old_value), str(this.new_value));
+}
 
 exports.SET.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns the new
@@ -201,6 +220,10 @@ exports.SET.prototype.rebase_functions = [
 ];
 
 //////////////////////////////////////////////////////////////////////////////
+
+exports.MATH.prototype.inspect = function(depth) {
+	return util.format("<values.MATH %s:%j>", this.operator, this.operand);
+}
 
 exports.MATH.prototype.apply = function (document) {
 	/* Applies the operation to this.operand. Applies the operator/operand

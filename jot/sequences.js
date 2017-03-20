@@ -68,6 +68,7 @@
 
    */
    
+var util = require('util');
 var deepEqual = require("deep-equal");
 var jot = require("./index.js");
 var values = require("./values.js");
@@ -177,6 +178,10 @@ exports.MAP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.MAP, exports, 'MAP', ['op']);
 
 //////////////////////////////////////////////////////////////////////////////
+
+exports.SPLICE.prototype.inspect = function(depth) {
+	return util.format("<sequences.SPLICE @%d %j => %j>", this.pos, this.old_value, this.new_value);
+}
 
 exports.SPLICE.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
@@ -529,6 +534,10 @@ exports.SPLICE.prototype.rebase_functions = [
 
 //////////////////////////////////////////////////////////////////////////////
 
+exports.MOVE.prototype.inspect = function(depth) {
+	return util.format("<sequences.MOVE @%dx%d => @%d>", this.pos, this.count, this.new_pos);
+}
+
 exports.MOVE.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
 	   the same type as document but with the subrange moved. */
@@ -608,6 +617,15 @@ exports.MOVE.prototype.rebase_functions = [
 ];
 
 //////////////////////////////////////////////////////////////////////////////
+
+exports.APPLY.prototype.inspect = function(depth) {
+	var inner = [];
+	var ops = this.ops;
+	Object.keys(ops).forEach(function(index) {
+		inner.push(util.format("%d:%s", parseInt(index), ops[index].inspect(depth-1)));
+	});
+	return util.format("<sequences.APPLY %s>", inner.join(", "));
+}
 
 exports.APPLY.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
@@ -767,6 +785,10 @@ exports.APPLY.prototype.rebase_functions = [
 ];
 
 //////////////////////////////////////////////////////////////////////////////
+
+exports.MAP.prototype.inspect = function(depth) {
+	return util.format("<sequences.MAP %s>", this.op.inspect(depth-1));
+}
 
 exports.MAP.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is

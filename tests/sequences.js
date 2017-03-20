@@ -9,19 +9,19 @@ test('sequences', function(t) {
 
 t.equal(
 	new seqs.SPLICE(0, "1", "4").inspect(),
-	'<sequences.SPLICE {pos:0, old_value:"1", new_value:"4"}>');
+	'<sequences.SPLICE @0 "1" => "4">');
 t.equal(
 	new seqs.MOVE(0, 2, 5).inspect(),
-	'<sequences.MOVE {pos:0, count:2, new_pos:5}>');
+	'<sequences.MOVE @0x2 => @5>');
 t.equal(
 	new seqs.APPLY(0, new values.SET(1, 2)).inspect(),
-	'<sequences.APPLY {ops:{"0":<values.SET {old_value:1, new_value:2}>}}>');
+	'<sequences.APPLY 0:<values.SET 1 => 2>>');
 t.equal(
 	new seqs.APPLY({ 0: new values.SET(1, 2), 4: new values.SET(5, 10) }).inspect(),
-	'<sequences.APPLY {ops:{"0":<values.SET {old_value:1, new_value:2}>,"4":<values.SET {old_value:5, new_value:10}>}}>');
+	'<sequences.APPLY 0:<values.SET 1 => 2>, 4:<values.SET 5 => 10>>');
 t.equal(
 	new seqs.MAP(new values.MATH('add', 1)).inspect(),
-	'<sequences.MAP {op:<values.MATH {operator:"add", operand:1}>}>');
+	'<sequences.MAP <values.MATH add:1>>');
 
 // serialization
 

@@ -54,6 +54,7 @@
 
    */
    
+var util = require('util');
 var deepEqual = require("deep-equal");
 var jot = require("./index.js");
 var values = require("./values.js");
@@ -123,6 +124,10 @@ exports.REM = function (key, old_value) {
 exports.REM.prototype = Object.create(exports.APPLY.prototype); // inherit prototype
 
 //////////////////////////////////////////////////////////////////////////////
+
+exports.REN.prototype.inspect = function(depth) {
+	return util.format("<objects.REN %j>", this.map);
+}
 
 exports.REN.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new object that is
@@ -301,6 +306,14 @@ exports.REN.prototype.rebase_functions = [
 
 //////////////////////////////////////////////////////////////////////////////
 
+exports.APPLY.prototype.inspect = function(depth) {
+	var inner = [];
+	var ops = this.ops;
+	Object.keys(ops).forEach(function(key) {
+		inner.push(util.format("%j:%s", key, ops[key].inspect(depth-1)));
+	});
+	return util.format("<objects.APPLY %s>", inner.join(", "));
+}
 
 exports.APPLY.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new object that is
