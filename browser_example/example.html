@@ -1,0 +1,45 @@
+<html>
+	<head>
+		<script src="jot.js"> </script>
+	</head>
+	<body>
+		<textarea id="mybox" style="width: 100%; height: 40%;" placeholder="type here!"></textarea>
+		<textarea id="eventlog" style="width: 100%; height: 40%;" readonly placeholder="event log"></textarea>
+
+		<script>
+		function parseText(text) {
+			if (text === "")
+				return "";
+			return text.split(/\n/) // split up lines
+				.map(function(line) { // split lines into words
+					return line.split(/(\W+)/)
+				});
+		}
+
+		var last_text = "";
+		function watch_for_changes() {
+			// Get the current text in the box.
+			var textarea = document.getElementById("mybox");
+			var text = textarea.value;
+
+			// While we can do a diff on the raw text, it's more interesting
+			// to parse it into a data structure and do a structured diff.
+			text = parseText(text);
+
+			// Compare it with the last text.
+			var op = jot.diff(last_text, text);
+			if (!op.isNoOp()) {
+				// If there was a change, show a structured representation
+				// of the change in the eventlog textarea.
+				var eventlog = document.getElementById("eventlog");
+				eventlog.value = op.inspect() + "\n" + eventlog.value
+			}
+
+			// Update state, schedule next check.
+			last_text = text;
+			setTimeout(watch_for_changes, 1000);
+		}
+		setTimeout(watch_for_changes, 0);
+		</script>
+	</body>
+</html>

@@ -74,13 +74,13 @@ Before running anything, you'll need to install node, and then jot's dependencie
 To build the library for browsers, do the above, and then run:
 
 	npm install -g browserify
-	browserify jot/index.js > jot_browser.js
+	browserify browser_example/browserfy_root.js -d -o browser_example/jot.js
 
-Then use the library in your HTML page:
+Then use the library in your HTML page (see [the example](browser_example/example.html) for details):
 
 	<html>
 		<body>
-			<script src="jot_browser.js"></script>
+			<script src="jot.js"></script>
 			<script>
 				// see the example below, but skip the 'require' line
 			</script>

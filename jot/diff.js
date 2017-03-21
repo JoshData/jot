@@ -23,7 +23,7 @@ function diff(a, b, options) {
 
 	if (deepEqual(a, b, { strict: true })) {
 		return {
-			op: jot.NO_OP(),
+			op: new jot.NO_OP(),
 			pct: 0.0,
 			size: JSON.stringify(a).length
 		};
@@ -160,6 +160,7 @@ function diff_arrays(a, b, options) {
 		//
 		// We get back a sequence of add/remove/equal operations.
 		// Merge these into changed/same hunks.
+
 		var hunks = [];
 		var a_index = 0;
 		var b_index = 0;
@@ -207,7 +208,10 @@ function diff_arrays(a, b, options) {
 				return;
 			}
 
-			if (hunk.type == "unequal") {
+			if (hunk.ai.length != hunk.bi.length) {
+				// The items aren't in correspondence, so we'll just return
+				// a whole SPLICE from the left subsequence to the right
+				// subsequence.
 				var op = jot.SPLICE(
 					pos,
 					hunk.ai.map(function(i) { return a[i]; }),
@@ -223,12 +227,11 @@ function diff_arrays(a, b, options) {
 			} else {
 				// The items in the arrays are in correspondence.
 				// They may not be identical, however, if level > 0.
-				if (hunk.ai.length != hunk.bi.length) throw "should be same length";
 				for (var i = 0; i < hunk.ai.length; i++) {
 					var d = diff(a[hunk.ai[i]], b[hunk.bi[i]], options);
 
 					// Add an operation.
-					if (!(d.op instanceof jot.NO_OP))
+					if (!d.op.isNoOp())
 						ops.push(jot.APPLY(hunk.bi[i], d.op));
 
 					// Increment counters.
@@ -267,7 +270,7 @@ function diff_objects(a, b, options) {
 			d = diff(a[key], b[key], options);
 
 			// Add operation if there were any changes.
-			if (!(d.op instanceof jot.NO_OP))
+			if (!d.op.isNoOp())
 				ops.push(jot.APPLY(key, d.op));
 
 			// Increment counters.
@@ -310,7 +313,7 @@ function diff_objects(a, b, options) {
 
 		// Use this pair.
 		ops.push(jot.REN(item.a_key, item.b_key));
-		if (!(item.diff.op instanceof jot.NO_OP))
+		if (!item.diff.op.isNoOp())
 			ops.push(jot.APPLY(item.b_key, item.diff.op));
 
 		// Increment counters.

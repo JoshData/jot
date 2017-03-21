@@ -129,6 +129,9 @@ exports.SPLICE = function () {
 	else
 		throw "Invaid Argument";
 
+	if (!Array.isArray(this.hunks))
+		throw "Invaid Argument";
+
 	// Sanity check & freeze hunks.
 	this.hunks.forEach(function(hunk) {
 		if (typeof hunk.offset != "number" || hunk.old_value === null || hunk.new_value === null)
@@ -272,26 +275,27 @@ exports.SPLICE.prototype.compose = function (other) {
 				hunk: hunks[0], // actual current hunk
 				offset_delta: 0, // number of elements inserted/deleted by the other side
 				index: 0, // index past last element of last hunk
-				hunks: [] // new hunks
+				hunks: hunks // incoming hunks
 			};
 		}
 		var state = {
 			left: make_state(this.hunks),
 			right: make_state(other.hunks)
 		};
-		while (state.left.hunk_index < this.hunks.length || state.right.hunk_index < other.hunks.length) {
+		var hunks = []; // composition
+		while (state.left.hunk_index < state.left.hunks.length || state.right.hunk_index < state.right.hunks.length) {
 			// Advance over the left hunk if it appears entirely before the right hunk
 			// or there are no more right hunks. As we advance, we take the left hunk
 			// but alter the offset in case hunks were inserted between this and the
 			// previous left hunk and so we're advancing from a nearer position.
-			if (state.right.hunk_index == other.hunks.length ||
-				(state.left.hunk_index < this.hunks.length &&
+			if (state.right.hunk_index == state.right.hunks.length ||
+				(state.left.hunk_index < state.left.hunks.length &&
 				 state.left.index+state.left.hunk.offset+state.left.hunk.new_value.length
 					<= state.right.index+state.right.hunk.offset)) {
 				hunks.push({ offset: state.left.hunk.offset-state.left.offset_delta, old_value: state.left.hunk.old_value, new_value: state.left.hunk.new_value });
 				state.left.index += state.left.hunk.offset + state.left.hunk.new_value.length;
 				state.right.offset_delta += state.left.hunk.offset + state.left.hunk.new_value.length;
-				state.left.hunk = this.hunks[++state.left.hunk_index];
+				state.left.hunk = state.left.hunks[++state.left.hunk_index];
 				state.left.offset_delta = 0;
 				continue;
 			}
@@ -299,14 +303,14 @@ exports.SPLICE.prototype.compose = function (other) {
 			// Advance over the right hunk if it appears entirely before the left hunk
 			// or there are no more left hunks. As we take the right hunk, we adjust
 			// the offset.
-			if (state.left.hunk_index == this.hunks.length ||
-				(state.right.hunk_index < other.hunks.length &&
+			if (state.left.hunk_index == state.left.hunks.length ||
+				(state.right.hunk_index < state.right.hunks.length &&
 				 state.right.index+state.right.hunk.offset+state.right.hunk.old_value.length
 					<= state.left.index+state.left.hunk.offset)) {
 				hunks.push({ offset: state.right.hunk.offset-state.right.offset_delta, old_value: state.right.hunk.old_value, new_value: state.right.hunk.new_value });
 				state.right.index += state.right.hunk.offset + state.right.hunk.old_value.length;
 				state.left.offset_delta += state.right.hunk.offset + state.right.hunk.old_value.length;
-				state.right.hunk = other.hunks[++state.right.hunk_index];
+				state.right.hunk = state.right.hunks[++state.right.hunk_index];
 				state.right.offset_delta = 0;
 				continue;
 			}
@@ -380,9 +384,9 @@ exports.SPLICE.prototype.compose = function (other) {
 
 			// Advance the hunks if we consumed one entirely.
 			if (state.left.hunk.new_value.length == 0)
-				state.left.hunk = this.hunks[++state.left.hunk_index];
+				state.left.hunk = state.left.hunks[++state.left.hunk_index];
 			if (state.right.hunk.old_value.length == 0)
-				state.right.hunk = other.hunks[++state.right.hunk_index];
+				state.right.hunk = state.right.hunks[++state.right.hunk_index];
 		}
 		return new exports.SPLICE(hunks).simplify();
 	}
@@ -585,8 +589,6 @@ exports.SPLICE.prototype.rebase_functions = [
 			// Otherwise, without conflictless mode, there is a conflict.
 			if (!conflictless)
 				return null;
-
-			console.log(state, dx_start, dx_end)
 
 			// Ok now we have the 9 cases of overlap left to resolve in a
 			// conflictless way...
