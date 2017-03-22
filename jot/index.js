@@ -80,7 +80,7 @@ exports.BaseOperation.prototype.toJSON = function() {
 		if (value instanceof exports.BaseOperation) {
 			v = value.toJSON();
         }
-		if (value === objects.MISSING) {
+		else if (value === objects.MISSING) {
 			repr[keys[i] + "_missing"] = true;
 			continue;
         }
@@ -126,36 +126,36 @@ exports.opFromJSON = function(obj, op_map) {
 	// Sanity check.
 	if (!('_type' in obj)) throw "Not an operation.";
 
-	// Put "missing" values back.
-	Object.keys(obj).forEach(function(key) {
-		if (/_missing$/.test(key) && obj[key] === true) {
-			delete obj[key];
-			obj[key.substr(0, key.length-8)] = objects.MISSING;
-		}
-	})
-
 	// Reconstruct.
 	var constructor = op_map[obj._type.module][obj._type.class];
 	var args = constructor.prototype.constructor_args.map(function(item) {
-		if (obj[item] !== null && typeof obj[item] == 'object' && '_type' in obj[item]) {
+		var value = obj[item];
+
+		if (obj[item + "_missing"]) {
+			// Put "missing" values back.
+			value = objects.MISSING;
+
+		} if (value !== null && typeof value == 'object' && '_type' in value) {
 			// Value is an operation.
-			return exports.opFromJSON(obj[item]);
+			return exports.opFromJSON(value);
         
-        } else if (item === 'ops' && Array.isArray(obj[item])) {
+        } else if (item === 'ops' && Array.isArray(value)) {
         	// Value is an array of operations.
-            obj[item] = obj[item].map(function(op) {
+            value = value.map(function(op) {
                 return exports.opFromJSON(op);
             });
 
-        } else if (item === 'ops' && typeof obj[item] === "object") {
+        } else if (item === 'ops' && typeof value === "object") {
         	// Value is a mapping array of operations.
-        	for (var key in obj[item])
-        		obj[item][key] = exports.opFromJSON(obj[item][key]);
+        	var newvalue = { };
+        	for (var key in value)
+        		newvalue[key] = exports.opFromJSON(value[key]);
+        	value = newvalue;
         
         } else {
         	// Value is just a raw JSON value.
         }
-		return obj[item];
+		return value;
 	});
 	
 	var op = Object.create(constructor.prototype);
