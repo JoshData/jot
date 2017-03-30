@@ -244,7 +244,7 @@ exports.SPLICE.prototype.simplify = function () {
 	this.hunks.forEach(function(hunk) {
 		if (deepEqual(hunk.old_value, hunk.new_value, { strict: true }))
 			// Drop it, but adjust future offsets.
-			doffset += hunk.old_value.length;
+			doffset += hunk.offset + hunk.old_value.length;
 		else if (hunks.length > 0 && hunk.offset + doffset == 0)
 			// It's contiguous with the previous hunk, so combine it.
 			hunks[hunks.length-1] = {
@@ -767,18 +767,21 @@ exports.SPLICE.prototype.rebase_functions = [
 
 		// Add in any sub-operations in other that didn't overlap with the SPLICE.
 		// The overlapped ones are squashed.
+		var dx = 0;
 		var right = {};
 		for (var index in other.ops) {
 			index = parseInt(index);
 			if (!(index in seen_indexes)) {
 				var shift = 0;
 				this.hunks.forEach(function(hunk) {
-					if (hunk.offset + hunk.old_value.length <= index)
+					if (dx + hunk.offset + hunk.old_value.length <= index)
 						shift += hunk.new_value.length - hunk.old_value.length;
+					dx += hunk.offset + hunk.old_value.length;
 				});
 				right[index+shift] = other.ops[index];
 			}
 		}
+
 
 		// Return the new operations.
 		return [new exports.SPLICE(left).simplify(), new exports.APPLY(right).simplify()];
