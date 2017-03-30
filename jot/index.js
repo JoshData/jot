@@ -205,6 +205,15 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless) {
 		}
 	}
 
+	if (conflictless) {
+		// Everything can rebase against a SET in a conflictless way.
+		// The SET always wins!
+		if (this instanceof values.SET)
+			return this;
+		if (other instanceof values.SET)
+			return new values.NO_OP();
+	}
+
 	// Everything case rebase against a LIST.
 	if (other instanceof meta.LIST) {
 		return meta.rebase(other, this, conflictless);
