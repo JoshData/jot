@@ -43,6 +43,11 @@
     operations. So, like SPLICE, it can represent many changes
     occurring simultaneously at different positions in the sequence.
 
+    When APPLY is used on a string document, it is operating over
+    a single character. The operation may not change the character
+    into something other than a single character because that would
+    change the length of the (whole) string.
+
     Example:
     
     To replace an element at index 2 with a new value:
@@ -867,9 +872,17 @@ exports.APPLY.prototype.apply = function (document) {
 	var doc = document;
 	for (var index in this.ops) { // TODO: Inefficient.
 		index = parseInt(index);
+
+		var newelem = this.ops[index].apply(elem(doc, index));
+		if (typeof document == "string") {
+			// The operation must return a one-character string.
+			if (typeof newelem != "string" || newelem.length != 1)
+				throw "Invalid operation: Character became something besides a character."
+		}
+
 		doc = concat3(
 			doc.slice(0, index),
-			unelem(this.ops[index].apply(elem(doc, index), doc)),
+			unelem(newelem),
 			doc.slice(index+1, doc.length));
 	}
 	return doc;
