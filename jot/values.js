@@ -346,3 +346,51 @@ exports.MATH.prototype.rebase_functions = [
 	}]
 ];
 
+exports.createRandomOp = function(doc, context) {
+	// Create a random operation that could apply to doc.
+	// Choose uniformly across various options depending on
+	// the data type of doc.
+	var ops = [];
+
+	// NO_OP is always a possibility.
+	ops.push(function() { return new exports.NO_OP() });
+
+	// An identity SET is always a possibility.
+	ops.push(function() { return new exports.SET(doc, doc) });
+
+	// Set to null, unless in "string" context (i.e. an APPLY in a string).
+	if (context != "string-character")
+		ops.push(function() { return new exports.SET(doc, null) });
+
+	// Clear the key, if we're in an object.
+	if (context == "object")
+		ops.push(function() { return new exports.SET(doc, MISSING) });
+
+	// Set to another value of the same type.
+	if (typeof doc === "boolean")
+		ops.push(function() { return new exports.SET(doc, !doc) });
+	if (typeof doc === "number")
+		ops.push(function() { return new exports.SET(doc, doc + 50) });
+	if (typeof doc === "number")
+		ops.push(function() { return new exports.SET(doc, doc / 2.1) });
+
+	// Set to reversed string.
+	if (typeof doc === "string")
+		ops.push(function() { return new exports.SET(doc, doc.split("").reverse().join("")); })
+
+	// Set to reversed Array.
+	if (Array.isArray(doc))
+		ops.push(function() { return new exports.SET(doc, doc.reverse()); })
+
+	// Math
+	if (typeof doc === "number") {
+		ops.push(function() { return new exports.MATH("add", 2.5); })
+		ops.push(function() { return new exports.MATH("rot", [1, 13]); })
+		ops.push(function() { return new exports.MATH("mult", .75); })
+		ops.push(function() { return new exports.MATH("xor", 0xFF); })
+
+	}
+
+	// Select randomly.
+	return ops[Math.floor(Math.random() * ops.length)]();
+}

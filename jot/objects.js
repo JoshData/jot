@@ -447,3 +447,7 @@ exports.APPLY.prototype.rebase_functions = [
 		];
 	}]
 ]
+
+exports.createRandomOp = function(doc, context) {
+	throw "not implemented yet";
+}

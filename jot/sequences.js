@@ -1095,3 +1095,125 @@ exports.MAP.prototype.rebase_functions = [
 			];
 	}]
 ];
+
+exports.createRandomOp = function(doc, context) {
+	// Create a random operation that could apply to doc.
+	// Choose uniformly across various options.
+	var ops = [];
+
+	// Construct a SPLICE.
+	ops.push(function() {
+		var hunks = [];
+		var dx = 0;
+
+		while (dx < doc.length) {
+			// Construct a random hunk. First select a range in the
+			// document to modify.
+			var offset = dx + Math.floor(Math.random() * (doc.length+1-dx));
+			var old_length = Math.floor(Math.random() * (doc.length - offset + ((offset<doc.length) ? 1 : 0)));
+			var old_value = doc.slice(offset, offset+old_length);
+
+			if (context == "string-character") {
+				// Only edits on the whole string, which is a single character, are valid.
+				if (dx != 0 || doc.length != 1) throw "shouldn't happen";
+				offset = 0;
+				old_length = 1;
+				old_value = doc;
+			}
+			
+			// Choose a new value.
+			var new_values = [];
+
+			if (context != "string-character") {
+				// The "string-character" context is when we trying to APPLY
+				// to a string sequence, which only allows operations that
+				// change a character to another character - the length of
+				// the string can't change.
+
+				// Delete (if not already empty).
+				if (old_length > 0)
+					new_values.push(old_value.slice(0, 0));
+
+				if (old_length >= 1) {
+					// shorten at start
+					new_values.push(old_value.slice(Math.floor(Math.random()*(old_length-1)), old_length));
+
+					// shorten at end
+					new_values.push(old_value.slice(0, Math.floor(Math.random()*(old_length-1))));
+				}
+
+				if (old_length >= 2) {
+					// shorten by on both sides
+					var a = Math.floor(Math.random()*old_length-1);
+					var b = Math.floor(Math.random()*(old_length-a));
+					new_values.push(old_value.slice(a, a+b));
+				}
+
+				if (old_length > 0) {
+					// expand by copying existing elements from document
+				
+					// expand by elements at start
+					new_values.push(concat2(old_value.slice(0, 1+Math.floor(Math.random()*(old_length-1))), old_value));
+					// expand by elements at end
+					new_values.push(concat2(old_value, old_value.slice(0, 1+Math.floor(Math.random()*(old_length-1)))));
+					// expand by elements on both sides
+					new_values.push(concat3(old_value.slice(0, 1+Math.floor(Math.random()*(old_length-1))), old_value, old_value.slice(0, 1+Math.floor(Math.random()*(old_length-1)))));
+				} else {
+					// expand by generating new elements
+					if (typeof doc === "string")
+						new_values.push((Math.random()+"").slice(2));
+					else if (Array.isArray(doc))
+						new_values.push([null,null,null].map(function() { return Math.random() }));
+				}
+			}
+
+			// reverse
+			if (old_value != old_value.split("").reverse().join(""))
+				new_values.push(old_value.split("").reverse().join(""));
+
+			// replace with new elements of the same length
+			if (old_length > 0 && typeof doc === "string") {
+				var newvalue = "";
+				for (var i = 0; i < old_value.length; i++)
+					newvalue += (Math.random()+"").slice(2, 3);
+				new_values.push(newvalue);
+			}
+
+			// Push the hunk.
+			hunks.push({
+				offset: offset-dx,
+				old_value: old_value,
+				new_value: new_values[Math.floor(Math.random() * new_values.length)]
+			});
+
+			dx = offset + old_length;
+
+			// Create another hunk?
+			if (Math.random() < .25)
+				break;
+		}
+
+		return new exports.SPLICE(hunks);
+	});
+
+	// Construct an APPLY (but not an empty one on an empty string).
+	if (doc.length > 0) {
+		ops.push(function() {
+			var ops = {};
+			while (ops.length == 0 || Math.random() < .75) {
+				var i = Math.floor(Math.random() * doc.length);
+				ops[i] = jot.createRandomOp(
+					elem(doc, i),
+
+					// context is "string-character" when the document
+					// is a string because APPLY cannot change a character
+					// to something other than a character
+					(typeof doc === "string" ? "string-character" : null));
+			}
+			return new exports.APPLY(ops);
+		});
+	}
+
+	// Select randomly.
+	return ops[Math.floor(Math.random() * ops.length)]();
+}

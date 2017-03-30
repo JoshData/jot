@@ -213,6 +213,32 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless) {
 	return null;
 }
 
+exports.createRandomOp = function(doc, context) {
+	// Creates a random operation that could apply to doc. Just
+	// chain off to the modules that can handle the data type.
+
+	var modules = [];
+
+	// The values module can handle any data type.
+	modules.push(values);
+
+	// sequences applies to strings and arrays.
+	if (typeof doc === "string" || Array.isArray(doc))
+		modules.push(sequences);
+
+	// objects applies to objects (but not Array objects or null)
+	else if (typeof doc === "object" && doc !== null)
+		modules.push(objects);
+
+	// the meta module only defines LIST which can also
+	// be applied to any data type but gives us stack
+	// overflows
+	//modules.push(meta);
+
+	return modules[Math.floor(Math.random() * modules.length)]
+		.createRandomOp(doc, context);
+}
+
 function type_name(x) {
 	if (typeof x == 'object') {
 		if (Array.isArray(x))

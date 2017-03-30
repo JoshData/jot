@@ -257,3 +257,12 @@ function rebase_array(base, ops, conflictless) {
 	}
 }
 
+exports.createRandomOp = function(doc, context) {
+	// Create a random LIST that could apply to doc.
+	var ops = [];
+	while (ops.length == 0 || Math.random() < .75) {
+		ops.push(jot.createRandomOp(doc, context));
+		doc = ops[ops.length-1].apply(doc);
+	}
+	return new exports.LIST(ops);
+}
