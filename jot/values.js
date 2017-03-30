@@ -126,6 +126,8 @@ exports.SET.prototype.inspect = function(depth) {
 exports.SET.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns the new
 	   value, regardless of the document. */
+	if (!deepEqual(this.old_value, document, { strict: true }))
+		throw "old_value is not correct";
 	return this.new_value;
 }
 
@@ -358,8 +360,8 @@ exports.createRandomOp = function(doc, context) {
 	// An identity SET is always a possibility.
 	ops.push(function() { return new exports.SET(doc, doc) });
 
-	// Set to null, unless in "string" context (i.e. an APPLY in a string).
-	if (context != "string-character")
+	// Set to null, unless in splice contexts
+	if (context != "string-character" && context != "string")
 		ops.push(function() { return new exports.SET(doc, null) });
 
 	// Clear the key, if we're in an object.
@@ -374,13 +376,68 @@ exports.createRandomOp = function(doc, context) {
 	if (typeof doc === "number")
 		ops.push(function() { return new exports.SET(doc, doc / 2.1) });
 
-	// Set to reversed string.
-	if (typeof doc === "string")
-		ops.push(function() { return new exports.SET(doc, doc.split("").reverse().join("")); })
+	if (typeof doc === "string" || Array.isArray(doc)) {
+		if (context != "string-character") {
+			// Delete (if not already empty).
+			if (doc.length > 0)
+				ops.push(function() { return new exports.SET(doc, doc.slice(0, 0)) });
 
-	// Set to reversed Array.
-	if (Array.isArray(doc))
-		ops.push(function() { return new exports.SET(doc, doc.reverse()); })
+			if (doc.length >= 1) {
+				// shorten at start
+				ops.push(function() { return new exports.SET(doc, doc.slice(Math.floor(Math.random()*(doc.length-1)), doc.length)) });
+
+				// shorten at end
+				ops.push(function() { return new exports.SET(doc, doc.slice(0, Math.floor(Math.random()*(doc.length-1)))) });
+			}
+
+			if (doc.length >= 2) {
+				// shorten by on both sides
+				var a = Math.floor(Math.random()*doc.length-1);
+				var b = Math.floor(Math.random()*(doc.length-a));
+				ops.push(function() { return new exports.SET(doc, doc.slice(a, a+b)) });
+			}
+
+			if (doc.length > 0) {
+				// expand by copying existing elements from document
+
+				function concat2(item1, item2) {
+					if (item1 instanceof String)
+						return item1 + item2;
+					return item1.concat(item2);
+				}
+				function concat3(item1, item2, item3) {
+					if (item1 instanceof String)
+						return item1 + item2 + item3;
+					return item1.concat(item2).concat(item3);
+				}
+			
+				// expand by elements at start
+				ops.push(function() { return new exports.SET(doc, concat2(doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))), doc)) });
+				// expand by elements at end
+				ops.push(function() { return new exports.SET(doc, concat2(doc, doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))))); });
+				// expand by elements on both sides
+				ops.push(function() { return new exports.SET(doc, concat3(doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))), doc, doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))))); });
+			} else {
+				// expand by generating new elements
+				if (typeof doc === "string")
+					ops.push(function() { return new exports.SET(doc, (Math.random()+"").slice(2)); });
+				else if (Array.isArray(doc))
+					ops.push(function() { return new exports.SET(doc, [null,null,null].map(function() { return Math.random() })); });
+			}
+		}
+
+		// reverse
+		if (doc != doc.split("").reverse().join(""))
+			ops.push(function() { return new exports.SET(doc, doc.split("").reverse().join("")); });
+
+		// replace with new elements of the same length
+		if (doc.length > 0 && typeof doc === "string") {
+			var newvalue = "";
+			for (var i = 0; i < doc.length; i++)
+				newvalue += (Math.random()+"").slice(2, 3);
+			ops.push(function() { return new exports.SET(doc, newvalue); });
+		}
+	}
 
 	// Math
 	if (typeof doc === "number") {

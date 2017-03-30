@@ -1149,68 +1149,13 @@ exports.createRandomOp = function(doc, context) {
 			}
 			
 			// Choose a new value.
-			var new_values = [];
-
-			if (context != "string-character") {
-				// The "string-character" context is when we trying to APPLY
-				// to a string sequence, which only allows operations that
-				// change a character to another character - the length of
-				// the string can't change.
-
-				// Delete (if not already empty).
-				if (old_length > 0)
-					new_values.push(old_value.slice(0, 0));
-
-				if (old_length >= 1) {
-					// shorten at start
-					new_values.push(old_value.slice(Math.floor(Math.random()*(old_length-1)), old_length));
-
-					// shorten at end
-					new_values.push(old_value.slice(0, Math.floor(Math.random()*(old_length-1))));
-				}
-
-				if (old_length >= 2) {
-					// shorten by on both sides
-					var a = Math.floor(Math.random()*old_length-1);
-					var b = Math.floor(Math.random()*(old_length-a));
-					new_values.push(old_value.slice(a, a+b));
-				}
-
-				if (old_length > 0) {
-					// expand by copying existing elements from document
-				
-					// expand by elements at start
-					new_values.push(concat2(old_value.slice(0, 1+Math.floor(Math.random()*(old_length-1))), old_value));
-					// expand by elements at end
-					new_values.push(concat2(old_value, old_value.slice(0, 1+Math.floor(Math.random()*(old_length-1)))));
-					// expand by elements on both sides
-					new_values.push(concat3(old_value.slice(0, 1+Math.floor(Math.random()*(old_length-1))), old_value, old_value.slice(0, 1+Math.floor(Math.random()*(old_length-1)))));
-				} else {
-					// expand by generating new elements
-					if (typeof doc === "string")
-						new_values.push((Math.random()+"").slice(2));
-					else if (Array.isArray(doc))
-						new_values.push([null,null,null].map(function() { return Math.random() }));
-				}
-			}
-
-			// reverse
-			if (old_value != old_value.split("").reverse().join(""))
-				new_values.push(old_value.split("").reverse().join(""));
-
-			// replace with new elements of the same length
-			if (old_length > 0 && typeof doc === "string") {
-				var newvalue = "";
-				for (var i = 0; i < old_value.length; i++)
-					newvalue += (Math.random()+"").slice(2, 3);
-				new_values.push(newvalue);
-			}
+			var new_value = values.createRandomOp(old_value, context == "string-character" ? context : "string").new_value;
 
 			// Push the hunk.
 			hunks.push({
 				offset: offset-dx,
 				old_value: old_value,
-				new_value: new_values[Math.floor(Math.random() * new_values.length)]
+				new_value: new_value
 			});
 
 			dx = offset + old_length;
