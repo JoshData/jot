@@ -139,7 +139,13 @@ exports.SPLICE = function () {
 
 	// Sanity check & freeze hunks.
 	this.hunks.forEach(function(hunk) {
-		if (typeof hunk.offset != "number" || hunk.old_value === null || hunk.new_value === null)
+		if (typeof hunk.offset != "number")
+			throw "Invalid Argument";
+ 		if (typeof hunk.old_value != "string" && !Array.isArray(hunk.old_value))
+			throw "Invalid Argument";
+ 		if (typeof hunk.new_value != "string" && !Array.isArray(hunk.new_value))
+			throw "Invalid Argument";
+		if (hunk.offset < 0)
 			throw "Invalid Argument";
 		Object.freeze(hunk);
 	});
@@ -210,6 +216,11 @@ exports.SPLICE.prototype.apply = function (document) {
 	var index = 0;
 	var ret = document.slice(0,0); // start with an empty document
 	this.hunks.forEach(function(hunk) {
+		if (index + hunk.offset + hunk.old_value.length > document.length)
+			throw "offset past end of document";
+		if (!deepEqual(hunk.old_value, document.slice(index+hunk.offset, index+hunk.offset+hunk.old_value.length), { strict: true}))
+			throw "old_value is not correct";
+
 		// Append unchanged content before this hunk.
 		ret = concat2(ret, document.slice(index, index+hunk.offset));
 		index += hunk.offset;
