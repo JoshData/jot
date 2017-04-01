@@ -267,18 +267,10 @@ exports.SPLICE.prototype.inverse = function (document) {
 	}));
 }
 
-exports.SPLICE.prototype.compose = function (other) {
+exports.SPLICE.prototype.atomic_compose = function (other) {
 	/* Creates a new atomic operation that has the same result as this
 	   and other applied in sequence (this first, other after). Returns
 	   null if no atomic operation is possible. */
-
-	// the next operation is a no-op, so the composition is just this
-	if (other instanceof values.NO_OP)
-		return this;
-
-	// a SET clobbers this operation.
-	if (other instanceof values.SET)
-		return other;
 
 	// a SPLICE composes with a SPLICE
 	if (other instanceof exports.SPLICE) {
@@ -820,18 +812,10 @@ exports.MOVE.prototype.inverse = function (document) {
 		return new exports.MOVE(this.new_pos, this.count, this.pos + this.count);
 }
 
-exports.MOVE.prototype.compose = function (other) {
+exports.MOVE.prototype.atomic_compose = function (other) {
 	/* Creates a new atomic operation that has the same result as this
 	   and other applied in sequence (this first, other after). Returns
 	   null if no atomic operation is possible. */
-
-	// the next operation is a no-op, so the composition is just this
-	if (other instanceof values.NO_OP)
-		return this;
-
-	// a SET clobbers this operation
-	if (other instanceof values.SET)
-		return other;
 
 	// The same range moved a second time.
 	if (other instanceof exports.MOVE && this.new_pos == other.pos && this.count == other.count)
@@ -933,18 +917,10 @@ exports.APPLY.prototype.inverse = function (document) {
 	return new exports.APPLY(new_ops);
 }
 
-exports.APPLY.prototype.compose = function (other) {
+exports.APPLY.prototype.atomic_compose = function (other) {
 	/* Creates a new atomic operation that has the same result as this
 	   and other applied in sequence (this first, other after). Returns
 	   null if no atomic operation is possible. */
-
-	// the next operation is a no-op, so the composition is just this
-	if (other instanceof values.NO_OP)
-		return this;
-
-	// a SET clobbers this operation
-	if (other instanceof values.SET)
-		return other;
 
 	// two APPLYs
 	if (other instanceof exports.APPLY) {
@@ -963,19 +939,15 @@ exports.APPLY.prototype.compose = function (other) {
 			} else {
 				// Compose.
 				var op2 = new_ops[index].compose(other.ops[index]);
-				if (op2) {
-					// They composed to a no-op, so delete the
-					// first operation.
-					if (op2 instanceof values.NO_OP)
-						delete new_ops[index];
 
-					// They composed to something atomic, so replace.
-					else
-						new_ops[index] = op2;
-				} else {
-					// They don't compose to something atomic, so use a LIST.
-					new_ops[index] = new LIST([new_ops[index], other.ops[index]]);
-				}
+				// They composed to a no-op, so delete the
+				// first operation.
+				if (op2 instanceof values.NO_OP)
+					delete new_ops[index];
+
+				// They composed to something atomic, so replace.
+				else
+					new_ops[index] = op2;
 			}
 		}
 
@@ -1086,22 +1058,14 @@ exports.MAP.prototype.inverse = function (document) {
 	return new exports.MAP(this.op.inverse(document));
 }
 
-exports.MAP.prototype.compose = function (other) {
+exports.MAP.prototype.atomic_compose = function (other) {
 	/* Creates a new atomic operation that has the same result as this
 	   and other applied in sequence (this first, other after). Returns
 	   null if no atomic operation is possible. */
 
-	// the next operation is a no-op, so the composition is just this
-	if (other instanceof values.NO_OP)
-		return this;
-
-	// a SET clobbers this operation
-	if (other instanceof values.SET)
-		return other;
-
-	// two MAPs with composable sub-operations
+	// two MAPs with atomically composable sub-operations
 	if (other instanceof exports.MAP) {
-		var op2 = this.op.compose(other.op);
+		var op2 = this.op.atomic_compose(other.op);
 		if (op2)
 			return new exports.MAP(op2);
 	}

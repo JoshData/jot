@@ -52,7 +52,7 @@ exports.LIST.prototype.simplify = function (aggressive) {
 		} else {
 			for (var j = new_ops.length-1; j >= 0; j--) {
 				// try to compose with op[j]
-				var c = new_ops[j].compose(op);
+				var c = new_ops[j].atomic_compose(op);
 				if (c) {
 					if (c instanceof values.NO_OP)
 						// they obliterated each other, so remove the one that we already added
@@ -91,30 +91,23 @@ exports.LIST.prototype.inverse = function (document) {
 	return new exports.LIST(new_ops);
 }
 
-exports.LIST.prototype.compose = function (other) {
+exports.LIST.prototype.atomic_compose = function (other) {
 	/* Returns a LIST operation that has the same result as this
 	   and other applied in sequence (this first, other after). */
 
-	// Nothing here anyway, return the other. (Operations are immutable
-	// so safe to return.)
+	// Nothing here anyway, return the other.
 	if (this.ops.length == 0)
 		return other;
 
-	// the next operation is a no-op, so the composition is just this
-	if (other instanceof values.NO_OP)
-		return this;
-
 	// the next operation is an empty list, so the composition is just this
-	if (other instanceof exports.LIST && other.ops.length == 0)
-		return this;
-
-	// a SET clobbers this operation
-	if (other instanceof values.SET)
-		return other;
-
-	// concatenate
-	if (other instanceof exports.LIST)
+	if (other instanceof exports.LIST) {
+		if (other.ops.length == 0)
+			return this;
+		
+		// concatenate
 		return new exports.LIST(this.ops.concat(other.ops));
+	}
+
 
 	// append
 	var new_ops = this.ops.slice(); // clone

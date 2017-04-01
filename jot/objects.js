@@ -180,18 +180,10 @@ exports.REN.prototype.inverse = function (document) {
 	return new exports.REN(inv_map);
 }
 
-exports.REN.prototype.compose = function (other) {
+exports.REN.prototype.atomic_compose = function (other) {
 	/* Creates a new atomic operation that has the same result as this
 	   and other applied in sequence (this first, other after). Returns
 	   null if no atomic operation is possible. */
-
-	// the next operation is a no-op, so the composition is just this
-	if (other instanceof values.NO_OP)
-		return this;
-
-	// a SET clobbers this operation, but its old_value must be updated
-	if (other instanceof values.SET)
-		return new values.SET(other.new_value).simplify();
 
 	// merge
 	if (other instanceof exports.REN) {
@@ -369,18 +361,10 @@ exports.APPLY.prototype.inverse = function (document) {
 	return new exports.APPLY(new_ops);
 }
 
-exports.APPLY.prototype.compose = function (other) {
+exports.APPLY.prototype.atomic_compose = function (other) {
 	/* Creates a new atomic operation that has the same result as this
 	   and other applied in sequence (this first, other after). Returns
 	   null if no atomic operation is possible. */
-
-	// the next operation is a no-op, so the composition is just this
-	if (other instanceof values.NO_OP)
-		return this;
-
-	// a SET clobbers this operation
-	if (other instanceof values.SET)
-		return other;
 
 	// two APPLYs
 	if (other instanceof exports.APPLY) {
@@ -397,19 +381,14 @@ exports.APPLY.prototype.compose = function (other) {
 			} else {
 				// Compose.
 				var op2 = new_ops[key].compose(other.ops[key]);
-				if (op2) {
-					// They composed to a no-op, so delete the
-					// first operation.
-					if (op2 instanceof values.NO_OP)
-						delete new_ops[key];
 
-					// They composed to something atomic, so replace.
-					else
-						new_ops[key] = op2;
-				} else {
-					// They don't compose to something atomic, so use a LIST.
-					new_ops[key] = new LIST([new_ops[key], other.ops[key]]);
-				}
+				// They composed to a no-op, so delete the
+				// first operation.
+				if (op2 instanceof values.NO_OP)
+					delete new_ops[key];
+
+				else
+					new_ops[key] = op2;
 			}
 		}
 

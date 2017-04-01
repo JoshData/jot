@@ -170,6 +170,30 @@ exports.deserialize = function(op_json) {
 	return exports.opFromJSON(JSON.parse(op_json));
 }
 
+exports.BaseOperation.prototype.compose = function(other) {
+	// A NO_OP composed with anything just gives the other thing.
+	if (this instanceof values.NO_OP)
+		return other;
+
+	// Composing with a NO_OP does nothing.
+	if (other instanceof values.NO_OP)
+		return this;
+
+	// Composing with a SET obliterates this operation.
+	if (other instanceof values.SET)
+		return other;
+
+	// Attempt an atomic composition if this defines the method.
+	if (this.atomic_compose) {
+		var op = this.atomic_compose(other);
+		if (op != null)
+			return op;
+	}
+
+	// Fall back to creating a LIST.
+	return new meta.LIST([this, other]);
+}
+
 exports.BaseOperation.prototype.rebase = function(other, conflictless) {
 	/* Transforms this operation so that it can be composed *after* the other
 	   operation to yield the same logical effect as if it had been executed

@@ -145,7 +145,7 @@ t.deepEqual(
 	new seqs.SPLICE(0, "1234", "5678").compose(new seqs.APPLY(1, new values.SET("0"))),
 	new seqs.SPLICE(0, "1234", "5078"));
 t.deepEqual(
-	new seqs.SPLICE(0, "1234", "5678").compose(new seqs.APPLY(4, new values.SET("0"))),
+	new seqs.SPLICE(0, "1234", "5678").atomic_compose(new seqs.APPLY(4, new values.SET("0"))),
 	null);
 
 t.deepEqual(
@@ -156,7 +156,7 @@ t.deepEqual(
 	new seqs.APPLY(0, new values.SET("0", "1")).compose(new values.SET("5678")),
 	new values.SET("5678"));
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET("0", "1")).compose(new seqs.SPLICE(0, "1234", "5678")),
+	new seqs.APPLY(0, new values.SET("0", "1")).atomic_compose(new seqs.SPLICE(0, "1234", "5678")),
 	null);
 t.deepEqual(
 	new seqs.APPLY(555, new values.SET("B"))

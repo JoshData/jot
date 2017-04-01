@@ -146,7 +146,7 @@ t.deepEqual(
 		new values.MATH("mult", 3) ),
 	new values.MATH("mult", 6));
 t.deepEqual(
-	new values.MATH("add", 1).compose(
+	new values.MATH("add", 1).atomic_compose(
 		new values.MATH("mult", 2) ),
 	null);
 t.deepEqual(

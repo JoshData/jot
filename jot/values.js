@@ -101,7 +101,7 @@ exports.NO_OP.prototype.inverse = function (document) {
 	return this;
 }
 
-exports.NO_OP.prototype.compose = function (other) {
+exports.NO_OP.prototype.atomic_compose = function (other) {
 	/* Creates a new atomic operation that has the same result as this
 	   and other applied in sequence (this first, other after). Returns
 	   null if no atomic operation is possible. */
@@ -142,7 +142,7 @@ exports.SET.prototype.inverse = function (document) {
 	return new exports.SET(document);
 }
 
-exports.SET.prototype.compose = function (other) {
+exports.SET.prototype.atomic_compose = function (other) {
 	/* Creates a new atomic operation that has the same result as this
 	   and other applied in sequence (this first, other after). Returns
 	   null if no atomic operation is possible.
@@ -270,16 +270,10 @@ exports.MATH.prototype.invert = function () {
 		return this; // is its own inverse
 }
 
-exports.MATH.prototype.compose = function (other) {
+exports.MATH.prototype.atomic_compose = function (other) {
 	/* Creates a new atomic operation that has the same result as this
 	   and other applied in sequence (this first, other after). Returns
 	   null if no atomic operation is possible. */
-
-	if (other instanceof exports.NO_OP)
-		return this;
-
-	if (other instanceof exports.SET) // wipes away this
-		return other;
 
 	if (other instanceof exports.MATH) {
 		// two adds just add the operands
