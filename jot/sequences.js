@@ -52,12 +52,12 @@
     
     To replace an element at index 2 with a new value:
     
-      new sequences.APPLY(2, new values.SET("old_value", "new_value"))
+      new sequences.APPLY(2, new values.SET("new_value"))
 
     To apply multiple operations on different elements:
     
       new sequences.APPLY({
-        "2": new values.SET("old_value", "new_value"),
+        "2": new values.SET(new_value"),
         "4": new values.MATH("add", 5))
 
     Supports a conflictless rebase with other SPLICE operations and
@@ -259,9 +259,9 @@ exports.SPLICE.prototype.simplify = function () {
 	return new exports.SPLICE(hunks);
 }
 
-exports.SPLICE.prototype.invert = function () {
-	/* Returns a new atomic operation that is the inverse of this operation.
-	   The inverse simply reverses the hunks. */
+exports.SPLICE.prototype.inverse = function (document) {
+	/* Returns a new atomic operation that is the inverse of this operation,
+	   given the state of the document before this operation applies. */
 	return new exports.SPLICE(this.hunks.map(function(hunk) {
 		return { offset: hunk.offset, old_value: hunk.new_value, new_value: hunk.old_value };
 	}));
@@ -276,9 +276,9 @@ exports.SPLICE.prototype.compose = function (other) {
 	if (other instanceof values.NO_OP)
 		return this;
 
-	// a SET clobbers this operation, but its old_value must be updated
+	// a SET clobbers this operation.
 	if (other instanceof values.SET)
-		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
+		return other;
 
 	// a SPLICE composes with a SPLICE
 	if (other instanceof exports.SPLICE) {
@@ -812,7 +812,7 @@ exports.MOVE.prototype.simplify = function () {
 	return this;
 }
 
-exports.MOVE.prototype.invert = function () {
+exports.MOVE.prototype.inverse = function (document) {
 	/* Returns a new atomic operation that is the inverse of this operation */
 	if (this.new_pos > this.pos)
 		return new exports.MOVE(this.new_pos - this.count, this.count, this.pos);
@@ -829,9 +829,9 @@ exports.MOVE.prototype.compose = function (other) {
 	if (other instanceof values.NO_OP)
 		return this;
 
-	// a SET clobbers this operation, but its old_value must be updated
+	// a SET clobbers this operation
 	if (other instanceof values.SET)
-		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
+		return other;
 
 	// The same range moved a second time.
 	if (other instanceof exports.MOVE && this.new_pos == other.pos && this.count == other.count)
@@ -923,12 +923,12 @@ exports.APPLY.prototype.simplify = function () {
 	return new exports.APPLY(new_ops);
 }
 
-exports.APPLY.prototype.invert = function () {
+exports.APPLY.prototype.inverse = function (document) {
 	/* Returns a new atomic operation that is the inverse of this operation.
 	   All of the sub-operations get inverted. */
 	var new_ops = { };
-	for (var key in this.ops) {
-		new_ops[key] = this.ops[key].invert();
+	for (var index in this.ops) {
+		new_ops[index] = this.ops[index].inverse(document[index]);
 	}
 	return new exports.APPLY(new_ops);
 }
@@ -942,9 +942,9 @@ exports.APPLY.prototype.compose = function (other) {
 	if (other instanceof values.NO_OP)
 		return this;
 
-	// a SET clobbers this operation, but its old_value must be updated
+	// a SET clobbers this operation
 	if (other instanceof values.SET)
-		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
+		return other;
 
 	// two APPLYs
 	if (other instanceof exports.APPLY) {
@@ -1081,9 +1081,9 @@ exports.MAP.prototype.simplify = function () {
 	return this;
 }
 
-exports.MAP.prototype.invert = function () {
+exports.MAP.prototype.inverse = function (document) {
 	/* Returns a new atomic operation that is the inverse of this operation */
-	return new exports.MAP(this.op.invert());
+	return new exports.MAP(this.op.inverse(document));
 }
 
 exports.MAP.prototype.compose = function (other) {
@@ -1095,9 +1095,9 @@ exports.MAP.prototype.compose = function (other) {
 	if (other instanceof values.NO_OP)
 		return this;
 
-	// a SET clobbers this operation, but its old_value must be updated
+	// a SET clobbers this operation
 	if (other instanceof values.SET)
-		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
+		return other;
 
 	// two MAPs with composable sub-operations
 	if (other instanceof exports.MAP) {

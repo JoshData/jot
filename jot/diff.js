@@ -57,7 +57,7 @@ function diff(a, b, options) {
 	// or if we don't recognize the data type (which is
 	// not good), then only an atomic SET operation is possible.
 	return {
-		op: jot.SET(a, b),
+		op: jot.SET(b),
 		pct: 1.0,
 		size: (JSON.stringify(a)+JSON.stringify(b)).length / 2
 	}
@@ -120,7 +120,7 @@ function diff_strings(a, b, options) {
 	if (op instanceof sequences.SPLICE && op.hunks.length == 1 
 		&& op.hunks[0].old_value == a && op.hunks[0].new_value == b) {
 		return {
-			op: jot.SET(a, b),
+			op: jot.SET(b),
 			pct: 1.0,
 			size: total_content
 		};

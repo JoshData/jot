@@ -13,7 +13,7 @@
 	rebased against it.
 	
 
-	new values.SET(old_value, new_value)
+	new values.SET(new_value)
 	
 	The atomic replacement of one value with another. Works for
 	any data type. Supports a conflictless rebase with other SET
@@ -22,7 +22,7 @@
 
 	new values.MATH(operator, operand)
 	
-	Applies a commutative, invertable arithmetic function to a number.
+	Applies a commutative arithmetic function to a number.
 	
 	"add": addition (use a negative number to decrement)
 	
@@ -58,14 +58,13 @@ exports.NO_OP = function() {
 exports.NO_OP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.NO_OP, exports, 'NO_OP', []);
 
-exports.SET = function(old_value, new_value) {
+exports.SET = function(new_value) {
 	/* An operation that replaces the document with a new (atomic) value. */
-	this.old_value = old_value;
 	this.new_value = new_value;
 	Object.freeze(this);
 }
 exports.SET.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.SET, exports, 'SET', ['old_value', 'new_value']);
+jot.add_op(exports.SET, exports, 'SET', ['new_value']);
 
 exports.MATH = function(operator, operand) {
 	/* An operation that applies addition, multiplication, or rotation (modulus addition)
@@ -96,8 +95,9 @@ exports.NO_OP.prototype.simplify = function () {
 	return this;
 }
 
-exports.NO_OP.prototype.invert = function () {
-	/* Returns a new atomic operation that is the inverse of this operation */
+exports.NO_OP.prototype.inverse = function (document) {
+	/* Returns a new atomic operation that is the inverse of this operation,
+	given the state of the document before the operation applies. */
 	return this;
 }
 
@@ -120,14 +120,12 @@ exports.SET.prototype.inspect = function(depth) {
 		// Render any other value as a JSON string.
 		return util.format("%j", v);
 	}
-	return util.format("<values.SET %s => %s>", str(this.old_value), str(this.new_value));
+	return util.format("<values.SET %s>", str(this.new_value));
 }
 
 exports.SET.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns the new
 	   value, regardless of the document. */
-	if (!deepEqual(this.old_value, document, { strict: true }))
-		throw "old_value is not correct";
 	return this.new_value;
 }
 
@@ -135,14 +133,13 @@ exports.SET.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
 	   of another operation. If the new value is the same as the
 	   old value, returns NO_OP. */
-	if (deepEqual(this.old_value, this.new_value, { strict: true }))
-		return new exports.NO_OP();
 	return this;
 }
 
-exports.SET.prototype.invert = function () {
-	/* Returns a new atomic operation that is the inverse of this operation. */
-	return new exports.SET(this.new_value, this.old_value);
+exports.SET.prototype.inverse = function (document) {
+	/* Returns a new atomic operation that is the inverse of this operation,
+	   given the state of the document before this operation applies. */
+	return new exports.SET(document);
 }
 
 exports.SET.prototype.compose = function (other) {
@@ -151,7 +148,7 @@ exports.SET.prototype.compose = function (other) {
 	   null if no atomic operation is possible.
 		   Returns a new SET operation that simply sets the value to what
 		   the value would be when the two operations are composed. */
-	return new exports.SET(this.old_value, other.apply(this.new_value)).simplify();
+	return new exports.SET(other.apply(this.new_value)).simplify();
 }
 
 exports.SET.prototype.rebase_functions = [
@@ -170,7 +167,7 @@ exports.SET.prototype.rebase_functions = [
 		// If they set the document to different values and conflictless is
 		// true, then we clobber the one whose value has a lower sort order.
 		if (conflictless && jot.cmp(this.new_value, other.new_value) < 0)
-			return [new exports.NO_OP(), new exports.SET(this.new_value, other.new_value)];
+			return [new exports.NO_OP(), new exports.SET(other.new_value)];
 
 		// cmp > 0 is handled by a call to this function with the arguments
 		// reversed, so we don't need to explicltly code that logic.
@@ -187,31 +184,23 @@ exports.SET.prototype.rebase_functions = [
 		// first and the MATH second. But since MATH only works for numeric
 		// types, this isn't always possible.
 
-		// When it's the SET being rebased, we have to update its old_value
-		// so that it matches the value of the document following the application
-		// of the MATH operation. We know what the document was because that's
-		// in old_value, so we can apply the MATH operation to it. Then to
-		// get the logical effect of applying MATH second (even though it's
+		// To get the logical effect of applying MATH second (even though it's
 		// the SET being rebased, meaning it will be composed second), we
 		// apply the MATH operation to its new value.
 		try {
 			// If the data types make this possible...
 			return [
-				new exports.SET(other.apply(this.old_value), other.apply(this.new_value)),
+				new exports.SET(other.apply(this.new_value)),
 				other // no change is needed when it is the MATH being rebased
 				];
 		} catch (e) {
 			// Data type mismatch, e.g. the SET sets the value to a string and
 			// so the MATH operation can't be applied. In this case, we simply
 			// always prefer the SET if we're asked for a conflictless rebase.
-			// But we still need to adjust the SET's old value because when
-			// rebasing the SET the MATH already did apply. That should never
-			// raise an exception because if the MATH operation is valid then
-			// it must be able to apply to SET's old_value. The MATH becomes a
-			// no-op.
+			// The MATH becomes a no-op.
 			if (conflictless)
 				return [
-					new exports.SET(other.apply(this.old_value), this.new_value),
+					new exports.SET(this.new_value),
 					new exports.NO_OP()
 					];
 		}
@@ -263,8 +252,14 @@ exports.MATH.prototype.simplify = function () {
 	return this;
 }
 
+exports.MATH.prototype.inverse = function (document) {
+	/* Returns a new atomic operation that is the inverse of this operation,
+	given the state of the document before the operation applies. */
+	// The document itself doesn't matter.
+	return this.invert();
+}
+
 exports.MATH.prototype.invert = function () {
-	/* Returns a new atomic operation that is the inverse of this operation */
 	if (this.operator == "add")
 		return new exports.MATH("add", -this.operand);
 	if (this.operator == "rot")
@@ -283,8 +278,8 @@ exports.MATH.prototype.compose = function (other) {
 	if (other instanceof exports.NO_OP)
 		return this;
 
-	if (other instanceof exports.SET) // wipes away this, bust must adjust old_value
-		return new exports.SET(this.invert().apply(other.old_value), other.new_value).simplify();
+	if (other instanceof exports.SET) // wipes away this
+		return other;
 
 	if (other instanceof exports.MATH) {
 		// two adds just add the operands
@@ -358,43 +353,43 @@ exports.createRandomOp = function(doc, context) {
 	ops.push(function() { return new exports.NO_OP() });
 
 	// An identity SET is always a possibility.
-	ops.push(function() { return new exports.SET(doc, doc) });
+	ops.push(function() { return new exports.SET(doc) });
 
 	// Set to null, unless in splice contexts
 	if (context != "string-character" && context != "string")
-		ops.push(function() { return new exports.SET(doc, null) });
+		ops.push(function() { return new exports.SET(null) });
 
 	// Clear the key, if we're in an object.
 	if (context == "object")
-		ops.push(function() { return new exports.SET(doc, MISSING) });
+		ops.push(function() { return new exports.SET(MISSING) });
 
 	// Set to another value of the same type.
 	if (typeof doc === "boolean")
-		ops.push(function() { return new exports.SET(doc, !doc) });
+		ops.push(function() { return new exports.SET(!doc) });
 	if (typeof doc === "number")
-		ops.push(function() { return new exports.SET(doc, doc + 50) });
+		ops.push(function() { return new exports.SET(doc + 50) });
 	if (typeof doc === "number")
-		ops.push(function() { return new exports.SET(doc, doc / 2.1) });
+		ops.push(function() { return new exports.SET(doc / 2.1) });
 
 	if (typeof doc === "string" || Array.isArray(doc)) {
 		if (context != "string-character") {
 			// Delete (if not already empty).
 			if (doc.length > 0)
-				ops.push(function() { return new exports.SET(doc, doc.slice(0, 0)) });
+				ops.push(function() { return new exports.SET(doc.slice(0, 0)) });
 
 			if (doc.length >= 1) {
 				// shorten at start
-				ops.push(function() { return new exports.SET(doc, doc.slice(Math.floor(Math.random()*(doc.length-1)), doc.length)) });
+				ops.push(function() { return new exports.SET(doc.slice(Math.floor(Math.random()*(doc.length-1)), doc.length)) });
 
 				// shorten at end
-				ops.push(function() { return new exports.SET(doc, doc.slice(0, Math.floor(Math.random()*(doc.length-1)))) });
+				ops.push(function() { return new exports.SET(doc.slice(0, Math.floor(Math.random()*(doc.length-1)))) });
 			}
 
 			if (doc.length >= 2) {
 				// shorten by on both sides
 				var a = Math.floor(Math.random()*doc.length-1);
 				var b = Math.floor(Math.random()*(doc.length-a));
-				ops.push(function() { return new exports.SET(doc, doc.slice(a, a+b)) });
+				ops.push(function() { return new exports.SET(doc.slice(a, a+b)) });
 			}
 
 			if (doc.length > 0) {
@@ -412,30 +407,30 @@ exports.createRandomOp = function(doc, context) {
 				}
 			
 				// expand by elements at start
-				ops.push(function() { return new exports.SET(doc, concat2(doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))), doc)) });
+				ops.push(function() { return new exports.SET(concat2(doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))), doc)) });
 				// expand by elements at end
-				ops.push(function() { return new exports.SET(doc, concat2(doc, doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))))); });
+				ops.push(function() { return new exports.SET(concat2(doc, doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))))); });
 				// expand by elements on both sides
-				ops.push(function() { return new exports.SET(doc, concat3(doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))), doc, doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))))); });
+				ops.push(function() { return new exports.SET(concat3(doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))), doc, doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))))); });
 			} else {
 				// expand by generating new elements
 				if (typeof doc === "string")
-					ops.push(function() { return new exports.SET(doc, (Math.random()+"").slice(2)); });
+					ops.push(function() { return new exports.SET((Math.random()+"").slice(2)); });
 				else if (Array.isArray(doc))
-					ops.push(function() { return new exports.SET(doc, [null,null,null].map(function() { return Math.random() })); });
+					ops.push(function() { return new exports.SET([null,null,null].map(function() { return Math.random() })); });
 			}
 		}
 
 		// reverse
 		if (doc != doc.split("").reverse().join(""))
-			ops.push(function() { return new exports.SET(doc, doc.split("").reverse().join("")); });
+			ops.push(function() { return new exports.SET(doc.split("").reverse().join("")); });
 
 		// replace with new elements of the same length
 		if (doc.length > 0 && typeof doc === "string") {
 			var newvalue = "";
 			for (var i = 0; i < doc.length; i++)
 				newvalue += (Math.random()+"").slice(2, 3);
-			ops.push(function() { return new exports.SET(doc, newvalue); });
+			ops.push(function() { return new exports.SET(newvalue); });
 		}
 	}
 

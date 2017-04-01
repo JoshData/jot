@@ -7,7 +7,7 @@ test('diff', function(t) {
 	function test(a, b, options) {
 		var op = diff.diff(a, b, options);
 		t.deepEqual(op.apply(a), b);
-		t.deepEqual(op.invert().apply(b), a);
+		t.deepEqual(op.inverse(a).apply(b), a);
 	}
 
 	// values (these just turn into SET operations)

@@ -11,8 +11,8 @@ t.equal(
 	new values.NO_OP().inspect(),
 	"<values.NO_OP>");
 t.equal(
-	new values.SET(3, 4).inspect(),
-	'<values.SET 3 => 4>');
+	new values.SET(4).inspect(),
+	'<values.SET 4>');
 t.equal(
 	new values.MATH('add', 4).inspect(),
 	'<values.MATH add:4>');
@@ -26,8 +26,8 @@ t.deepEqual(
 	jot.opFromJSON(new values.NO_OP().toJSON()),
 	new values.NO_OP());
 t.deepEqual(
-	jot.opFromJSON(new values.SET(3, 4).toJSON()),
-	new values.SET(3, 4));
+	jot.opFromJSON(new values.SET(4).toJSON()),
+	new values.SET(4));
 t.deepEqual(
 	jot.opFromJSON(new values.MATH('add', 4).toJSON()),
 	new values.MATH('add', 4));
@@ -39,7 +39,7 @@ t.equal(
 	"1");
 
 t.equal(
-	new values.SET("1", "2").apply("1"),
+	new values.SET("2").apply("1"),
 	"2");
 
 t.equal(
@@ -68,14 +68,8 @@ t.deepEqual(
 	new values.NO_OP());
 
 t.deepEqual(
-	new values.SET(0, 1).simplify(),
-	new values.SET(0, 1));
-t.deepEqual( // Test that deepEqual has strict mode on inside simplify.
-	new values.SET(0, '0').simplify(),
-	new values.SET(0, '0'));
-t.deepEqual(
-	new values.SET(0, 0).simplify(),
-	new values.NO_OP());
+	new values.SET(1).simplify(),
+	new values.SET(1));
 
 t.deepEqual(
 	new values.MATH("add", 5).simplify(),
@@ -102,12 +96,12 @@ t.deepEqual(
 // invert
 
 t.deepEqual(
-	new values.NO_OP().invert(),
+	new values.NO_OP().inverse('anything here'),
 	new values.NO_OP());
 
 t.deepEqual(
-	new values.SET(0, 1).invert(),
-	new values.SET(1, 0));
+	new values.SET(1).inverse(0),
+	new values.SET(0));
 
 t.deepEqual(
 	new values.MATH("add", 5).invert(),
@@ -127,17 +121,17 @@ t.deepEqual(
 
 t.deepEqual(
 	new values.NO_OP().compose(
-		new values.SET(1, 2) ),
-	new values.SET(1, 2));
+		new values.SET(2) ),
+	new values.SET(2));
 t.deepEqual(
-	new values.SET(1, 2).compose(
+	new values.SET(2).compose(
 		new values.NO_OP() ),
-	new values.SET(1, 2));
+	new values.SET(2));
 
 t.deepEqual(
-	new values.SET(0, 1).compose(
-		new values.SET(1, 2) ),
-	new values.SET(0, 2));
+	new values.SET(1).compose(
+		new values.SET(2) ),
+	new values.SET(2));
 
 t.deepEqual(
 	new values.MATH("add", 1).compose(
@@ -162,8 +156,8 @@ t.deepEqual(
 
 t.deepEqual(
 	new values.MATH("add", 1).compose(
-		new values.SET(2, 3) ),
-	new values.SET(1, 3));
+		new values.SET(3) ),
+	new values.SET(3));
 
 // rebase
 
@@ -175,27 +169,27 @@ t.deepEqual(
 	new values.NO_OP());
 
 t.deepEqual(
-	new values.SET(0, 1).rebase(new values.SET(0, 1) ),
+	new values.SET(1).rebase(new values.SET(1) ),
 	new values.NO_OP());
 t.deepEqual(
-	new values.SET(0, 2).rebase(new values.SET(0, 1) ),
+	new values.SET(2).rebase(new values.SET(1) ),
 	null);
 t.deepEqual(
-	new values.SET(0, 2).rebase(new values.SET(0, 1), true),
-	new values.SET(1, 2));
+	new values.SET(2).rebase(new values.SET(1), true),
+	new values.SET(2));
 t.deepEqual(
-	new values.SET(0, 1).rebase(new values.SET(0, 2), true),
+	new values.SET(1).rebase(new values.SET(2), true),
 	new values.NO_OP());
 
 t.deepEqual(
-	new values.SET(0, 2).rebase(new values.MATH("add", 3)),
-	new values.SET(3, 5));
+	new values.SET(2).rebase(new values.MATH("add", 3)),
+	new values.SET(5));
 t.deepEqual(
-	new values.SET(0, "2").rebase(new values.MATH("add", 3)),
+	new values.SET("2").rebase(new values.MATH("add", 3)),
 	null);
 t.deepEqual(
-	new values.SET(0, "2").rebase(new values.MATH("add", 3), true),
-	new values.SET(3, "2"));
+	new values.SET("2").rebase(new values.MATH("add", 3), true),
+	new values.SET("2"));
 
 t.deepEqual(
 	new values.MATH("add", 1).rebase(new values.NO_OP() ),
@@ -222,13 +216,13 @@ t.deepEqual(
 	new values.MATH("xor", 3));
 
 t.deepEqual(
-	new values.MATH("add", 3).rebase(new values.SET(0, 2) ),
+	new values.MATH("add", 3).rebase(new values.SET(2) ),
 	new values.MATH("add", 3));
 t.notOk(
-	new values.MATH("add", 3).rebase(new values.SET(0, "2"))
+	new values.MATH("add", 3).rebase(new values.SET("2"))
 	);
 t.deepEqual(
-	new values.MATH("add", 3).rebase(new values.SET(0, "2"), true),
+	new values.MATH("add", 3).rebase(new values.SET("2"), true),
 	new values.NO_OP());
 
 

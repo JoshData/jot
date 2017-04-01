@@ -63,22 +63,6 @@ exports.LIST.prototype.simplify = function (aggressive) {
 					break;
 
 				} else {
-					if (j > 0 && aggressive) {
-						// They do not compose, but we may be able to
-						// move it earlier in the list so that we could
-						// compose it with another operation. op can be
-						// swaped in position with new_ops[j] if op can
-						// be rebased on new_ops[j]'s inverse.
-						var r1 = op.rebase(new_ops[j].invert());
-						var r2 = new_ops[j].rebase(op);
-						if (r1 != null && r2 != null) {
-							// Can swap order. Iterate.
-							op = r1;
-							new_ops[j] = r2;
-							continue;
-						}
-					}
-
 					// We can't bring the op back any further. Insert here.
 					new_ops.splice(j+1, 0, op);
 					break;
@@ -95,12 +79,15 @@ exports.LIST.prototype.simplify = function (aggressive) {
 	return new exports.LIST(new_ops);
 }
 
-exports.LIST.prototype.invert = function () {
+exports.LIST.prototype.inverse = function (document) {
 	/* Returns a new atomic operation that is the inverse of this operation:
 	   the inverse of each operation in reverse order. */
 	var new_ops = [];
-	for (var i = this.ops.length-1; i >= 0; i--)
-		new_ops.push(this.ops[i].invert());
+	this.ops.forEach(function(op) {
+		new_ops.push(op.inverse(document));
+		document = op.apply(document);
+	})
+	new_ops.reverse();
 	return new exports.LIST(new_ops);
 }
 

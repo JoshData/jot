@@ -6,13 +6,13 @@
     
     Creates a property with the given value. The property must not already
     exist in the document. This is an alias for
-    new objects.APPLY(key, new values.SET(MISSING, value)).
+    new objects.APPLY(key, new values.SET(value)).
 
-   new objects.REM(key, old_value)
+   new objects.REM(key)
     
     Removes a property from an object. The property must exist in the document.
     The old value of the property is given as old_value. This is an alias for
-    new objects.APPLY(key, new values.SET(old_value, MISSING)).
+    new objects.APPLY(key, new values.SET(MISSING)).
 
    Two new operation are provided:
 
@@ -46,11 +46,11 @@
     
     To replace the value of a property with a new value:
     
-      new objects.APPLY("key1", new values.SET("old_value", "new_value"))
+      new objects.APPLY("key1", new values.SET("new_value"))
 
 	or
 
-      new objects.APPLY({ key1: new values.SET("old_value", "new_value") })
+      new objects.APPLY({ key1: new values.SET("new_value") })
 
    */
    
@@ -114,12 +114,12 @@ exports.MISSING = new Object();
 Object.freeze(exports.MISSING);
 
 exports.PUT = function (key, value) {
-	exports.APPLY.apply(this, [key, new values.SET(exports.MISSING, value)]);
+	exports.APPLY.apply(this, [key, new values.SET(value)]);
 }
 exports.PUT.prototype = Object.create(exports.APPLY.prototype); // inherit prototype
 
-exports.REM = function (key, old_value) {
-	exports.APPLY.apply(this, [key, new values.SET(old_value, exports.MISSING)]);
+exports.REM = function (key) {
+	exports.APPLY.apply(this, [key, new values.SET(exports.MISSING)]);
 }
 exports.REM.prototype = Object.create(exports.APPLY.prototype); // inherit prototype
 
@@ -171,8 +171,9 @@ exports.REN.prototype.simplify = function () {
 	return new values.NO_OP();
 }
 
-exports.REN.prototype.invert = function () {
-	/* Returns a new atomic operation that is the inverse of this operation */
+exports.REN.prototype.inverse = function (document) {
+	/* Returns a new atomic operation that is the inverse of this operation,
+	   given the state of the document before this operation applies. */
 	var inv_map = { };
 	for (var key in this.map)
 		inv_map[this.map[key]] = key;
@@ -190,7 +191,7 @@ exports.REN.prototype.compose = function (other) {
 
 	// a SET clobbers this operation, but its old_value must be updated
 	if (other instanceof values.SET)
-		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
+		return new values.SET(other.new_value).simplify();
 
 	// merge
 	if (other instanceof exports.REN) {
@@ -358,12 +359,12 @@ exports.APPLY.prototype.simplify = function () {
 	return new exports.APPLY(new_ops);
 }
 
-exports.APPLY.prototype.invert = function () {
-	/* Returns a new atomic operation that is the inverse of this operation.
-	   All of the sub-operations get inverted. */
+exports.APPLY.prototype.inverse = function (document) {
+	/* Returns a new atomic operation that is the inverse of this operation,
+	   given the state of the document before this operation applies. */
 	var new_ops = { };
 	for (var key in this.ops) {
-		new_ops[key] = this.ops[key].invert();
+		new_ops[key] = this.ops[key].inverse(key in document ? document[key] : exports.MISSING);
 	}
 	return new exports.APPLY(new_ops);
 }
@@ -377,9 +378,9 @@ exports.APPLY.prototype.compose = function (other) {
 	if (other instanceof values.NO_OP)
 		return this;
 
-	// a SET clobbers this operation, but its old_value must be updated
+	// a SET clobbers this operation
 	if (other instanceof values.SET)
-		return new values.SET(this.invert().apply(other.old_value), other.new_value).simplify();
+		return other;
 
 	// two APPLYs
 	if (other instanceof exports.APPLY) {

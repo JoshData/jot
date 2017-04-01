@@ -122,7 +122,7 @@ Here's example code that follows the example in the introduction:
 	 */
 
 	var user2 = jot.LIST([
-		jot.APPLY("key1", jot.SET("Hello World!", "My Program")),
+		jot.APPLY("key1", jot.SET("My Program")),
 		jot.APPLY("key2", jot.MATH('add', 10))
 	]);
 
@@ -175,7 +175,7 @@ The JOT model is a superset of the model you need for basic plain text concurren
 editing. That is, it includes the entire text editing model in the INS and DEL
 operations plus it adds new operations for non-string data structures.
 
-Note that some operations (DEL, REM, and SET) require passing the value
+Note that some operations (DEL) require passing the value
 being modified before the modification took place (i.e. what the value
 was before the operation).
 

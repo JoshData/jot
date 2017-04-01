@@ -14,11 +14,11 @@ t.equal(
 	new seqs.MOVE(0, 2, 5).inspect(),
 	'<sequences.MOVE @0x2 => @5>');
 t.equal(
-	new seqs.APPLY(0, new values.SET(1, 2)).inspect(),
-	'<sequences.APPLY 0:<values.SET 1 => 2>>');
+	new seqs.APPLY(0, new values.SET(2)).inspect(),
+	'<sequences.APPLY 0:<values.SET 2>>');
 t.equal(
-	new seqs.APPLY({ 0: new values.SET(1, 2), 4: new values.SET(5, 10) }).inspect(),
-	'<sequences.APPLY 0:<values.SET 1 => 2>, 4:<values.SET 5 => 10>>');
+	new seqs.APPLY({ 0: new values.SET(2), 4: new values.SET(10) }).inspect(),
+	'<sequences.APPLY 0:<values.SET 2>, 4:<values.SET 10>>');
 t.equal(
 	new seqs.MAP(new values.MATH('add', 1)).inspect(),
 	'<sequences.MAP <values.MATH add:1>>');
@@ -32,11 +32,11 @@ t.deepEqual(
 	jot.opFromJSON(new seqs.MOVE(0, 2, 5).toJSON()),
 	new seqs.MOVE(0, 2, 5));
 t.deepEqual(
-	jot.opFromJSON(new seqs.APPLY(0, new values.SET(1, 2)).toJSON()),
-	new seqs.APPLY(0, new values.SET(1, 2)));
+	jot.opFromJSON(new seqs.APPLY(0, new values.SET(2)).toJSON()),
+	new seqs.APPLY(0, new values.SET(2)));
 t.deepEqual(
-	jot.opFromJSON(new seqs.APPLY({ 0: new values.SET(1, 2), 4: new values.SET(5, 10) }).toJSON()),
-	new seqs.APPLY({ 0: new values.SET(1, 2), 4: new values.SET(5, 10) }));
+	jot.opFromJSON(new seqs.APPLY({ 0: new values.SET(2), 4: new values.SET(10) }).toJSON()),
+	new seqs.APPLY({ 0: new values.SET(2), 4: new values.SET(10) }));
 t.deepEqual(
 	jot.opFromJSON(new seqs.MAP(new values.MATH('add', 1)).toJSON()),
 	new seqs.MAP(new values.MATH('add', 1)));
@@ -64,30 +64,30 @@ t.equal(
 	"312");
 
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET(1, 4)).apply([1, 2, 3]),
+	new seqs.APPLY(0, new values.SET(4)).apply([1, 2, 3]),
 	[4, 2, 3]);
 t.deepEqual(
-	new seqs.APPLY(1, new values.SET(2, 4)).apply([1, 2, 3]),
+	new seqs.APPLY(1, new values.SET(4)).apply([1, 2, 3]),
 	[1, 4, 3]);
 t.deepEqual(
-	new seqs.APPLY(2, new values.SET(3, 4)).apply([1, 2, 3]),
+	new seqs.APPLY(2, new values.SET(4)).apply([1, 2, 3]),
 	[1, 2, 4]);
 t.deepEqual(
-	new seqs.APPLY({ 0: new values.SET(1, 4), 1: new values.SET(2, 5) })
+	new seqs.APPLY({ 0: new values.SET(4), 1: new values.SET(5) })
 	.apply([1, 2, 3]),
 	[4, 5, 3]);
 
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET("a", "d")).apply("abc"),
+	new seqs.APPLY(0, new values.SET("d")).apply("abc"),
 	"dbc");
 t.deepEqual(
-	new seqs.APPLY(1, new values.SET("b", "d")).apply("abc"),
+	new seqs.APPLY(1, new values.SET("d")).apply("abc"),
 	"adc");
 t.deepEqual(
-	new seqs.APPLY(2, new values.SET("c", "d")).apply("abc"),
+	new seqs.APPLY(2, new values.SET("d")).apply("abc"),
 	"abd");
 t.deepEqual(
-	new seqs.APPLY({ 0: new values.SET("a", "d"), 1: new values.SET("b", "e") })
+	new seqs.APPLY({ 0: new values.SET("d"), 1: new values.SET("e") })
 	.apply("abc"),
 	"dec");
 
@@ -106,69 +106,62 @@ t.deepEqual(
 	new seqs.MOVE(3, 5, 4).simplify(),
 	new seqs.MOVE(3, 5, 4));
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET(1, 1)).simplify(),
-	new values.NO_OP());
-t.deepEqual(
-	new seqs.APPLY(0, new values.SET(1, 2)).simplify(),
-	new seqs.APPLY(0, new values.SET(1, 2)));
+	new seqs.APPLY(0, new values.SET(2)).simplify(),
+	new seqs.APPLY(0, new values.SET(2)));
 t.deepEqual(
 	new seqs.APPLY({
-		0: new values.SET(1, 1),
-		1: new jot.LIST([new values.SET(1, 2)]) }).simplify(),
-	new seqs.APPLY(1, new values.SET(1, 2)));
+		0: new values.SET(1),
+		1: new jot.LIST([]) }).simplify(),
+	new seqs.APPLY(0, new values.SET(1)));
 
 // invert
 
 t.deepEqual(
-	new seqs.SPLICE(3, "123", "456").invert(),
+	new seqs.SPLICE(3, "123", "456").inverse("123"),
 	new seqs.SPLICE(3, "456", "123"));
 t.deepEqual(
-	new seqs.MOVE(3, 3, 10).invert(),
+	new seqs.MOVE(3, 3, 10).inverse("anything here"),
 	new seqs.MOVE(7, 3, 3));
 t.deepEqual(
-	new seqs.MOVE(10, 3, 3).invert(),
+	new seqs.MOVE(10, 3, 3).inverse("anything here"),
 	new seqs.MOVE(3, 3, 13));
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET(1, 2)).invert(),
-	new seqs.APPLY(0, new values.SET(2, 1)));
+	new seqs.APPLY(0, new values.SET(2)).inverse([1]),
+	new seqs.APPLY(0, new values.SET(1)));
 t.deepEqual(
-	new seqs.APPLY({ 0: new values.SET("a", "d"), 1: new values.SET("b", "e") }).invert(),
-	new seqs.APPLY({ 0: new values.SET("d", "a"), 1: new values.SET("e", "b") }));
+	new seqs.APPLY({ 0: new values.SET("d"), 1: new values.SET("e") }).inverse({ 0: "a", 1: "b" }),
+	new seqs.APPLY({ 0: new values.SET("a"), 1: new values.SET("b") }));
 
 
 // compose
 
 t.deepEqual(
-	new seqs.SPLICE(0, "", "123").compose(new values.SET("123", "456")),
-	new values.SET("", "456"));
+	new seqs.SPLICE(0, "", "123").compose(new values.SET("456")),
+	new values.SET("456"));
 t.deepEqual(
-	new seqs.SPLICE([{offset: 0, old_value: "1234", new_value: "ab"}, {offset: 1, old_value: "5678", new_value: "cdef"}]).compose(new seqs.APPLY(4, new values.SET("d", "D"))),
+	new seqs.SPLICE([{offset: 0, old_value: "1234", new_value: "ab"}, {offset: 1, old_value: "5678", new_value: "cdef"}]).compose(new seqs.APPLY(4, new values.SET("D"))),
 	new seqs.SPLICE([{offset: 0, old_value: "1234", new_value: "ab"}, {offset: 1, old_value: "5678", new_value: "cDef"}]));
 t.deepEqual(
-	new seqs.SPLICE(0, "1234", "5678").compose(new seqs.APPLY(1, new values.SET("6", "0"))),
+	new seqs.SPLICE(0, "1234", "5678").compose(new seqs.APPLY(1, new values.SET("0"))),
 	new seqs.SPLICE(0, "1234", "5078"));
 t.deepEqual(
-	new seqs.SPLICE(0, "1234", "5678").compose(new seqs.APPLY(4, new values.SET("9", "0"))),
+	new seqs.SPLICE(0, "1234", "5678").compose(new seqs.APPLY(4, new values.SET("0"))),
 	null);
 
 t.deepEqual(
-	new seqs.MOVE(0, 2, 4).compose(new values.SET("1234", "5678")),
-	new values.SET("3412", "5678"));
+	new seqs.MOVE(0, 2, 4).compose(new values.SET("5678")),
+	new values.SET("5678"));
 
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET("0", "1")).compose(new values.SET("1234", "5678")),
-	new values.SET("0234", "5678"));
+	new seqs.APPLY(0, new values.SET("0", "1")).compose(new values.SET("5678")),
+	new values.SET("5678"));
 t.deepEqual(
 	new seqs.APPLY(0, new values.SET("0", "1")).compose(new seqs.SPLICE(0, "1234", "5678")),
 	null);
 t.deepEqual(
-	new seqs.APPLY(555, new values.SET("A", "B"))
-		.compose(new seqs.APPLY(555, new values.SET("B", "C"))),
-	new seqs.APPLY(555, new values.SET("A", "C")));
-t.deepEqual(
-	new seqs.APPLY(555, new values.SET("A", 1))
-		.compose(new seqs.APPLY(555, new values.SET(1, "A"))),
-	new values.NO_OP());
+	new seqs.APPLY(555, new values.SET("B"))
+		.compose(new seqs.APPLY(555, new values.SET("C"))),
+	new seqs.APPLY(555, new values.SET("C")));
 t.deepEqual(
 	new seqs.APPLY(555, new values.MATH("add", 1))
 		.compose(new seqs.APPLY(555, new values.MATH("mult", 1))),
@@ -176,11 +169,11 @@ t.deepEqual(
 		new values.MATH("add", 1), new values.MATH("mult", 1)
 	])));
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET("a", "d")).compose(new seqs.APPLY(1, new values.SET("b", "e"))),
-	new seqs.APPLY({ 0: new values.SET("a", "d"), 1: new values.SET("b", "e") }));
+	new seqs.APPLY(0, new values.SET("d")).compose(new seqs.APPLY(1, new values.SET("e"))),
+	new seqs.APPLY({ 0: new values.SET("d"), 1: new values.SET("e") }));
 t.deepEqual(
-	new seqs.APPLY({ 0: new values.SET("a", "d"), 1: new values.SET("b", "e") }).compose(new seqs.APPLY(0, new values.SET("d", "f"))),
-	new seqs.APPLY({ 0: new values.SET("a", "f"), 1: new values.SET("b", "e") }));
+	new seqs.APPLY({ 0: new values.SET("d"), 1: new values.SET("e") }).compose(new seqs.APPLY(0, new values.SET("f"))),
+	new seqs.APPLY({ 0: new values.SET("f"), 1: new values.SET("e") }));
 
 // rebase
 
@@ -318,22 +311,22 @@ t.deepEqual(
 		new seqs.APPLY(555, new values.MATH("add", 1))),
 	new seqs.APPLY(555, new values.MATH("add", 3)));
 t.notOk(
-	new seqs.APPLY(555, new values.SET("x", "y")).rebase(
-		new seqs.APPLY(555, new values.SET("x", "z"))))
+	new seqs.APPLY(555, new values.SET("y")).rebase(
+		new seqs.APPLY(555, new values.SET("z"))))
 t.deepEqual(
-	new seqs.APPLY(555, new values.SET("x", "y")).rebase(
-		new seqs.APPLY(555, new values.SET("x", "z")), true),
+	new seqs.APPLY(555, new values.SET("y")).rebase(
+		new seqs.APPLY(555, new values.SET("z")), true),
 	new values.NO_OP()
 	)
 t.deepEqual(
-	new seqs.APPLY(555, new values.SET("x", "z")).rebase(
-		new seqs.APPLY(555, new values.SET("x", "y")), true),
-	new seqs.APPLY(555, new values.SET("y", "z"))
+	new seqs.APPLY(555, new values.SET("z")).rebase(
+		new seqs.APPLY(555, new values.SET("y")), true),
+	new seqs.APPLY(555, new values.SET("z"))
 	)
 t.deepEqual(
-	new seqs.APPLY({0: new values.SET("x", "z"), 1: new values.SET("a", "b"), 2: new values.SET("M", "N")}).rebase(
-		new seqs.APPLY({0: new values.SET("x", "y"), 1: new values.SET("a", " ")}), true),
-	new seqs.APPLY({0: new values.SET("y", "z"), 1: new values.SET(" ", "b"), 2: new values.SET("M", "N")})
+	new seqs.APPLY({0: new values.SET("z"), 1: new values.SET("b"), 2: new values.SET("N")}).rebase(
+		new seqs.APPLY({0: new values.SET("y"), 1: new values.SET(" ")}), true),
+	new seqs.APPLY({0: new values.SET("z"), 1: new values.SET("b"), 2: new values.SET("N")})
 	)
 
 // apply vs move
