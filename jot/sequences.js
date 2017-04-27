@@ -1,76 +1,76 @@
-/* An operational transformation library for sequence-like objects:
-   strings and arrays.
-   
-   Three operations are provided:
-   
-   new sequences.SPLICE([ { offset: ..., old_value: ..., new_value: ... }])
+/* An operational transformation library for sequence-like objects,
+   i.e. strings and arrays.
+
+   The main operation provided by this library is PATCH, which represents
+   a set of non-overlapping changes to a string or array. Each change,
+   called a hunk, applies an operation to a subsequence -- i.e. a sub-string
+   or a slice of the array. The operation's .apply method yields a new
+   sub-sequence, and they are stitched together (along with unchanged elements)
+   to form the new document that results from the PATCH operation.
+
+   The internal structure of the PATCH operation is an array of hunks as
+   follows:
+
+   new sequences.PATCH(
+     [
+       { offset: ..., # unchanged elements to skip before this hunk
+         length: ..., # length of subsequence modified by this hunk
+         op: ...      # jot operation to apply to the subsequence
+       },
+       ...
+     ]
+    )
+
+   The operation must define a "get_length_change" function that returns the
+   length of the subsequence after the operation is applied. Composition and
+   conflictless rebasing are also supported by a "decompose_right" function on
+   the inner operation. NO_OP, SET, and MAP define these functions.
+
+   This library also defines the MAP operation, which applies a jot
+   operation to every element of a sequence. The MAP operation is
+   also used with length-one hunks to apply an operation to a single
+   element. On strings, the MAP operation only accepts inner operations
+   that yield back single characters so that a MAP on a string does
+   not change the string's length.
+
+   The internal structure of the MAP operation is:
+
+   new sequences.MAP(op)
  
-    The SPLICE operation encapsulates a diff/patch on a sequence,
-    with zero or more hunks representing changed subsequences.
-    The offset in each hunk indicates the number of unchanged
-    elements between it and the previous hunk (or the start of
-    the sequence).
+   Shortcuts for constructing useful PATCH operations are provided:
 
-    Shortcuts are provided:
-    
-    new sequences.INS(pos, new_value)
-    
-       Equivalent to SPLICE({ offset: pos, old_value: "" or [], new_value: new_value })
-       (where "" is used for strings and [] for arrays).
-       
-    new sequences.DEL(pos, old_value)
-    
-       Equivalent to SPLICE({ offset: pos, old_value: old_value, new_value: "" or [] })
-       (where "" is used for strings and [] for arrays).
+		new sequences.SPLICE(pos, length, new_value)
 
-    Supports a conflictless rebase with other SPLICE and APPLY operations.
+			 Equivalent to:
 
+			 PATCH([{
+				 offset: pos,
+				 length: length,
+				 op: new values.SET(new_value)
+				 }])
+			 
+			 i.e. replace elements with other elements
+		
+		new sequences.APPLY(pos, op)
 
-   new sequences.MOVE(pos, count, new_pos)
+			 Equivalent to:
 
-    Moves the subsequence starting at pos and count items long
-    to a new location starting at index new_pos. pos is zero-based.
+			 PATCH([{
+				 offset: pos,
+				 length: 1,
+				 op: new sequences.MAP(op)
+				 }])
+			 
+			 i.e. apply the operation to the single element at pos
 
+		new sequences.APPLY({ pos: op, ... })
 
-   new sequences.APPLY(pos, operation)
+			 Similar to the above but for multiple operations at once.
 
-    Applies another sort of operation to a single element. Use
-    any of the operations in values.js on an element. Or if the
-    element is an array or object, use the operators in this module
-    or the objects.js module, respectively. pos is zero-based.
+		Supports a conflictless rebase with other PATCH operations.
 
-    The APPLY operation also accepts a mapping from positions to
-    operations. So, like SPLICE, it can represent many changes
-    occurring simultaneously at different positions in the sequence.
-
-    When APPLY is used on a string document, it is operating over
-    a single character. The operation may not change the character
-    into something other than a single character because that would
-    change the length of the (whole) string.
-
-    Example:
-    
-    To replace an element at index 2 with a new value:
-    
-      new sequences.APPLY(2, new values.SET("new_value"))
-
-    To apply multiple operations on different elements:
-    
-      new sequences.APPLY({
-        "2": new values.SET(new_value"),
-        "4": new values.MATH("add", 5))
-
-    Supports a conflictless rebase with other SPLICE operations and
-    with other APPLY operations when the inner operations support a
-    conflictless rebase.
-
-
-   new sequences.MAP(operation)
-
-    Applies another sort of operation to every element of the array.
-
-   */
-   
+	 */
+	 
 var util = require('util');
 var deepEqual = require("deep-equal");
 var jot = require("./index.js");
@@ -86,13 +86,6 @@ function elem(seq, pos) {
 	else // is an array
 		return seq[pos];
 }
-function unelem(elem, seq) {
-	// turn an element into a one-item sequence
-	if (typeof seq == "string")
-		return elem; // characters and strings are all the same
-	else // is an array
-		return [elem];
-}
 function concat2(item1, item2) {
 	if (item1 instanceof String)
 		return item1 + item2;
@@ -103,12 +96,6 @@ function concat3(item1, item2, item3) {
 		return item1 + item2 + item3;
 	return item1.concat(item2).concat(item3);
 }
-function concat4(item1, item2, item3, item4) {
-	if (item1 instanceof String)
-		return item1 + item2 + item3 + item4;
-	return item1.concat(item2).concat(item3).concat(item4);
-}
-
 function map_index(pos, move_op) {
 	if (pos >= move_op.pos && pos < move_op.pos+move_op.count) return (pos-move_op.pos) + move_op.new_pos; // within the move
 	if (pos < move_op.pos && pos < move_op.new_pos) return pos; // before the move
@@ -122,53 +109,84 @@ function map_index(pos, move_op) {
 
 exports.module_name = 'sequences'; // for serialization/deserialization
 
-exports.SPLICE = function () {
+exports.PATCH = function () {
 	/* An operation that replaces a subrange of the sequence with new elements. */
-	if (arguments[0] === "__hmm__") return; // used for subclassing to INS, DEL
-	if (arguments.length == 1)
-		// The argument is an array of hunks of the form { offset:, old_value:, new_value: }.
-		this.hunks = arguments[0];
-	else if (arguments.length == 3)
-		// The arguments are the position, old_value, and new_value of a single hunk.
-		this.hunks = [{ offset: arguments[0], old_value: arguments[1], new_value: arguments[2] }];
-	else
+	if (arguments[0] === "__hmm__") return; // used for subclassing
+	if (arguments.length != 1)
 		throw "Invaid Argument";
 
-	if (!Array.isArray(this.hunks))
-		throw "Invaid Argument";
+	this.hunks = arguments[0];
 
 	// Sanity check & freeze hunks.
+	if (!Array.isArray(this.hunks))
+		throw "Invaid Argument";
 	this.hunks.forEach(function(hunk) {
 		if (typeof hunk.offset != "number")
-			throw "Invalid Argument";
- 		if (typeof hunk.old_value != "string" && !Array.isArray(hunk.old_value))
-			throw "Invalid Argument";
- 		if (typeof hunk.new_value != "string" && !Array.isArray(hunk.new_value))
-			throw "Invalid Argument";
+			throw "Invalid Argument (hunk offset not a number)";
 		if (hunk.offset < 0)
-			throw "Invalid Argument";
+			throw "Invalid Argument (hunk offset is negative)";
+		if (typeof hunk.length != "number")
+			throw "Invalid Argument (hunk length is not a number)";
+		if (hunk.length < 0)
+			throw "Invalid Argument (hunk length is negative)";
+		if (!(hunk.op instanceof jot.BaseOperation))
+			throw "Invalid Argument (hunk operation is not an operation)";
+		if (typeof hunk.op.get_length_change != "function")
+			throw "Invalid Argument (hunk operation does not support get_length_change)";
 		Object.freeze(hunk);
 	});
 
 	Object.freeze(this);
 }
-exports.SPLICE.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.SPLICE, exports, 'SPLICE', ['hunks']);
+exports.PATCH.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+jot.add_op(exports.PATCH, exports, 'PATCH', ['hunks']);
 
 	// shortcuts
-	exports.INS = function (pos, value) {
-		if (pos == null || value == null) throw "Invalid Argument";
-		// value.slice(0,0) is a shorthand for constructing an empty string or empty list, generically
-		exports.SPLICE.apply(this, [pos, value.slice(0,0), value]);
-	}
-	exports.INS.prototype = new exports.SPLICE("__hmm__"); // inherit prototype
 
-	exports.DEL = function (pos, old_value) {
-		if (pos == null || old_value == null) throw "Invalid Argument";
+	exports.SPLICE = function (pos, length, new_value) {
 		// value.slice(0,0) is a shorthand for constructing an empty string or empty list, generically
-		exports.SPLICE.apply(this, [pos, old_value, old_value.slice(0,0)]);
+		exports.PATCH.apply(this, [[{
+			offset: pos,
+			length: length,
+			op: new values.SET(new_value)
+		}]]);
 	}
-	exports.DEL.prototype = new exports.SPLICE("__hmm__"); // inherit prototype
+	exports.SPLICE.prototype = new exports.PATCH("__hmm__"); // inherit prototype
+
+	exports.APPLY = function () {
+		var indexes;
+		var op_map;
+		if (arguments.length == 1) {
+			// The argument is a mapping from indexes to operations to apply
+			// at those indexes. Collect all of the integer indexes in sorted
+			// order.
+			op_map = arguments[0];
+			indexes = [];
+			Object.keys(op_map).forEach(function(index) { indexes.push(parseInt(index)); });
+			indexes.sort();
+		} else if (arguments.length == 2) {
+			// The arguments are just a single position and operation.
+			indexes = [arguments[0]];
+			op_map = { };
+			op_map[arguments[0]] = arguments[1];
+		} else {
+			throw "Invalid Argument"
+		}
+
+		// Form hunks.
+		var hunks = [];
+		var offset = 0;
+		indexes.forEach(function(index) {
+			hunks.push({
+				offset: index-offset,
+				length: 1,
+				op: new exports.MAP(op_map[index])
+			})
+			offset = index+1;
+		});
+		exports.PATCH.apply(this, [hunks]);
+	}
+	exports.APPLY.prototype = new exports.PATCH("__hmm__"); // inherit prototype
 
 exports.MOVE = function (pos, count, new_pos) {
 	if (pos == null || count == null || count == 0 || new_pos == null) throw "Invalid Argument";
@@ -180,19 +198,6 @@ exports.MOVE = function (pos, count, new_pos) {
 exports.MOVE.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.MOVE, exports, 'MOVE', ['pos', 'count', 'new_pos']);
 
-exports.APPLY = function () {
-	if (arguments.length == 2) {
-		if (arguments[0] == null || arguments[1] == null) throw "Invalid Argument";
-		this.ops = { };
-		this.ops[arguments[0]] = arguments[1];
-	} else {
-		this.ops = arguments[0];
-	}
-	Object.freeze(this);
-}
-exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.APPLY, exports, 'APPLY', ['ops']);
-
 exports.MAP = function (op) {
 	if (op == null) throw "Invalid Argument";
 	this.op = op;
@@ -203,581 +208,538 @@ jot.add_op(exports.MAP, exports, 'MAP', ['op']);
 
 //////////////////////////////////////////////////////////////////////////////
 
-exports.SPLICE.prototype.inspect = function(depth) {
-	return util.format("<sequences.SPLICE%s>",
+exports.PATCH.prototype.inspect = function(depth) {
+	return util.format("<sequences.PATCH%s>",
 		this.hunks.map(function(hunk) {
-			return util.format(" +%d %j => %j", hunk.offset, hunk.old_value, hunk.new_value)
+			if ((hunk.length == 1) && (hunk.op instanceof exports.MAP))
+				// special format
+				return util.format(" +%d %s",
+					hunk.offset,
+					hunk.op.op.inspect(depth-1));
+
+			return util.format(" +%dx%d %s",
+				hunk.offset,
+				hunk.length,
+				hunk.op instanceof values.SET
+					? util.format("%j", hunk.op.new_value)
+					: hunk.op.inspect(depth-1))
 		}).join(","));
 }
 
-exports.SPLICE.prototype.apply = function (document) {
+exports.PATCH.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
-	   the same type as document but with the hunks applied. */
+		 the same type as document but with the hunks applied. */
+	
 	var index = 0;
 	var ret = document.slice(0,0); // start with an empty document
+	
 	this.hunks.forEach(function(hunk) {
-		if (index + hunk.offset + hunk.old_value.length > document.length)
+		if (index + hunk.offset + hunk.length > document.length)
 			throw "offset past end of document";
-		if (!deepEqual(hunk.old_value, document.slice(index+hunk.offset, index+hunk.offset+hunk.old_value.length), { strict: true}))
-			throw "old_value is not correct";
 
 		// Append unchanged content before this hunk.
 		ret = concat2(ret, document.slice(index, index+hunk.offset));
 		index += hunk.offset;
 
 		// Append new content.
-		ret = concat2(ret, hunk.new_value);
-		index += hunk.old_value.length;
+		var new_value = hunk.op.apply(document.slice(index, index+hunk.length));
+
+		if (typeof document == "string" && typeof new_value != "string")
+			throw "operation yielded invalid substring";
+		if (Array.isArray(document) && !Array.isArray(new_value))
+			throw "operation yielded invalid subarray";
+
+		ret = concat2(ret, new_value);
+
+		// Advance counter.
+		index += hunk.length;
 	});
+	
 	// Append unchanged content after the last hunk.
 	ret = concat2(ret, document.slice(index));
+	
 	return ret;
 }
 
-exports.SPLICE.prototype.simplify = function () {
+exports.PATCH.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
-	   of this operation.*/
+		 of this operation.*/
+
 	// Simplify the hunks by removing any that don't make changes.
 	// Adjust offsets.
+
+	// Some of the composition methods require knowing if these operations
+	// are operating on a string or an array. We might not know if the PATCH
+	// only has sub-operations where we can't tell, like a MAP.
+	var doctype = null;
+	this.hunks.forEach(function (hunk) {
+		if (hunk.op instanceof values.SET) {
+			if (typeof hunk.op.new_value == "string")
+				doctype = "string";
+			else if (Array.isArray(hunk.op.new_value))
+				doctype = "array";
+		}
+	});
+
+	// Form a new set of merged hunks.
+
 	var hunks = [];
 	var doffset = 0;
-	this.hunks.forEach(function(hunk) {
-		if (deepEqual(hunk.old_value, hunk.new_value, { strict: true }))
+
+	function handle_hunk(hunk) {
+		var op = hunk.op.simplify();
+		
+		if (op.isNoOp()) {
 			// Drop it, but adjust future offsets.
-			doffset += hunk.offset + hunk.old_value.length;
-		else if (hunks.length > 0 && hunk.offset + doffset == 0)
-			// It's contiguous with the previous hunk, so combine it.
-			hunks[hunks.length-1] = {
-				offset: hunks[hunks.length-1].offset,
-				old_value: concat2(hunks[hunks.length-1].old_value, hunk.old_value),
-				new_value: concat2(hunks[hunks.length-1].new_value, hunk.new_value) }
-		else
-			hunks.push({ offset: hunk.offset+doffset, old_value: hunk.old_value, new_value: hunk.new_value })
-	});
+			doffset += hunk.offset + hunk.length;
+			return;
+
+		} else if (hunk.length == 0 && hunk.op.get_length_change(hunk.length) == 0) {
+			// Drop it, but adjust future offsets.
+			doffset += hunk.offset;
+			return;
+
+		} else if (op instanceof exports.PATCH) {
+			// A PATCH within a PATCH, fun. Account for the range
+			// after the last inner hunk through the end of the
+			// outer hunk.
+			var count = 0;
+			op.hunks.forEach(function(hunk) {
+				handle_hunk(hunk);
+				count += hunk.offset + hunk.length;
+			});
+			doffset += hunk.length - count;
+			return;
+
+		} else if (hunks.length > 0
+			&& hunk.offset + doffset == 0) {
+			
+			// The hunks are adjacent. We can combine them
+			// if one of the operations is a SET and the other
+			// is a SET or a MAP containing a SET.
+			// We can't combine two adjancent MAP->SET's because
+			// we wouldn't know whether the combined value (in
+			// a SET) should be a string or an array.
+			if ((hunks[hunks.length-1].op instanceof values.SET
+				|| (hunks[hunks.length-1].op instanceof exports.MAP && hunks[hunks.length-1].op.op instanceof values.SET))
+			 && (hunk.op instanceof values.SET || 
+			 	  (hunk.op instanceof exports.MAP && hunk.op.op instanceof values.SET) )
+			 && doctype != null) {
+
+				function get_value(hunk) {
+				 	if (hunk.op instanceof values.SET) {
+				 		// The value is just the SET's new_value.
+				 		return hunk.op.new_value;
+				 	} else {
+				 		// The value is a sequence of the hunk's length
+				 		// where each element is the value of the inner
+				 		// SET's new_value.
+					 	var value = [];
+					 	for (var i = 0; i < hunk.length; i++)
+					 		value.push(hunk.op.op.new_value);
+
+					 	// If the outer value is a string, reform it as
+					 	// a string.
+					 	if (doctype == "string")
+					 		value = value.join("");
+					 	return value;
+				 	}
+				}
+
+				hunks[hunks.length-1] = {
+					offset: hunks[hunks.length-1].offset,
+					length: hunks[hunks.length-1].length + hunk.length,
+					op: new values.SET(
+						concat2(
+							get_value(hunks[hunks.length-1]),
+							get_value(hunk))
+						)
+				};
+
+				return;
+			}
+
+		}
+
+		// Preserve but adjust offset.
+		var newhunk = {
+			offset: hunk.offset+doffset,
+			length: hunk.length,
+			op: op
+		}
+		hunks.push(newhunk);
+	}
+	
+	this.hunks.forEach(handle_hunk);
 	if (hunks.length == 0)
 		return new values.NO_OP();
-	return new exports.SPLICE(hunks);
+	
+	return new exports.PATCH(hunks);
 }
 
-exports.SPLICE.prototype.inverse = function (document) {
+exports.PATCH.prototype.inverse = function (document) {
 	/* Returns a new atomic operation that is the inverse of this operation,
-	   given the state of the document before this operation applies. */
-	return new exports.SPLICE(this.hunks.map(function(hunk) {
-		return { offset: hunk.offset, old_value: hunk.new_value, new_value: hunk.old_value };
+	   given the state of the document before this operation applies.
+	   The inverse simply inverts the operations on the hunks, but the
+	   lengths have to be fixed. */
+	var offset = 0;
+	return new exports.PATCH(this.hunks.map(function(hunk) {
+		var newhunk = {
+			offset: hunk.offset,
+			length: hunk.length + hunk.op.get_length_change(hunk.length),
+			op: hunk.op.inverse(document.slice(offset+hunk.offset, offset+hunk.offset+hunk.length))
+		}
+		offset += hunk.offset + hunk.length;
+		return newhunk;
 	}));
 }
 
-exports.SPLICE.prototype.atomic_compose = function (other) {
-	/* Creates a new atomic operation that has the same result as this
-	   and other applied in sequence (this first, other after). Returns
-	   null if no atomic operation is possible. */
+function compose_patches(a, b) {
+	// Compose two patches. We do this as if we are zipping up two sequences,
+	// where the index into the (hypothetical) sequence that results *after*
+	// a is applied lines up with the index into the (hypothetical) sequence
+	// before b is applied.
+	
+	var hunks = [];
+	var index = 0;
 
-	// a SPLICE composes with a SPLICE
-	if (other instanceof exports.SPLICE) {
-		// Merge the two lists of hunks into one. We process the two lists of
-		// hunks as if they are connected by a zipper. The new_values of this's
-		// hunks line up with the old_values of other's hunks.
-		function make_state(hunks) {
-			return {
-				hunk_index: 0, // index of current hunk
-				hunk: hunks[0], // actual current hunk
-				offset_delta: 0, // number of elements inserted/deleted by the other side
-				index: 0, // index past last element of last hunk
-				hunks: hunks // incoming hunks
-			};
+	function make_state(op, side) {
+		return {
+			index: 0,
+			hunks: op.hunks.slice(),
+			empty: function() { return this.hunks.length == 0; },
+			take: function() {
+				var h = this.hunks[0];
+				hunks.push({
+					offset: this.index + h.offset - index,
+					length: h.length,
+					op: h.op
+				});
+				this.index = this.end();
+				index = this.index;
+				this.hunks.shift();
+			},
+			skip: function() {
+				this.index = this.end();
+				this.hunks.shift();
+			},
+			start: function() {
+				return this.index + this.hunks[0].offset;
+			},
+			end: function() {
+				var h = this.hunks[0];
+				var ret = this.index + h.offset + h.length;
+				if (side == 0)
+					ret += h.op.get_length_change(h.length);
+				return ret;
+			}
 		}
-		var state = {
-			left: make_state(this.hunks),
-			right: make_state(other.hunks)
-		};
-		var hunks = []; // composition
-		while (state.left.hunk_index < state.left.hunks.length || state.right.hunk_index < state.right.hunks.length) {
-			// Advance over the left hunk if it appears entirely before the right hunk
-			// or there are no more right hunks. As we advance, we take the left hunk
-			// but alter the offset in case hunks were inserted between this and the
-			// previous left hunk and so we're advancing from a nearer position.
-			if (state.right.hunk_index == state.right.hunks.length ||
-				(state.left.hunk_index < state.left.hunks.length &&
-				 state.left.index+state.left.hunk.offset+state.left.hunk.new_value.length
-					<= state.right.index+state.right.hunk.offset)) {
-				hunks.push({ offset: state.left.hunk.offset-state.left.offset_delta, old_value: state.left.hunk.old_value, new_value: state.left.hunk.new_value });
-				state.left.index += state.left.hunk.offset + state.left.hunk.new_value.length;
-				state.right.offset_delta += state.left.hunk.offset + state.left.hunk.new_value.length;
-				state.left.hunk = state.left.hunks[++state.left.hunk_index];
-				state.left.offset_delta = 0;
+	}
+	
+	var a_state = make_state(a, 0),
+	    b_state = make_state(b, 1);
+	
+	while (!a_state.empty() || !b_state.empty()) {
+		// Only operations in 'a' are remaining.
+		if (b_state.empty()) {
+			a_state.take();
+			continue;
+		}
+
+		// Only operations in 'b' are remaining.
+		if (a_state.empty()) {
+			b_state.take();
+			continue;
+		}
+
+		// The next hunk in 'a' precedes the next hunk in 'b'.
+		if (a_state.end() <= b_state.start()) {
+			a_state.take();
+			continue;
+		}
+
+		// The next hunk in 'b' precedes the next hunk in 'a'.
+		if (b_state.end() <= a_state.start()) {
+			b_state.take();
+			continue;
+		}
+
+		// There's overlap.
+
+		var dx_start = b_state.start() - a_state.start();
+		var dx_end = b_state.end() - a_state.end();
+		if (dx_start >= 0 && dx_end <= 0) {
+			// 'a' wholly encompasses 'b', including the case where they
+			// changed the exact same elements.
+
+			// Compose a's and b's suboperations using
+			// atomic_compose. If the two hunks changed the exact same
+			// elements, then we can compose the two operations directly.
+			var b_op = b_state.hunks[0].op;
+			if (dx_start != 0 || dx_end != 0) {
+				// If 'a' whole encompasses 'b', we can make an operation
+				// that spans the same elements by wrapping b's operation
+				// in a PATCH.
+				b_op = new exports.PATCH([{ offset: dx_start, length: b_state.hunks[0].length, op: b_op }]);
+			}
+
+			// Replace the 'a' operation with itself composed with b's operation.
+			// Don't take it yet because there could be more coming on b's
+			// side that is within the range of 'a'.
+			a_state.hunks[0] = {
+				offset: a_state.hunks[0].offset,
+				length: a_state.hunks[0].length,
+				op: a_state.hunks[0].op.atomic_compose(b_op)
+			};
+			if (a_state.hunks[0].op == null)
+				return null;
+
+			// Drop b.
+			b_state.skip();
+			continue;
+		}
+
+		if (dx_start <= 0 && dx_end >= 0) {
+			// 'b' wholly consumes 'a'. We can't drop a's operation, in the
+			// general case. If 'b' is a SET, then we can drop a's operation
+			// because we know it does not depend on prior state. Same with
+			// NO_OP. In either case we have to update b's length since it
+			// is operating on elements that were inserted/deleted by a.
+			if (b_state.hunks[0].op.isNoOp()
+				|| b_state.hunks[0].op instanceof values.SET) {
+				b_state.take();
+				hunks[hunks.length-1].length -= a_state.hunks[0].op.get_length_change(a_state.hunks[0].length);
+				a_state.skip();
 				continue;
 			}
+		}
 
-			// Advance over the right hunk if it appears entirely before the left hunk
-			// or there are no more left hunks. As we take the right hunk, we adjust
-			// the offset.
-			if (state.left.hunk_index == state.left.hunks.length ||
-				(state.right.hunk_index < state.right.hunks.length &&
-				 state.right.index+state.right.hunk.offset+state.right.hunk.old_value.length
-					<= state.left.index+state.left.hunk.offset)) {
-				hunks.push({ offset: state.right.hunk.offset-state.right.offset_delta, old_value: state.right.hunk.old_value, new_value: state.right.hunk.new_value });
-				state.right.index += state.right.hunk.offset + state.right.hunk.old_value.length;
-				state.left.offset_delta += state.right.hunk.offset + state.right.hunk.old_value.length;
-				state.right.hunk = state.right.hunks[++state.right.hunk_index];
-				state.right.offset_delta = 0;
-				continue;
-			}
+		// There is some sort of other overlap. We can handle this by attempting
+		// to decompose the operations.
+		if (dx_start > 0) {
+			// 'a' begins first. Attempt to decompose it into two operations.
+			if (!a_state.hunks[0].op.decompose_right)
+				return null;
+			var decomp = a_state.hunks[0].op.decompose_right(dx_start);
+			if (!decomp)
+				return null;
 
-			// We have hunks that overlap.
-			
-			// First create hunks for the portion of the left or right hunks
-			// that starts before the other. The left is treated as an insertion
-			// and the right a deletion. The left's old value and the right's
-			// new value is lumped with the common block in the middle.
-			var start_dx = (state.left.index+state.left.hunk.offset) - (state.right.index+state.right.hunk.offset);
-			if (start_dx < 0) {
-				var chomp = -start_dx;
-				hunks.push({
-					offset: state.left.hunk.offset-state.left.offset_delta,
-					old_value: state.left.hunk.old_value.slice(0, 0),
-					new_value: state.left.hunk.new_value.slice(0, chomp)});
-				state.left.hunk = {
-					offset: 0,
-					old_value: state.left.hunk.old_value,
-					new_value: state.left.hunk.new_value.slice(chomp)
-				};
-				state.left.index += state.left.hunk.offset + chomp;
-				state.right.offset_delta += state.left.hunk.offset + chomp;
-				state.left.offset_delta = 0;
-			}
-			if (start_dx > 0) {
-				var chomp = start_dx;
-				hunks.push({
-					offset: state.right.hunk.offset-state.right.offset_delta,
-					old_value: state.right.hunk.old_value.slice(0, chomp),
-					new_value: state.right.hunk.new_value.slice(0, 0)});
-				state.right.hunk = {
-					offset: 0,
-					old_value: state.right.hunk.old_value.slice(chomp),
-					new_value: state.right.hunk.new_value
-				};
-				state.right.index += state.right.hunk.offset + chomp;
-				state.left.offset_delta += state.right.hunk.offset + chomp;
-				state.right.offset_delta = 0;
-			}
-
-			// The hunks now begin at the same location. But they may have
-			// different lengths. How long is the part they have in common?
-			var overlap = Math.min(state.left.hunk.new_value.length, state.right.hunk.old_value.length);
-
-			// Create a hunk for the overlap.
-			// The left's old_value and the right's new_value get lumped here.
-			// The overlap characters they have in common drop out are are no
-			// longer represented in the SPICE operation. But we consumed them here.
+			// Take the left part of the decomposition.
 			hunks.push({
-				offset: state.left.hunk.offset-state.left.offset_delta,
-				old_value: state.left.hunk.old_value,
-				new_value: state.right.hunk.new_value});
-			state.left.index += state.left.hunk.offset + overlap;
-			state.right.index += state.right.hunk.offset + overlap;
-			state.left.offset_delta = 0;
-			state.right.offset_delta = 0;
-			
-			// Adjust the hunks because the overlap was consumed.
-			state.left.hunk = {
-				offset: 0,
-				old_value: state.left.hunk.old_value.slice(0, 0), // it was just consumed, nothing left
-				new_value: state.left.hunk.new_value.slice(overlap) // there may be more left
-			};
-			state.right.hunk = {
-				offset: 0,
-				old_value: state.right.hunk.old_value.slice(overlap),
-				new_value: state.right.hunk.new_value.slice(0, 0) // it was just consumed, nothing left
-			};
+				offset: a_state.index + a_state.hunks[0].offset - index,
+				length: a_state.hunks[0].length,
+				op: decomp[0]
+			});
+			a_state.index += dx_start;
+			index += dx_start;
 
-			// Advance the hunks if we consumed one entirely.
-			if (state.left.hunk.new_value.length == 0)
-				state.left.hunk = state.left.hunks[++state.left.hunk_index];
-			if (state.right.hunk.old_value.length == 0)
-				state.right.hunk = state.right.hunks[++state.right.hunk_index];
+			// Return the right part of the decomposition to the hunks array.
+			a_state.hunks[0] = {
+				offset: 0,
+				length: 0,
+				op: decomp[1]
+			};
+			continue;
 		}
-		return new exports.SPLICE(hunks).simplify();
+
+		if (dx_start < 0) {
+			// 'b' begins first. Attempt to decompose it into two operations.
+			// The decompose_right method takes an index into the sequence
+			// after the operation applies, but dx_start applies to the
+			// document before 'b' applies, so we pass it an arbitrary
+			// index of zero.
+			if (!b_state.hunks[0].op.decompose_right)
+				return null;
+			var decomp = b_state.hunks[0].op.decompose_right(0);
+			if (!decomp)
+				return null;
+
+			// Take the left part of the decomposition.
+			hunks.push({
+				offset: b_state.index + b_state.hunks[0].offset - index,
+				length: (-dx_start),
+				op: decomp[0]
+			});
+			b_state.index += (-dx_start);
+			index += (-dx_start);
+
+			// Return the right part of the decomposition to the hunks array.
+			b_state.hunks[0] = {
+				offset: 0,
+				length: b_state.hunks[0].length - (-dx_start),
+				op: decomp[1]
+			};
+			continue;
+		}
+
+		// There is no atomic composition.
+		return null;
 	}
 
-	// a SPLICE composed with an APPLY that applies within a range modified
-	// by the splice, by simply replacing an element in a hunk new_value
-	// with the result of applying the APPLY's inner operation to it
-	if (other instanceof exports.APPLY) {
-		// Run the APPLY's inner operation on any subelement of the new value.
-		var seen_indexes = { };
-		var index = 0;
-		var hunks = [];
-		this.hunks.forEach(function(hunk) {
-			index += hunk.offset;
+	return new exports.PATCH(hunks).simplify();
+}
 
-			// TOOD: This inefficiently re-constructs the new_value for each element
-			// that the APPLY operation applies to.
-			var new_value = hunk.new_value;
-			for (var i = 0; i < new_value.length; i++) {
-				if ((index + i) in other.ops) {
-					seen_indexes[index + i] = true;
-					var op = other.ops[index + i];
-					new_value = concat3(
-						new_value.slice(0, i),
-						unelem(op.apply(elem(new_value, i)), hunk.old_value),
-						new_value.slice(i+1)
-						);
-				}
-			}
-			hunks.push({ offset: hunk.offset, old_value: hunk.old_value, new_value: new_value });
+exports.PATCH.prototype.atomic_compose = function (other) {
+	/* Creates a new atomic operation that has the same result as this
+		 and other applied in sequence (this first, other after). Returns
+		 null if no atomic operation is possible. */
 
-			index += hunk.new_value.length;
-		})
-
-		// If there are any indexes modified by the APPLY that were not within
-		// the ranges of the SPLICE, then we can't compose the operations.
-		var any_bad = false;
-		Object.keys(other.ops).forEach(function(index) {
-			if (!(index in seen_indexes))
-				any_bad = true;
-		})
-		if (any_bad) return null;
-
-		return new exports.SPLICE(hunks).simplify();
-	}
+	// a PATCH composes with a PATCH
+	if (other instanceof exports.PATCH)
+		return compose_patches(this, other);
 
 	// No composition possible.
 	return null;
 }
 
-exports.SPLICE.prototype.rebase_functions = [
-	/* Transforms this operation so that it can be composed *after* the other
-	   operation to yield the same logical effect. Returns null on conflict. */
-
-	[exports.SPLICE, function(other, conflictless) {
-		// Rebasing two SPLICEs works like compose, except that we are aligning
-		// this's old_values with other's old_values (rather than this's new_values
-		// with other's old_values).
-		//
-		// We process the two lists of hunks as if they are connected by a zipper
-		// on the old_values. Parts that don't overlap don't create conflicts but
-		// do alter offsets. Overlaps create conflicts, unless conflictless is true,
-		// in which case we squash one side or the other.
-
-		function make_state(hunks) {
-			return {
-				hunk: hunks[0], // actual current hunk
-				offset_delta: 0, // number of elements inserted/deleted by the other side
-				index: 0, // index past last element of last hunk in hunks
-
-				// private
-				hunk_index: 0, // index of current hunk
-				source_hunks: hunks, // all hunks
-				new_hunks: [], // new hunks
-
-				finished: function() {
-					return this.hunk_index == this.source_hunks.length;
-				},
-				advance: function(other_state, replace_old_value) {
-					// Add current hunk & reset the offset_delta because it
-					// only needs to be applied once.
-					this.new_hunks.push({
-						offset: this.hunk.offset+this.offset_delta,
-						old_value: (replace_old_value == null ? this.hunk.old_value : replace_old_value),
-						new_value: this.hunk.new_value });
-					this.offset_delta = 0;
-
-					// Advance index that points to where we're at in the
-					// document before the operation applies.
-					this.index += this.hunk.offset + this.hunk.old_value.length;
-
-					// Let the other side know that its offsets must be shifted
-					// forward because the length of the document changed. (Use
-					// the original hunk's old_value.)
-					other_state.offset_delta += this.hunk.new_value.length - this.hunk.old_value.length;
-
-					// Advance.
-					this.hunk = this.source_hunks[++this.hunk_index];
-				},
-				insert: function(hunk, other_state) {
-					this.new_hunks.push({
-						offset: hunk.offset+this.offset_delta,
-						old_value: hunk.old_value,
-						new_value: hunk.new_value });
-					this.offset_delta = 0;
-					this.index += hunk.offset + hunk.old_value.length;
-					other_state.offset_delta += hunk.new_value.length - hunk.old_value.length;
-				},
-				skip: function() {
-					// The index and next offset has to be adjusted. Then advance.
-					this.index += this.hunk.offset + this.hunk.old_value.length;
-					this.offset_delta += this.hunk.offset + this.hunk.old_value.length;
-					this.hunk = this.source_hunks[++this.hunk_index];
-				}
-			};
+function rebase_patches(a, b, conflictless) {
+	// Rebasing two PATCHes works like compose, except that we are aligning
+	// 'a' and 'b' both on the state of the document before each has applied.
+	//
+	// We do this as if we are zipping up two sequences, where the index into
+	// the (hypothetical) sequence, before either operation applies, lines
+	// up across the two operations.
+	
+	function make_state(op) {
+		return {
+			old_index: 0,
+			old_hunks: op.hunks.slice(),
+			new_index: 0,
+			new_hunks: [],
+			empty: function() { return this.old_hunks.length == 0; },
+			take: function() {
+				var h = this.old_hunks[0];
+				this.new_hunks.push({
+					offset: this.old_index + h.offset - this.new_index,
+					length: h.length,
+					op: h.op
+				});
+				this.old_index = this.end();
+				this.new_index = this.old_index;
+				this.old_hunks.shift();
+			},
+			skip: function() {
+				this.old_index = this.end();
+				this.old_hunks.shift();
+			},
+			start: function() {
+				return this.old_index + this.old_hunks[0].offset;
+			},
+			end: function() {
+				var h = this.old_hunks[0];
+				return this.old_index + h.offset + h.length;
+			}
+		}
+	}
+	
+	var a_state = make_state(a),
+	    b_state = make_state(b);
+	
+	while (!a_state.empty() || !b_state.empty()) {
+		// Only operations in 'a' are remaining.
+		if (b_state.empty()) {
+			a_state.take();
+			continue;
 		}
 
-		var state = {
-			left: make_state(this.hunks),
-			right: make_state(other.hunks)
-		};
+		// Only operations in 'b' are remaining.
+		if (a_state.empty()) {
+			b_state.take();
+			continue;
+		}
 
-		// Process the hunks on both sides from top to bottom.
-		while (!state.left.finished() || !state.right.finished()) {
-			// Case 1: The hunks represent insertions at the same location.
-			if (!state.left.finished() && !state.right.finished()
-				 && state.left.index+state.left.hunk.offset == state.right.index+state.right.hunk.offset
-				 && state.left.hunk.old_value.length == 0
-				 && state.right.hunk.old_value.length == 0) {
-
-				if (deepEqual(state.left.hunk.new_value, state.right.hunk.new_value, { strict: true })) {
-					// The two insertions are equal. It doesn't matter what order
-					// they go in since the document will come out exactly the
-					// same.
-					//
-					// Just fall through.
-
-				} else if (conflictless) {
-					// In a conflictless rebase, the side with the lower sort order
-					// goes first. The one going first keeps its hunk exactly
-					// unchanged -- an insertion at the same index will come before
-					// whatever else might have been inserted at that index already.
-					// The one going second adjusts its index forward by the number
-					// of elements the first hunk added.
-					if (jot.cmp(state.left.hunk.new_value, state.right.hunk.new_value) < 0) {
-						state.left.advance(state.right);
-						continue;
-					} else {
-						state.right.advance(state.left);
-						continue;
-					}
-				} else {
-					// Conflict because we don't know what order to put the
-					// insertions in.
-					return null;
-				}
-			}
-
-			// Case 2: The hunks don't overlap at all.
-
-			// Advance over the left hunk if it appears entirely before the right hunk,
-			// or there are no more right hunks.
-			if (state.right.finished() ||
-				(!state.left.finished() &&
-				 state.left.index+state.left.hunk.offset+state.left.hunk.old_value.length
-					<= state.right.index+state.right.hunk.offset)) {
-				state.left.advance(state.right);
-				continue;
-			}
-
-			// Advance over the right hunk if it appears entirely before the left hunk,
-			// or there are no more left hunks.
-			if (state.left.finished() ||
-				(!state.right.finished() &&
-				 state.right.index+state.right.hunk.offset+state.right.hunk.old_value.length
-					<= state.left.index+state.left.hunk.offset)) {
-				state.right.advance(state.left);
-				continue;
-			}
-
-			// Case 3: The hunks overlap, i.e. one of these 9 cases:
-			//   (a)   (b)   (c)   (d)  (e)  (f)   (g)  (h)  (i)
-			//   XXX   XXX   XXX   XXX  XXX  XXX   XXX  XXX  XXX 
-			//  YY    YYYY  YYYYY  YY   YYY  YYYY   Y    YY   YYY
-
-			var dx_start = (state.left.index+state.left.hunk.offset) - (state.right.index+state.right.hunk.offset);
-			var dx_end = (state.left.index+state.left.hunk.offset+state.left.hunk.old_value.length) - (state.right.index+state.right.hunk.offset+state.right.hunk.old_value.length);
-
-			// Case 3(e) *and* the changes are identical. We can
-			// avoid a conflict in this case by NO_OPing the
-			// second one to apply (i.e. both left and right
-			// because we're computing the two rebases at once).
-			if (dx_start == 0 && dx_end == 0
-				&& deepEqual(state.left.hunk.new_value, state.right.hunk.new_value, { strict: true })) {
-				state.left.skip();
-				state.right.skip();
-				continue;
-			}
-
-			// Otherwise, without conflictless mode, there is a conflict.
+		// Two insertions at the same location.
+		if (a_state.start() == b_state.start()
+			&& a_state.old_hunks[0].length == 0
+			&& b_state.old_hunks[0].length == 0) {
+			
+			// This is a conflict because we don't know which side
+			// gets inserted first.
 			if (!conflictless)
 				return null;
 
-			// Ok now we have the 9 cases of overlap left to resolve in a
-			// conflictless way...
-
-			// Case 3(e) but the changes are not identical. We'll choose
-			// as the winner the one with the longer new_value or, if
-			// they have the same length, then the one with the higher
-			// sort order. The winner's
-			// old_value is updated with the loser's new_value, because the
-			// loser already occured. The loser is NO_OP'd by skipping the
-			// hunk.
-			if (dx_start == 0 && dx_end == 0) {
-				if (jot.cmp([state.left.hunk.new_value.length, state.left.hunk.new_value],
-					        [state.right.hunk.new_value.length, state.right.hunk.new_value]) > 0) {
-					// Left wins.
-					state.left.advance(state.right, state.right.hunk.new_value);
-					state.right.skip();
-					continue;
-				} else {
-					// Right wins.
-					state.right.advance(state.left, state.left.hunk.new_value);
-					state.left.skip();
-					continue;
-				}
+			// Or we can resolve the conflict.
+			if (jot.cmp(a_state.old_hunks[0].op, b_state.old_hunks[0].op) < 0) {
+				b_state.new_index -= a_state.old_hunks[0].op.get_length_change(a_state.old_hunks[0].length);
+				a_state.take();
+			} else {
+				a_state.new_index -= b_state.old_hunks[0].op.get_length_change(b_state.old_hunks[0].length);
+				b_state.take();
 			}
-
-			// Case 3(c) and 3(g): A side that completely ecompasses the other
-			// wins. The winning side is adjusted so that its old_value reflects
-			// that the losing operation has already occurred. The losing operation
-			// is NO_OP'd.
-			if (dx_start < 0 && dx_end > 0) {
-				// 3(g), left completely encompasses right
-				state.left.advance(state.right, concat3(
-					state.left.hunk.old_value.slice(0, -dx_start),
-					state.right.hunk.new_value,
-					state.left.hunk.old_value.slice(state.left.hunk.old_value.length-dx_end)
-					));
-				state.right.skip();
-				continue;
-			}
-			if (dx_start > 0 && dx_end < 0) {
-				// 3(c), right completely encompasses left
-				state.right.advance(state.left, concat3(
-					state.right.hunk.old_value.slice(0, dx_start),
-					state.left.hunk.new_value,
-					state.right.hunk.old_value.slice(state.right.hunk.old_value.length+dx_end)
-					));
-				state.left.skip();
-				continue;
-			}
-
-			// If one starts before the other, decompose it into two operations
-			// where its new_value is lumped at the start and in the overlap
-			// it is just a deletion.
-			if (dx_start < 0) {
-				// left starts first
-				state.left.insert({
-					offset: state.left.hunk.offset,
-					old_value: state.left.hunk.old_value.slice(0, -dx_start),
-					new_value: state.left.hunk.new_value
-				}, state.right)
-				state.left.hunk = {
-					offset: 0,
-					old_value: state.left.hunk.old_value.slice(-dx_start),
-					new_value: state.left.hunk.new_value.slice(0, 0) // empty
-				};
-				continue;
-			} else if (dx_start > 0) {
-				// right starts first
-				state.right.insert({
-					offset: state.right.hunk.offset,
-					old_value: state.right.hunk.old_value.slice(0, dx_start),
-					new_value: state.right.hunk.new_value
-				}, state.left)
-				state.right.hunk = {
-					offset: 0,
-					old_value: state.right.hunk.old_value.slice(dx_start),
-					new_value: state.right.hunk.new_value.slice(0, 0) // empty
-				};
-				continue;
-			}
-
-			// If one ends after the other, decompose it into two operations
-			// where its new_value is lumped at the end and in the overlap
-			// it is just a deletion.
-			if (dx_end > 0) {
-				// left ends last
-				var new_hunk = {
-					offset: 0,
-					old_value: state.left.hunk.old_value.slice(state.left.hunk.old_value.length-dx_end),
-					new_value: state.left.hunk.new_value
-				};
-				state.left.hunk = {
-					offset: state.left.hunk.offset,
-					old_value: state.left.hunk.old_value.slice(0, state.left.hunk.old_value.length-dx_end),
-					new_value: state.left.hunk.new_value.slice(0, 0) // empty
-				};
-				state.left.source_hunks.splice(1, 0, new_hunk);
-				continue;
-			} else if (dx_end < 0) {
-				// right ends last
-				var new_hunk = {
-					offset: 0,
-					old_value: state.right.hunk.old_value.slice(state.right.hunk.old_value.length+dx_end),
-					new_value: state.right.hunk.new_value
-				};
-				state.right.hunk = {
-					offset: state.right.hunk.offset,
-					old_value: state.right.hunk.old_value.slice(0, state.right.hunk.old_value.length+dx_end),
-					new_value: state.right.hunk.new_value.slice(0, 0) // empty
-				};
-				state.right.source_hunks.splice(1, 0, new_hunk);
-				continue;
-			}
-
-			throw "should not come here";
+			continue;
 		}
 
+
+		// The next hunk in 'a' precedes the next hunk in 'b'.
+		// Take 'a' and adjust b's next offset.
+		if (a_state.end() <= b_state.start()) {
+			b_state.new_index -= a_state.old_hunks[0].op.get_length_change(a_state.old_hunks[0].length);
+			a_state.take();
+			continue;
+		}
+
+		// The next hunk in 'b' precedes the next hunk in 'a'.
+		// Take 'b' and adjust a's next offset.
+		if (b_state.end() <= a_state.start()) {
+			a_state.new_index -= b_state.old_hunks[0].op.get_length_change(b_state.old_hunks[0].length);
+			b_state.take();
+			continue;
+		}
+
+		// There's overlap.
+
+		var dx_start = b_state.start() - a_state.start();
+		var dx_end = b_state.end() - a_state.end();
+
+		// They both affected the exact same region, so just rebase the
+		// inner operations and update lengths.
+		if (dx_start == 0 && dx_end == 0) {
+			var ar = a_state.old_hunks[0].op.rebase(b_state.old_hunks[0].op, conflictless);
+			var br = b_state.old_hunks[0].op.rebase(a_state.old_hunks[0].op, conflictless);
+			if (ar == null || br == null)
+				return null;
+			a_state.old_hunks[0] = {
+				offset: a_state.old_hunks[0].offset,
+				length: a_state.old_hunks[0].length + b_state.old_hunks[0].op.get_length_change(b_state.old_hunks[0].length),
+				op: ar
+			}
+			b_state.old_hunks[0] = {
+				offset: b_state.old_hunks[0].offset,
+				length: b_state.old_hunks[0].length + a_state.old_hunks[0].op.get_length_change(a_state.old_hunks[0].length),
+				op: br
+			}
+			a_state.take();
+			b_state.take();
+			continue;
+		}
+
+		// Other overlaps generate conflicts.
+		if (!conflictless)
+			return null;
+
+		// One side starts before the other. Take it.
+		if (dx_start > 0) {
+			// 'a' starts first.
+			
+		}
+	}
+
+	return [
+		new exports.PATCH(a_state.new_hunks).simplify(),
+		new exports.PATCH(b_state.new_hunks).simplify() ];
+}
+
+exports.PATCH.prototype.rebase_functions = [
+	/* Transforms this operation so that it can be composed *after* the other
+		 operation to yield the same logical effect. Returns null on conflict. */
+
+	[exports.PATCH, function(other, conflictless) {
 		// Return the new operations.
-		return [
-			new exports.SPLICE(state.left.new_hunks).simplify(),
-			new exports.SPLICE(state.right.new_hunks).simplify()]
+		return rebase_patches(this, other, conflictless);
 	}],
 
 	[exports.MOVE, function(other, conflictless) {
 		// TODO
-	}],
-	
-	[exports.APPLY, function(other, conflictless) {
-		// Rebasing a SPLICE on an APPLY is easy because we can just
-		// update the SPLICE's old_value to the value of the document
-		// after APPLY applies (i.e. APPLY.apply(SPLICE.old_value))
-		// and then treat the SPLICE as squashing the effect of the APPLY.
-		// The APPLY is NO_OP'd for that index, and other indices are
-		// shifted.
-
-		var left = [];
-		var seen_indexes = { };
-		var index = 0;
-		this.hunks.forEach(function(hunk) {
-			index += hunk.offset;
-			for (var i = 0; i < hunk.old_value.length; i++) {
-				if (index in other.ops) {
-					// Replace old_value and squash the op.
-					hunk = {
-						offset: hunk.offset,
-						old_value: concat3(
-							hunk.old_value.slice(0, i),
-							unelem(other.ops[index].apply(elem(hunk.old_value, i)), hunk.old_value),
-							hunk.old_value.slice(i+1)
-						),
-						new_value: hunk.new_value
-					}
-					seen_indexes[index] = true;
-				}
-				index++;
-			}
-			left.push(hunk);
-		});
-
-		// Add in any sub-operations in other that didn't overlap with the SPLICE.
-		// The overlapped ones are squashed.
-		var dx = 0;
-		var right = {};
-		for (var index in other.ops) {
-			index = parseInt(index);
-			if (!(index in seen_indexes)) {
-				var shift = 0;
-				this.hunks.forEach(function(hunk) {
-					if (dx + hunk.offset + hunk.old_value.length <= index)
-						shift += hunk.new_value.length - hunk.old_value.length;
-					dx += hunk.offset + hunk.old_value.length;
-				});
-				right[index+shift] = other.ops[index];
-			}
-		}
-
-
-		// Return the new operations.
-		return [new exports.SPLICE(left).simplify(), new exports.APPLY(right).simplify()];
-
 	}]
 ];
 
@@ -789,7 +751,7 @@ exports.MOVE.prototype.inspect = function(depth) {
 
 exports.MOVE.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
-	   the same type as document but with the subrange moved. */
+		 the same type as document but with the subrange moved. */
 	if (this.pos < this.new_pos)
 		return concat3(document.slice(0, this.pos), document.slice(this.pos+this.count, this.new_pos), document.slice(this.pos, this.pos+this.count) + document.slice(this.new_pos));
 	else
@@ -798,7 +760,7 @@ exports.MOVE.prototype.apply = function (document) {
 
 exports.MOVE.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
-	   of this operation.*/
+		 of this operation.*/
 	if (this.pos == this.new_pos)
 		return new values.NO_OP();	   
 	return this;
@@ -814,8 +776,8 @@ exports.MOVE.prototype.inverse = function (document) {
 
 exports.MOVE.prototype.atomic_compose = function (other) {
 	/* Creates a new atomic operation that has the same result as this
-	   and other applied in sequence (this first, other after). Returns
-	   null if no atomic operation is possible. */
+		 and other applied in sequence (this first, other after). Returns
+		 null if no atomic operation is possible. */
 
 	// The same range moved a second time.
 	if (other instanceof exports.MOVE && this.new_pos == other.pos && this.count == other.count)
@@ -835,184 +797,10 @@ exports.MOVE.prototype.rebase_functions = [
 			null // second element is not used when the types of the two operations is the same
 		];
 	}],
-	[exports.APPLY, function(other, conflictless) {
-		// APPLY never changes indexes, so the MOVE is unaffected.
-		// But the MOVE shifts indexes so the APPLY must be adjusted.
-		var new_ops = { };
-		for (var index in other.ops)
-			new_ops[map_index(index, this)] = other.ops[index];
-		return [
-			this,
-			new exports.APPLY(new_ops)
-		];
-	}],
 	[exports.MAP, function(other, conflictless) {
 		// The MOVE changes the order but not the values and the MAP changes
 		// values but doesn't care about order, so they don't bother each other.
 		return [this, other];
-	}]
-];
-
-//////////////////////////////////////////////////////////////////////////////
-
-exports.APPLY.prototype.inspect = function(depth) {
-	var inner = [];
-	var ops = this.ops;
-	Object.keys(ops).forEach(function(index) {
-		inner.push(util.format("%d:%s", parseInt(index), ops[index].inspect(depth-1)));
-	});
-	return util.format("<sequences.APPLY %s>", inner.join(", "));
-}
-
-exports.APPLY.prototype.apply = function (document) {
-	/* Applies the operation to a document. Returns a new sequence that is
-	   the same type as document but with the element modified. */
-	var doc = document;
-	for (var index in this.ops) { // TODO: Inefficient.
-		index = parseInt(index);
-
-		var newelem = this.ops[index].apply(elem(doc, index));
-		if (typeof document == "string") {
-			// The operation must return a one-character string.
-			if (typeof newelem != "string" || newelem.length != 1)
-				throw "Invalid operation: Character became something besides a character."
-		}
-
-		doc = concat3(
-			doc.slice(0, index),
-			unelem(newelem),
-			doc.slice(index+1, doc.length));
-	}
-	return doc;
-}
-
-exports.APPLY.prototype.simplify = function () {
-	/* Returns a new atomic operation that is a simpler version
-	   of this operation. If there is no sub-operation that is
-	   not a NO_OP, then return a NO_OP. Otherwise, simplify all
-	   of the sub-operations. */
-	var new_ops = { };
-	var had_non_noop = false;
-	for (var key in this.ops) {
-		new_ops[key] = this.ops[key].simplify();
-		if (!(new_ops[key] instanceof values.NO_OP))
-			// Remember that we have a substantive operation.
-			had_non_noop = true;
-		else
-			// Drop internal NO_OPs.
-			delete new_ops[key];
-	}
-	if (!had_non_noop)
-		return new values.NO_OP();
-	return new exports.APPLY(new_ops);
-}
-
-exports.APPLY.prototype.inverse = function (document) {
-	/* Returns a new atomic operation that is the inverse of this operation.
-	   All of the sub-operations get inverted. */
-	var new_ops = { };
-	for (var index in this.ops) {
-		new_ops[index] = this.ops[index].inverse(document[index]);
-	}
-	return new exports.APPLY(new_ops);
-}
-
-exports.APPLY.prototype.atomic_compose = function (other) {
-	/* Creates a new atomic operation that has the same result as this
-	   and other applied in sequence (this first, other after). Returns
-	   null if no atomic operation is possible. */
-
-	// two APPLYs
-	if (other instanceof exports.APPLY) {
-		// Start with a clone of this operation's suboperations.
-		var new_ops = { };
-		for (var index in this.ops)
-			new_ops[index] = this.ops[index];
-
-		// Now compose with other.
-		for (var index in other.ops) {
-			if (!(index in new_ops)) {
-				// Operation in other applies to an index not present
-				// in this, so we can just merge - the operations
-				// happen in parallel and don't affect each other.
-				new_ops[index] = other.ops[index];
-			} else {
-				// Compose.
-				var op2 = new_ops[index].compose(other.ops[index]);
-
-				// They composed to a no-op, so delete the
-				// first operation.
-				if (op2 instanceof values.NO_OP)
-					delete new_ops[index];
-
-				// They composed to something atomic, so replace.
-				else
-					new_ops[index] = op2;
-			}
-		}
-
-		return new exports.APPLY(new_ops).simplify();
-	}
-
-	// No composition possible.
-	return null;
-}
-
-exports.APPLY.prototype.rebase_functions = [
-	[exports.APPLY, function(other, conflictless) {
-		// Rebase the sub-operations on corresponding indexes.
-		// If any rebase fails, the whole rebase fails.
-		var new_ops_left = { };
-		for (var key in this.ops) {
-			new_ops_left[key] = this.ops[key];
-			if (key in other.ops)
-				new_ops_left[key] = new_ops_left[key].rebase(other.ops[key], conflictless);
-			if (new_ops_left[key] === null)
-				return null;
-		}
-
-		var new_ops_right = { };
-		for (var key in other.ops) {
-			new_ops_right[key] = other.ops[key];
-			if (key in this.ops)
-				new_ops_right[key] = new_ops_right[key].rebase(this.ops[key], conflictless);
-			if (new_ops_right[key] === null)
-				return null;
-		}
-
-		return [
-			new exports.APPLY(new_ops_left).simplify(),
-			new exports.APPLY(new_ops_right).simplify()
-		];
-	}],
-
-	[exports.MAP, function(other, conflictless) {
-		// APPLY and MAP. Since MAP applies to all indexes, this is
-		// like APPLY and APPLY but MAP's inner operation must rebase
-		// to the *same* thing when it is rebased against each operation
-		// within the APPLY.
-		var new_ops_left = { };
-		var new_op_right = null;
-		for (var key in this.ops) {
-			// Rebase left to right.
-			new_ops_left[key] = this.ops[key].rebase(other.op, conflictless);
-			if (new_ops_left[key] === null)
-				return null;
-
-			// Rebase right to left.
-			var op = other.op.rebase(this.ops[key]);
-			if (op === null)
-				return null;
-			if (new_op_right !== null)
-				if (!deepEqual(op.toJSON(), new_op_right.toJSON(), { strict: true }))
-					return null;
-			new_op_right = op;
-		}
-
-		return [
-			new exports.APPLY(new_ops_left).simplify(),
-			new exports.MAP(new_op_right)
-		];
 	}]
 ];
 
@@ -1024,29 +812,36 @@ exports.MAP.prototype.inspect = function(depth) {
 
 exports.MAP.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
-	   the same type as document but with the element modified. */
+		 the same type as document but with the element modified. */
 
-	// Get an array we can manipulate.
+ 	// Turn string into array of characters.
 	var d;
 	if (typeof document == 'string')
-		d = document.split(/.{0}/) // turn string into array of characters
+		d = document.split(/.{0}/)
+
+	// Clone array.
 	else
- 		d = document.slice(); // clone
+		d = document.slice(); // clone
 	
-	// Apply operation.
-	for (var i = 0; i < d.length; i++)
+	// Apply operation to each element.
+	for (var i = 0; i < d.length; i++) {
 		d[i] = this.op.apply(d[i])
 
-	// Reform sequence.
+		// An operation on strings must return a single character.
+		if (typeof document == 'string' && (typeof d[i] != 'string' || d[i].length != 1))
+			throw "Invalid operation: String type or length changed."
+	}
+
+	// Turn the array of characters back into a string.
 	if (typeof document == 'string')
 		return d.join("");
-	else
- 		return d;
+
+	return d;
 }
 
 exports.MAP.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
-	   of this operation.*/
+		 of this operation.*/
 	var op = this.op.simplify();
 	if (op instanceof values.NO_OP)
 		return new values.NO_OP();	   
@@ -1054,14 +849,33 @@ exports.MAP.prototype.simplify = function () {
 }
 
 exports.MAP.prototype.inverse = function (document) {
-	/* Returns a new atomic operation that is the inverse of this operation */
-	return new exports.MAP(this.op.inverse(document));
+	/* Returns a new atomic operation that is the inverse of this operation. */
+
+	if (document.length == 0)
+		return new exports.NO_OP();
+	if (document.length == 1)
+		return new exports.MAP(this.op.inverse(document[0]));
+
+	// Since the inverse depends on the value of the document and the
+	// elements of document may not all be the same, we have to explode
+	// this out into individual operations.
+	var hunks = [];
+	if (typeof document == 'string')
+		document = document.split(/.{0}/);
+	document.forEach(function(element) {
+		hunks.append({
+			offset: 0,
+			length: 1,
+			op: this.op.inverse(element)
+		});
+	});
+	return new exports.PATCH(hunks);
 }
 
 exports.MAP.prototype.atomic_compose = function (other) {
 	/* Creates a new atomic operation that has the same result as this
-	   and other applied in sequence (this first, other after). Returns
-	   null if no atomic operation is possible. */
+		 and other applied in sequence (this first, other after). Returns
+		 null if no atomic operation is possible. */
 
 	// two MAPs with atomically composable sub-operations
 	if (other instanceof exports.MAP) {
@@ -1076,7 +890,8 @@ exports.MAP.prototype.atomic_compose = function (other) {
 
 exports.MAP.prototype.rebase_functions = [
 	[exports.MAP, function(other, conflictless) {
-		// Two MAPs.
+		// Two MAPs. The rebase succeeds only if a rebase on the
+		// inner operations succeeds.
 		var opa = this.op.rebase(other.op, conflictless);
 		var opb = other.op.rebase(this.op, conflictless);
 		if (opa && opb)
@@ -1087,12 +902,28 @@ exports.MAP.prototype.rebase_functions = [
 	}]
 ];
 
+exports.MAP.prototype.get_length_change = function (old_length) {
+	// Support routine for PATCH that returns the change in
+	// length to a sequence if this operation is applied to it.
+	return 0;
+}
+
+exports.MAP.prototype.decompose_right = function (at_old_index, at_new_index) {
+	// Support routine for PATCH that returns a decomposition of the
+	// operation splitting it at a point in the subsequence this operation
+	// applies to. But since MAP applies to all elements, the decomposition
+	// is trivial.
+	return [this, this];
+}
+
+////
+
 exports.createRandomOp = function(doc, context) {
 	// Create a random operation that could apply to doc.
 	// Choose uniformly across various options.
 	var ops = [];
 
-	// Construct a SPLICE.
+	// Construct a PATCH.
 	ops.push(function() {
 		var hunks = [];
 		var dx = 0;
@@ -1104,22 +935,14 @@ exports.createRandomOp = function(doc, context) {
 			var old_length = Math.floor(Math.random() * (doc.length - offset + ((offset<doc.length) ? 1 : 0)));
 			var old_value = doc.slice(offset, offset+old_length);
 
-			if (context == "string-character") {
-				// Only edits on the whole string, which is a single character, are valid.
-				if (dx != 0 || doc.length != 1) throw "shouldn't happen";
-				offset = 0;
-				old_length = 1;
-				old_value = doc;
-			}
-			
-			// Choose a new value.
-			var new_value = values.createRandomOp(old_value, context == "string-character" ? context : "string").new_value;
+			// Choose an inner operation.
+			var op = values.createRandomOp(old_value, context);
 
 			// Push the hunk.
 			hunks.push({
 				offset: offset-dx,
-				old_value: old_value,
-				new_value: new_value
+				length: old_length,
+				op: op
 			});
 
 			dx = offset + old_length;
@@ -1129,24 +952,17 @@ exports.createRandomOp = function(doc, context) {
 				break;
 		}
 
-		return new exports.SPLICE(hunks);
+		return new exports.PATCH(hunks);
 	});
 
-	// Construct an APPLY (but not an empty one on an empty string).
+	// Construct a MAP. We may not construct a valid MAP because
+	// the random inner operation that we construct for one element
+	// may not be valid on all elements.
 	if (doc.length > 0) {
 		ops.push(function() {
-			var ops = {};
-			while (ops.length == 0 || Math.random() < .75) {
-				var i = Math.floor(Math.random() * doc.length);
-				ops[i] = jot.createRandomOp(
-					elem(doc, i),
-
-					// context is "string-character" when the document
-					// is a string because APPLY cannot change a character
-					// to something other than a character
-					(typeof doc === "string" ? "string-character" : null));
-			}
-			return new exports.APPLY(ops);
+			var random_elem = elem(doc, Math.floor(Math.random() * doc.length));
+			var op = values.createRandomOp(random_elem, context);
+			return new exports.MAP(op);
 		});
 	}
 

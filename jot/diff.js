@@ -97,7 +97,7 @@ function diff_strings(a, b, options) {
 				// Increment counter of changed characters.
 				changed_content += change.value.length;
 
-				// Create an INS or DEL operation for this change.
+				// Create a SPLICE operation for this change.
 				var old_value = "", new_value = "";
 				if (change.removed) old_value = change.value;
 				if (change.added) new_value = change.value;

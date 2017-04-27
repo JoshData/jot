@@ -108,6 +108,17 @@ exports.NO_OP.prototype.atomic_compose = function (other) {
 	return other;
 }
 
+exports.NO_OP.prototype.get_length_change = function (old_length) {
+	// Support routine for sequences.PATCH that returns the change in
+	// length to a sequence if this operation is applied to it.
+	return 0;
+}
+
+exports.NO_OP.prototype.decompose_right = function (at_old_index, at_new_index) {
+	// Support routine for sequences.PATCH.
+	return [this, this];
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 exports.SET.prototype.inspect = function(depth) {
@@ -146,8 +157,8 @@ exports.SET.prototype.atomic_compose = function (other) {
 	/* Creates a new atomic operation that has the same result as this
 	   and other applied in sequence (this first, other after). Returns
 	   null if no atomic operation is possible.
-		   Returns a new SET operation that simply sets the value to what
-		   the value would be when the two operations are composed. */
+	   Returns a new SET operation that simply sets the value to what
+	   the value would be when the two operations are composed. */
 	return new exports.SET(other.apply(this.new_value)).simplify();
 }
 
@@ -209,6 +220,26 @@ exports.SET.prototype.rebase_functions = [
 		return null;
 	}]
 ];
+
+exports.SET.prototype.get_length_change = function (old_length) {
+	// Support routine for sequences.PATCH that returns the change in
+	// length to a sequence if this operation is applied to it.
+	if (typeof this.new_value == "string" || Array.isArray(this.new_value))
+		return this.new_value.length - old_length;
+	throw "not applicable";
+}
+
+exports.SET.prototype.decompose_right = function (at_new_index) {
+	// Support routine for sequences.PATCH that returns a decomposition
+	// of the operation (over a sequence-like object) that splits it
+	// at the given index in the new value.
+	if (typeof this.new_value == "string" || Array.isArray(this.new_value))
+		return [
+			new exports.SET(this.new_value.slice(0, at_new_index)),
+			new exports.SET(this.new_value.slice(at_new_index))
+		];
+	return null;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 

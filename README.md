@@ -160,8 +160,7 @@ makes JOT useful when tracking changes to data, rather than to text.
 
 The operations in JOT are:
 
-* `INS(index, value)`: Insert text into a string or array elements into an array. When applied to strings, `value` is a string. When applied to arrays, `value` is an array. To insert a single element into an array, wrap it in an array before passing to `INS`.
-* `DEL(index, old_value)`: Delete text from a string or removes array elements from an array. When applied to strings, `old_value` is the substring being deleted. When applied to arrays, `old_value` is an array of the items being deleted.
+* `SPLICE(index, length, new_value)`: Replaces text in a string or array elements in an array at the given index and length in the original. To delete, new_value should be an empty string or zero-length array. To insert, length should be zero.
 * `PUT(key, value)`: Add a new property to an object. `key` is any valid JSON key (a string) and `value` is any valid JSON object.
 * `REM(key, old_value)`: Remove a property from an object. `key` is a string and `old_value` is the value of the property before the property is removed.
 * `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings. It can also take a mapping from new keys to old keys they are renamed from, as `REN({new_name: key, ...})`, which also allows for the duplication of property values.
@@ -172,14 +171,14 @@ The operations in JOT are:
 * `MAP(operation)`: Apply any operation to all elements of an array (or all characters in a string). `operation` is any operation created by these constructors.
 
 The JOT model is a superset of the model you need for basic plain text concurrent
-editing. That is, it includes the entire text editing model in the INS and DEL
+editing. That is, it includes the entire text editing model in the SPLICE
 operations plus it adds new operations for non-string data structures.
 
 Note that some operations (DEL) require passing the value
 being modified before the modification took place (i.e. what the value
 was before the operation).
 
-(Also note that interally, INS and DEL are subcases of "SPLICE" and PUT and REM are subcases of SET that use a special value to signal the absense of an object property.)
+(Also note that interally PUT and REM are subcases of SET that use a special value to signal the absense of an object property.)
 
 
 Transformations
@@ -223,7 +222,7 @@ The following operations support conflictless rebase with each other:
 
 * On numbers: SET, MATH
 
-* On strings and arrays: SET, INS, DEL, SPLICE, APPLY
+* On strings and arrays: SET, SPLICE, APPLY
 
 * On objects: SET, PUT, REM, APPLY
 
