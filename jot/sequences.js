@@ -739,6 +739,74 @@ exports.PATCH.prototype.rebase_functions = [
 	}],
 
 	[exports.MOVE, function(other, conflictless) {
+		var splice = [];
+		var pos = other.pos;
+		var count = other.count;
+		var new_pos = other.new_pos;
+		var index = 0;
+		this.hunks.forEach(function(hunk) {
+			index += hunk.offset;
+			// Ranges are within one another
+			if (pos >= index && pos + count <= index + hunk.length
+				|| pos <= index && pos + count >= index + hunk.length) {
+				splice.push(
+					jot.SPLICE(
+						(pos < new_pos ? new_pos - count : new_pos) + (index - pos),
+						hunk.length,
+						hunk.op.new_value
+					)
+				)
+				count -= hunk.length
+				if (pos < new_pos)
+					new_pos -= hunk.length
+
+			// Splice removes start of moved range
+			} else if (index < pos && index + hunk.length >= pos) {
+				var left = pos - index;
+				var right = hunk.length - left;
+				if (pos < new_pos) {
+					splice.push(
+						jot.SPLICE(index, left, ""),
+						jot.SPLICE(new_pos - left - count, right, "")
+					)
+					pos -= left;
+					count -= right;
+					new_pos -= hunk.length;
+				} else {
+					splice.push(
+						jot.SPLICE(new_pos, right,  ""),
+						jot.SPLICE(index + count - left, left, "")
+					);
+					count -= left;
+					pos -= left;
+				}
+			// Splice removes end of moved range
+			} else if (index <= pos + count && index + hunk.length > pos + count) {
+				var left = (pos + count) -  index;
+				var right = hunk.length - left;
+				if (pos < new_pos) {
+					splice.push(
+						jot.SPLICE(index - (count - left), right, ""),
+						jot.SPLICE(new_pos - count + (index - pos) - right, left, "")
+					)
+					count -= left;
+					new_pos -= hunk.length;
+				} else {
+					splice.push(
+						jot.SPLICE(new_pos + (count - left),  left, ""),
+						jot.SPLICE(index, right, "")
+					)
+					count -= left;
+				}
+			} else {
+				splice.push(new jot.SPLICE(hunk.offset, hunk.length, hunk.op.new_value))
+			}
+		})
+
+		return [
+			new jot.LIST(splice).simplify(), 
+			count ? new exports.MOVE(pos, count, new_pos).simplify() : new values.NO_OP
+		];
 		// TODO
 	}]
 ];
