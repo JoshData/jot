@@ -401,6 +401,210 @@ t.notOk(
 	new seqs.MAP(new values.MATH("add", 1)).rebase(
 		new seqs.MAP(new values.MATH("mult", 3))));
 
+
+
+// splice vs move
+
+// splice partially remove beginning of LTR MOVE range
+t.deepEqual(
+  new jot.SPLICE(0, 2, "").rebase(
+    new jot.MOVE(1, 2, 4), true),
+  new jot.SPLICE(0, 1, "").compose(
+  new jot.SPLICE(1, 1, ""))
+)
+t.deepEqual(
+  new jot.MOVE(1, 2, 4).rebase(
+    new jot.SPLICE(0, 2, ""), true),
+  new jot.MOVE(0, 1, 2)
+)
+
+t.deepEqual(new jot.SPLICE(2, 6, "").rebase(
+    new jot.MOVE(5, 5, 13), true),
+  new jot.SPLICE(2, 3, "").compose(
+  	new jot.SPLICE(5, 3, ""))
+)
+
+t.deepEqual(new jot.MOVE(5, 5, 13).rebase(
+    new jot.SPLICE(2, 6, ""), true),
+  new jot.MOVE(2, 2, 7)
+)
+
+// splice partially remove beginning of RTL MOVE range
+t.deepEqual(
+  new jot.SPLICE(4, 2, "").rebase(
+   new jot.MOVE(5, 2, 1), true),
+  new jot.SPLICE(1, 1, "").compose(
+    new jot.SPLICE(5, 1, "")
+  )
+)
+
+t.deepEqual(
+  new jot.MOVE(5, 2, 1).rebase(
+    new jot.SPLICE(4, 2, ""), true),
+  new jot.MOVE(4, 1, 1)
+)
+
+t.deepEqual(new jot.MOVE(6, 5, 2).rebase(
+    new jot.SPLICE(3, 6, ""), true),
+  new jot.MOVE(3, 2, 2)
+)
+
+// splice removes whole LTR MOVE range
+t.deepEqual(
+  new jot.SPLICE(0, 2, "").rebase(
+    new jot.MOVE(0, 2, 4), true),
+  new jot.SPLICE(2, 2, "")
+)
+t.deepEqual(
+  new jot.MOVE(0, 2, 4).rebase(
+    new jot.SPLICE(0, 2, ""), true),
+  new jot.NO_OP
+)
+
+// splice removes whole RTL MOVE range
+t.deepEqual(
+  new jot.SPLICE(4, 2, "").rebase(
+    new jot.MOVE(4, 2, 0), true),
+  new jot.SPLICE(0, 2, "")
+)
+t.deepEqual(
+  new jot.MOVE(4, 2, 0).rebase(
+    new jot.SPLICE(4, 2, ""), true),
+  new jot.NO_OP
+)
+
+// splice is within RTL MOVE range
+t.deepEqual(
+  new jot.SPLICE(4, 3, "").rebase(
+    new jot.MOVE(4, 7, 0), true),
+  new jot.SPLICE(0, 3, "")
+)
+t.deepEqual(
+  new jot.MOVE(4, 7, 0).rebase(
+    new jot.SPLICE(4, 3, ""), true),
+  new jot.MOVE(4, 4, 0)
+)
+
+
+// splice is within LTR MOVE range
+t.deepEqual(
+  new jot.SPLICE(1, 2, "").rebase(
+    new jot.MOVE(0, 4, 4), true),
+  new jot.SPLICE(1, 2, "")
+)
+t.deepEqual(
+  new jot.SPLICE(1, 2, "").rebase(
+    new jot.MOVE(0, 4, 5), true),
+  new jot.SPLICE(2, 2, "")
+)
+t.deepEqual(
+  new jot.MOVE(0, 4, 6).rebase(
+    new jot.SPLICE(1, 2, ""), true),
+  new jot.MOVE(0, 2, 4)
+)
+t.deepEqual(
+  new jot.MOVE(0, 2, 4).rebase(
+    new jot.SPLICE(0, 2, ""), true),
+  new jot.NO_OP
+)
+
+// splice partially removes end of LTR MOVE range
+
+t.deepEqual(
+  new jot.SPLICE(1, 2, "").rebase(
+    new jot.MOVE(0, 2, 4), true),
+  new jot.SPLICE(0, 1, "").compose(
+    new jot.SPLICE(2, 1, "")
+  )
+)
+t.deepEqual(
+  new jot.MOVE(0, 2, 4).rebase(
+    new jot.SPLICE(1, 2, ""), true),
+  new jot.MOVE(0, 1, 2)
+)
+
+t.deepEqual(new jot.SPLICE(6, 5, "").rebase(
+    new jot.MOVE(4, 5, 13), true),
+  new jot.SPLICE(4, 2, "").compose(
+  new jot.SPLICE(8, 3, ""))
+)
+
+t.deepEqual(new jot.MOVE(5, 5, 13).rebase(
+    new jot.SPLICE(2, 6, ""), true),
+  new jot.MOVE(2, 2, 7)
+)
+
+var rebased = new jot.SPLICE(3, 7, "").rebase(
+  new jot.MOVE(0, 9, 23), true
+);
+t.deepEqual(rebased,
+  jot.SPLICE(0, 1, "").compose(
+    jot.SPLICE(16, 6, "")
+  )
+)
+
+//splice partially removes end of RTL MOVE range
+
+t.deepEqual(
+  new jot.SPLICE(6, 2, "").rebase(
+    new jot.MOVE(5, 2, 1), true),
+  new jot.SPLICE(2, 1, "").compose(
+    new jot.SPLICE(6, 1, "")
+  )
+)
+t.deepEqual(
+  new jot.MOVE(0, 2, 4).rebase(
+    new jot.SPLICE(1, 2, ""), true),
+  new jot.MOVE(0, 1, 2)
+)
+
+t.deepEqual(
+  new jot.SPLICE(6, 6, "").rebase(
+    new jot.MOVE(4, 5, 2), true),
+  new jot.SPLICE(4, 3, '').compose(
+    new jot.SPLICE(6, 3, '')
+  )
+)
+
+t.deepEqual(
+  new jot.SPLICE(6, 7, "").rebase(
+    new jot.MOVE(4, 5, 2), true),
+  new jot.SPLICE(4, 3, '').compose(
+    new jot.SPLICE(6, 4, '')
+  )
+)
+
+t.deepEqual(new jot.MOVE(4, 5, 2).rebase(
+  new jot.SPLICE(6, 6, ""), true
+),
+  new jot.MOVE(4, 2, 2)
+)
+
+
+// splice has multiple hunks w LTR MOVE
+t.deepEqual(jot.SPLICE(3, 7, "").compose(
+  new jot.SPLICE(11, 3, "")
+).rebase(
+  new jot.MOVE(0, 9, 23), true
+),
+  jot.SPLICE(0, 1, "").compose(
+    jot.SPLICE(8, 3, "").compose(
+    jot.SPLICE(13, 6, "")))
+)
+t.deepEqual(jot.SPLICE(3, 7, "").compose(
+  new jot.SPLICE(8, 3, "")
+).rebase(
+  new jot.MOVE(0, 9, 23), true
+).apply('JKLMNOPQRSTUVWABCDEFGHIXYZ'),'KLMNOSTUVWABCXYZ')
+
+t.deepEqual(jot.SPLICE(3, 7, "").compose(
+  new jot.SPLICE(11, 3, "")
+).compose(
+  new jot.SPLICE(8, 3, "")
+).rebase(
+  new jot.MOVE(0, 9, 23), true
+).apply('JKLMNOPQRSTUVWABCDEFGHIXYZ'),'KLMNOVWABCXYZ')
+
 t.end();
 
 });
