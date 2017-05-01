@@ -6,7 +6,6 @@ var jot = require("../jot");
 test('sequences', function(t) {
 
 // inspect
-
 t.equal(
 	new seqs.SPLICE(0, 1, "4").inspect(),
 	'<sequences.PATCH +0x1 "4">');
@@ -354,18 +353,15 @@ t.notOk(
 t.deepEqual(
 	new seqs.APPLY(555, new values.SET("y")).rebase(
 		new seqs.APPLY(555, new values.SET("z")), true),
-	new values.NO_OP()
-	)
+	new values.NO_OP())
 t.deepEqual(
 	new seqs.APPLY(555, new values.SET("z")).rebase(
 		new seqs.APPLY(555, new values.SET("y")), true),
-	new seqs.APPLY(555, new values.SET("z"))
-	)
+	new seqs.APPLY(555, new values.SET("z")))
 t.deepEqual(
 	new seqs.APPLY({0: new values.SET("z"), 1: new values.SET("b"), 2: new values.SET("N")}).rebase(
 		new seqs.APPLY({0: new values.SET("y"), 1: new values.SET(" ")}), true),
-	new seqs.APPLY({0: new values.SET("z"), 1: new values.SET("b"), 2: new values.SET("N")})
-	)
+	new seqs.APPLY({0: new values.SET("z"), 1: new values.SET("b"), 2: new values.SET("N")}))
 
 // apply vs move
 
@@ -402,7 +398,6 @@ t.notOk(
 		new seqs.MAP(new values.MATH("mult", 3))));
 
 
-
 // splice vs move
 
 // splice partially remove beginning of LTR MOVE range
@@ -410,103 +405,85 @@ t.deepEqual(
   new jot.SPLICE(0, 2, "").rebase(
     new jot.MOVE(1, 2, 4), true),
   new jot.SPLICE(0, 1, "").compose(
-  new jot.SPLICE(1, 1, ""))
-)
+  new jot.SPLICE(1, 1, "")))
 t.deepEqual(
   new jot.MOVE(1, 2, 4).rebase(
     new jot.SPLICE(0, 2, ""), true),
-  new jot.MOVE(0, 1, 2)
-)
+  new jot.MOVE(0, 1, 2))
 
 t.deepEqual(new jot.SPLICE(2, 6, "").rebase(
     new jot.MOVE(5, 5, 13), true),
   new jot.SPLICE(2, 3, "").compose(
-  	new jot.SPLICE(5, 3, ""))
-)
+  	new jot.SPLICE(5, 3, "")))
 
 t.deepEqual(new jot.MOVE(5, 5, 13).rebase(
     new jot.SPLICE(2, 6, ""), true),
-  new jot.MOVE(2, 2, 7)
-)
+  new jot.MOVE(2, 2, 7))
 
 // splice partially remove beginning of RTL MOVE range
 t.deepEqual(
   new jot.SPLICE(4, 2, "").rebase(
    new jot.MOVE(5, 2, 1), true),
   new jot.SPLICE(1, 1, "").compose(
-    new jot.SPLICE(5, 1, "")
-  )
-)
+    new jot.SPLICE(5, 1, "")))
 
 t.deepEqual(
   new jot.MOVE(5, 2, 1).rebase(
     new jot.SPLICE(4, 2, ""), true),
-  new jot.MOVE(4, 1, 1)
-)
+  new jot.MOVE(4, 1, 1))
 
 t.deepEqual(new jot.MOVE(6, 5, 2).rebase(
     new jot.SPLICE(3, 6, ""), true),
-  new jot.MOVE(3, 2, 2)
-)
+  new jot.MOVE(3, 2, 2))
 
 // splice removes whole LTR MOVE range
 t.deepEqual(
   new jot.SPLICE(0, 2, "").rebase(
     new jot.MOVE(0, 2, 4), true),
-  new jot.SPLICE(2, 2, "")
-)
+  new jot.SPLICE(2, 2, ""))
 t.deepEqual(
   new jot.MOVE(0, 2, 4).rebase(
     new jot.SPLICE(0, 2, ""), true),
-  new jot.NO_OP
-)
+  new jot.NO_OP)
 
 // splice removes whole RTL MOVE range
 t.deepEqual(
   new jot.SPLICE(4, 2, "").rebase(
     new jot.MOVE(4, 2, 0), true),
-  new jot.SPLICE(0, 2, "")
-)
+  new jot.SPLICE(0, 2, ""))
 t.deepEqual(
   new jot.MOVE(4, 2, 0).rebase(
     new jot.SPLICE(4, 2, ""), true),
-  new jot.NO_OP
-)
+  new jot.NO_OP)
 
 // splice is within RTL MOVE range
 t.deepEqual(
   new jot.SPLICE(4, 3, "").rebase(
     new jot.MOVE(4, 7, 0), true),
-  new jot.SPLICE(0, 3, "")
-)
+  new jot.SPLICE(0, 3, ""))
 t.deepEqual(
   new jot.MOVE(4, 7, 0).rebase(
     new jot.SPLICE(4, 3, ""), true),
-  new jot.MOVE(4, 4, 0)
-)
+  new jot.MOVE(4, 4, 0))
 
 
 // splice is within LTR MOVE range
 t.deepEqual(
   new jot.SPLICE(1, 2, "").rebase(
     new jot.MOVE(0, 4, 4), true),
-  new jot.SPLICE(1, 2, "")
-)
+  new jot.SPLICE(1, 2, ""))
 t.deepEqual(
   new jot.SPLICE(1, 2, "").rebase(
     new jot.MOVE(0, 4, 5), true),
-  new jot.SPLICE(2, 2, "")
-)
+  new jot.SPLICE(2, 2, ""))
 t.deepEqual(
   new jot.MOVE(0, 4, 6).rebase(
     new jot.SPLICE(1, 2, ""), true),
-  new jot.MOVE(0, 2, 4)
-)
+  new jot.MOVE(0, 2, 4))
 t.deepEqual(
   new jot.MOVE(0, 2, 4).rebase(
     new jot.SPLICE(0, 2, ""), true),
-  new jot.NO_OP
-)
+  new jot.NO_OP)
 
 // splice partially removes end of LTR MOVE range
 
@@ -514,32 +491,25 @@ t.deepEqual(
   new jot.SPLICE(1, 2, "").rebase(
     new jot.MOVE(0, 2, 4), true),
   new jot.SPLICE(0, 1, "").compose(
-    new jot.SPLICE(2, 1, "")
-  )
-)
+    new jot.SPLICE(2, 1, "")))
 t.deepEqual(
   new jot.MOVE(0, 2, 4).rebase(
     new jot.SPLICE(1, 2, ""), true),
-  new jot.MOVE(0, 1, 2)
-)
+  new jot.MOVE(0, 1, 2))
 
 t.deepEqual(new jot.SPLICE(6, 5, "").rebase(
     new jot.MOVE(4, 5, 13), true),
   new jot.SPLICE(4, 2, "").compose(
-  new jot.SPLICE(8, 3, ""))
-)
+  new jot.SPLICE(8, 3, "")))
 
 t.deepEqual(new jot.MOVE(5, 5, 13).rebase(
     new jot.SPLICE(2, 6, ""), true),
-  new jot.MOVE(2, 2, 7)
-)
+  new jot.MOVE(2, 2, 7))
 
 t.deepEqual(new jot.SPLICE(3, 7, "").rebase(
   new jot.MOVE(0, 9, 23), true),
   jot.SPLICE(0, 1, "").compose(
-    jot.SPLICE(16, 6, "")
-  )
-)
+    jot.SPLICE(16, 6, "")))
 
 //splice partially removes end of RTL MOVE range
 
@@ -547,36 +517,28 @@ t.deepEqual(
   new jot.SPLICE(6, 2, "").rebase(
     new jot.MOVE(5, 2, 1), true),
   new jot.SPLICE(2, 1, "").compose(
-    new jot.SPLICE(6, 1, "")
-  )
-)
+    new jot.SPLICE(6, 1, "")))
 t.deepEqual(
   new jot.MOVE(0, 2, 4).rebase(
     new jot.SPLICE(1, 2, ""), true),
-  new jot.MOVE(0, 1, 2)
-)
+  new jot.MOVE(0, 1, 2))
 
 t.deepEqual(
   new jot.SPLICE(6, 6, "").rebase(
     new jot.MOVE(4, 5, 2), true),
   new jot.SPLICE(4, 3, '').compose(
-    new jot.SPLICE(6, 3, '')
-  )
-)
+    new jot.SPLICE(6, 3, '')))
 
 t.deepEqual(
   new jot.SPLICE(6, 7, "").rebase(
     new jot.MOVE(4, 5, 2), true),
   new jot.SPLICE(4, 3, '').compose(
-    new jot.SPLICE(6, 4, '')
-  )
-)
+    new jot.SPLICE(6, 4, '')))
 
 t.deepEqual(new jot.MOVE(4, 5, 2).rebase(
   new jot.SPLICE(6, 6, ""), true
 ),
-  new jot.MOVE(4, 2, 2)
-)
+  new jot.MOVE(4, 2, 2))
 
 
 // splice has multiple hunks w LTR MOVE
@@ -587,8 +549,7 @@ t.deepEqual(jot.SPLICE(3, 7, "").compose(
 ),
   jot.SPLICE(0, 1, "").compose(
     jot.SPLICE(8, 3, "").compose(
-    jot.SPLICE(13, 6, "")))
-)
+    jot.SPLICE(13, 6, ""))))
 t.deepEqual(jot.SPLICE(3, 7, "").compose(
   new jot.SPLICE(8, 3, "")
 ).rebase(
@@ -603,6 +564,24 @@ t.deepEqual(jot.SPLICE(3, 7, "").compose(
   new jot.MOVE(0, 9, 23), true
 ).apply('JKLMNOPQRSTUVWABCDEFGHIXYZ'),'KLMNOVWABCXYZ')
 
+t.deepEqual(jot.SPLICE(2, 2, "").compose(
+  new jot.SPLICE(4, 2, "")
+).compose(
+  new jot.SPLICE(6, 2, "")
+).rebase(
+  new jot.MOVE(0, 9, 23), true
+),
+  jot.SPLICE(1, 2, "").compose(
+    jot.SPLICE(14, 2, "").compose(
+      jot.SPLICE(16, 2, ""))))
+
+t.deepEqual(jot.SPLICE(2, 2, "").compose(
+  new jot.SPLICE(4, 2, "")
+).compose(
+  new jot.SPLICE(6, 2, "")
+).rebase(
+  new jot.MOVE(0, 9, 23), true
+).apply('JKLMNOPQRSTUVWABCDEFGHIXYZ'), 'JMNOPQRSTUVWABEFIXYZ')
 t.end();
 
 });

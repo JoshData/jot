@@ -742,29 +742,33 @@ exports.PATCH.prototype.rebase_functions = [
 		var splice = [];
 		var pos = other.pos;
 		var count = other.count;
+		var moving = count;
 		var new_pos = other.new_pos;
 		var index = 0;
+		var ltr = pos < new_pos;
 		this.hunks.forEach(function(hunk) {
 			index += hunk.offset;
+
 			// Ranges are within one another
 			if (pos >= index && pos + count <= index + hunk.length
-				|| pos <= index && pos + count >= index + hunk.length) {
+			 || pos <= index && pos + count >= index + hunk.length) {
 				splice.push(
 					jot.SPLICE(
-						(pos < new_pos ? new_pos - count : new_pos) + (index - pos),
+						(ltr ? new_pos - count : new_pos) + (index - pos),
 						hunk.length,
 						hunk.op.new_value
 					)
 				)
 				count -= hunk.length
-				if (pos < new_pos)
+				if (ltr) {
 					new_pos -= hunk.length
+				}
 
 			// Splice removes start of moved range
 			} else if (index < pos && index + hunk.length >= pos) {
 				var left = pos - index;
 				var right = hunk.length - left;
-				if (pos < new_pos) {
+				if (ltr) {
 					splice.push(
 						jot.SPLICE(index, left, ""),
 						jot.SPLICE(new_pos - left - count, right, "")
@@ -772,6 +776,7 @@ exports.PATCH.prototype.rebase_functions = [
 					pos -= left;
 					count -= right;
 					new_pos -= hunk.length;
+					index += left;
 				} else {
 					splice.push(
 						jot.SPLICE(new_pos, right,  ""),
@@ -779,12 +784,14 @@ exports.PATCH.prototype.rebase_functions = [
 					);
 					count -= left;
 					pos -= left;
+					index += left;
 				}
+
 			// Splice removes end of moved range
 			} else if (index <= pos + count && index + hunk.length > pos + count) {
 				var left = (pos + count) -  index;
 				var right = hunk.length - left;
-				if (pos < new_pos) {
+				if (ltr) {
 					splice.push(
 						jot.SPLICE(index - (count - left), right, ""),
 						jot.SPLICE(new_pos - count + (index - pos) - right, left, "")
@@ -798,16 +805,28 @@ exports.PATCH.prototype.rebase_functions = [
 					)
 					count -= left;
 				}
+
+			// Splice comes after MOVE source region, but before target
+			} else if (index > pos && index < new_pos) {
+				splice.push(new jot.SPLICE(index - count, hunk.length, hunk.op.new_value))
+				index += hunk.length;
+
+			// Splice comes before MOVE source position but after new position
+			} else if (index < pos && index > new_pos) {
+				splice.push(new jot.SPLICE(index, hunk.length, hunk.op.new_value))
+				index += hunk.length;
+
+			// Splice outside of range modified by MOVE
 			} else {
 				splice.push(new jot.SPLICE(index, hunk.length, hunk.op.new_value))
+				index += hunk.length;
 			}
 		})
 
 		return [
 			new jot.LIST(splice).simplify(), 
-			count ? new exports.MOVE(pos, count, new_pos).simplify() : new values.NO_OP
+			count ? new exports.MOVE(pos, count, new_pos) : new values.NO_OP
 		];
-		// TODO
 	}]
 ];
 
@@ -882,7 +901,7 @@ exports.MAP.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
 		 the same type as document but with the element modified. */
 
- 	// Turn string into array of characters.
+	// Turn string into array of characters.
 	var d;
 	if (typeof document == 'string')
 		d = document.split(/.{0}/)
