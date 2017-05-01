@@ -799,7 +799,7 @@ exports.PATCH.prototype.rebase_functions = [
 					count -= left;
 				}
 			} else {
-				splice.push(new jot.SPLICE(hunk.offset, hunk.length, hunk.op.new_value))
+				splice.push(new jot.SPLICE(index, hunk.length, hunk.op.new_value))
 			}
 		})
 

@@ -534,10 +534,8 @@ t.deepEqual(new jot.MOVE(5, 5, 13).rebase(
   new jot.MOVE(2, 2, 7)
 )
 
-var rebased = new jot.SPLICE(3, 7, "").rebase(
-  new jot.MOVE(0, 9, 23), true
-);
-t.deepEqual(rebased,
+t.deepEqual(new jot.SPLICE(3, 7, "").rebase(
+  new jot.MOVE(0, 9, 23), true),
   jot.SPLICE(0, 1, "").compose(
     jot.SPLICE(16, 6, "")
   )
