@@ -760,12 +760,10 @@ exports.PATCH.prototype.rebase_functions = [
 					)
 				)
 				count -= hunk.length
-				if (ltr) {
+				if (ltr)
 					new_pos -= hunk.length
-				}
-
 			// Splice removes start of moved range
-			} else if (index < pos && index + hunk.length >= pos) {
+			} else if (index < pos && index + hunk.length > pos) {
 				var left = pos - index;
 				var right = hunk.length - left;
 				if (ltr) {
@@ -780,15 +778,14 @@ exports.PATCH.prototype.rebase_functions = [
 				} else {
 					splice.push(
 						jot.SPLICE(new_pos, right,  ""),
-						jot.SPLICE(index + count - left, left, "")
+						jot.SPLICE(index + count - left, left,  "")
 					);
 					count -= left;
 					pos -= left;
-					index += left;
 				}
 
 			// Splice removes end of moved range
-			} else if (index <= pos + count && index + hunk.length > pos + count) {
+			} else if (index < pos + count && index + hunk.length > pos + count) {
 				var left = (pos + count) -  index;
 				var right = hunk.length - left;
 				if (ltr) {
@@ -808,23 +805,21 @@ exports.PATCH.prototype.rebase_functions = [
 
 			// Splice comes after MOVE source region, but before target
 			} else if (index > pos && index < new_pos) {
-				splice.push(new jot.SPLICE(index - count, hunk.length, hunk.op.new_value))
-				index += hunk.length;
+				splice.push(jot.SPLICE(index - count, hunk.length, hunk.op.new_value))
 
 			// Splice comes before MOVE source position but after new position
 			} else if (index < pos && index > new_pos) {
-				splice.push(new jot.SPLICE(index, hunk.length, hunk.op.new_value))
-				index += hunk.length;
+				splice.push(jot.SPLICE(index + count, hunk.length, hunk.op.new_value))
+				pos -= hunk.length
 
 			// Splice outside of range modified by MOVE
 			} else {
-				splice.push(new jot.SPLICE(index, hunk.length, hunk.op.new_value))
-				index += hunk.length;
+				splice.push(jot.SPLICE(index, hunk.length, hunk.op.new_value))
 			}
 		})
 
 		return [
-			new jot.LIST(splice).simplify(), 
+			new jot.LIST(splice.simplify(), 
 			count ? new exports.MOVE(pos, count, new_pos) : new values.NO_OP
 		];
 	}]
