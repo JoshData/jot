@@ -593,18 +593,17 @@ t.deepEqual(jot.SPLICE(12, 2, "").compose(
 
 
 // splice has multiple hunks w RTL MOVE
-expect(jot.SPLICE(10, 2, "")
-.compose(
-	jot.SPLICE(12, 2, "")
+
+t.deepEqual(jot.SPLICE(10, 4, "").compose(
+  new jot.SPLICE(12, 2, "")
 ).compose(
   new jot.SPLICE(14, 2, "")
 ).compose(
   new jot.SPLICE(16, 2, "")
 ).rebase(
   new jot.MOVE(13, 9, 3), true
-).apply(new jot.MOVE(13, 9, 3).apply('ABCDEFGHIJKLMNOPQRSTUVWXYZ'))
-  .to.eql('ABCNQRUVDEFGHIJMYZ')
-
+).apply(new jot.MOVE(13, 9, 3).apply('ABCDEFGHIJKLMNOPQRSTUVWXYZ')),
+  'ABCOPSTDEFGHIJWX');
 t.end();
 
 });

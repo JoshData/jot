@@ -738,90 +738,118 @@ exports.PATCH.prototype.rebase_functions = [
 		return rebase_patches(this, other, conflictless);
 	}],
 
+/* Rebase SPLICE hunks against MOVE by transforming
+them into sequential SPLICE commands in one pass.
+Whenever hunk deletion intersects with MOVE boundaries,
+it splits into two SPLICE commands.
+
+Example:  MOVE D E F left-to-right between I & J
+					A B C    [D E F]   G H I | J K L
+
+If we have SPLICE hunks in:
+	- A B C: will not be affected by MOVE
+	- D E F: will be offset at new_pos, affected by A B C length change
+	- G H I: will ignore length changes in D E F
+	- J K L: will not be affected by MOVE  */
+	
 	[exports.MOVE, function(other, conflictless) {
 		var splice = [];
 		var pos = other.pos;
 		var count = other.count;
-		var moving = count;
 		var new_pos = other.new_pos;
+		var delta = 0;     // delta of length change
+		var unmoved = 0;   // delta of changes not moving counter 
+		var prepended = 0; // delta before area affected by MOVE 
 		var index = 0;
 		var ltr = pos < new_pos;
+		var pos = other.pos;
+		var count = other.count;
+		var new_pos = other.new_pos;
 		this.hunks.forEach(function(hunk) {
 			index += hunk.offset;
 
 			// Ranges are within one another
-			if (pos >= index && pos + count <= index + hunk.length
-			 || pos <= index && pos + count >= index + hunk.length) {
+			if (other.pos >= index && other.pos + other.count <= index + hunk.length
+			 || other.pos <= index && other.pos + other.count >= index + hunk.length) {
 				splice.push(
 					jot.SPLICE(
-						(ltr ? new_pos - count : new_pos) + (index - pos),
+						(ltr ? other.new_pos - other.count : other.new_pos + unmoved) + (index + delta - other.pos),
 						hunk.length,
 						hunk.op.new_value
 					)
 				)
 				count -= hunk.length
-				if (ltr)
+				if (ltr) {
+					unmoved += hunk.length;
 					new_pos -= hunk.length
+				}
 			// Splice removes start of moved range
-			} else if (index < pos && index + hunk.length > pos) {
-				var left = pos - index;
+			} else if (index < other.pos && index + hunk.length > other.pos) {
+				var left = other.pos - index;
 				var right = hunk.length - left;
 				if (ltr) {
 					splice.push(
 						jot.SPLICE(index, left, ""),
-						jot.SPLICE(new_pos - left - count, right, "")
+						jot.SPLICE(other.new_pos - left - other.count, right, "")
 					)
 					pos -= left;
 					count -= right;
 					new_pos -= hunk.length;
-					index += left;
+					unmoved += right
 				} else {
 					splice.push(
-						jot.SPLICE(new_pos, right,  ""),
-						jot.SPLICE(index + count - left, left,  "")
+						jot.SPLICE(other.new_pos + prepended, right,  ""),
+						jot.SPLICE(index + count - right, left,  "")
 					);
-					count -= left;
+					unmoved += left
 					pos -= left;
+					count -= right;
 				}
 
 			// Splice removes end of moved range
-			} else if (index < pos + count && index + hunk.length > pos + count) {
-				var left = (pos + count) -  index;
+			} else if (index < other.pos + other.count && index + hunk.length > other.pos + other.count) {
+				var left = (other.pos + other.count) -  index;
 				var right = hunk.length - left;
 				if (ltr) {
 					splice.push(
-						jot.SPLICE(index - (count - left), right, ""),
-						jot.SPLICE(new_pos - count + (index - pos) - right, left, "")
+						jot.SPLICE(delta + index - (other.count - left), right, ""),
+						jot.SPLICE(delta + other.new_pos - other.count + (index - other.pos) - right, left, "")
 					)
 					count -= left;
 					new_pos -= hunk.length;
+					delta += left;
 				} else {
 					splice.push(
-						jot.SPLICE(new_pos + (count - left),  left, ""),
-						jot.SPLICE(index, right, "")
+						jot.SPLICE(delta + other.new_pos + (other.count - left),  left, ""),
+						jot.SPLICE(delta + index, right, "")
 					)
 					count -= left;
 				}
 
 			// Splice comes after MOVE source region, but before target
-			} else if (index > pos && index < new_pos) {
-				splice.push(jot.SPLICE(index - count, hunk.length, hunk.op.new_value))
+			} else if (index > other.pos && index < other.new_pos) {
+				splice.push(jot.SPLICE(index + delta + unmoved - other.count, hunk.length, hunk.op.new_value))
 
 			// Splice comes before MOVE source position but after new position
-			} else if (index < pos && index > new_pos) {
-				splice.push(jot.SPLICE(index + count, hunk.length, hunk.op.new_value))
+			} else if (index < other.pos && index > other.new_pos) {
+				splice.push(jot.SPLICE(index + delta - unmoved + other.count, hunk.length, hunk.op.new_value))
 				pos -= hunk.length
 
 			// Splice outside of range modified by MOVE
 			} else {
-				splice.push(jot.SPLICE(index, hunk.length, hunk.op.new_value))
+				prepended -= hunk.length;
+				splice.push(jot.SPLICE(index + delta, hunk.length, hunk.op.new_value))
 			}
+			index += hunk.length;
+			delta -= hunk.length;
+
 		})
 
 		return [
-			new jot.LIST(splice.simplify(), 
+			new jot.LIST(splice).simplify(), 
 			count ? new exports.MOVE(pos, count, new_pos) : new values.NO_OP
 		];
+		// TODO
 	}]
 ];
 
