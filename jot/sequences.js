@@ -759,10 +759,8 @@ If we have SPLICE hunks in:
 		var new_pos = other.new_pos;
 		var index  = 0;  // iterator over hunks
 		var changes = 0;  // accumulator of total length change
-		var removed = 0; // number of skipped characters
 		var unmoved = 0; // delta of changes not moving counter 
 		var before = 0;  // length change before RTL MOVE source
-		var inserted = 0;
 		var ltr = pos < new_pos;
 		this.hunks.forEach(function(hunk) {
 			index += hunk.offset;
