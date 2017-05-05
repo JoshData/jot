@@ -757,92 +757,91 @@ If we have SPLICE hunks in:
 		var pos = other.pos;
 		var count = other.count;
 		var new_pos = other.new_pos;
-		var delta = 0;     // delta of length change
-		var unmoved = 0;   // delta of changes not moving counter 
-		var prepended = 0; // delta before area affected by MOVE 
-		var index = 0;
+		var index  = 0;  // iterator over hunks
+		var changes = 0;  // accumulator of total length change
+		var removed = 0; // number of skipped characters
+		var unmoved = 0; // delta of changes not moving counter 
+		var before = 0;  // length change before RTL MOVE source
+		var inserted = 0;
 		var ltr = pos < new_pos;
-		var pos = other.pos;
-		var count = other.count;
-		var new_pos = other.new_pos;
 		this.hunks.forEach(function(hunk) {
 			index += hunk.offset;
-
+			var cursor = index + changes;
+			var change = hunk.op.get_length_change(hunk.length)
 			// Ranges are within one another
 			if (other.pos >= index && other.pos + other.count <= index + hunk.length
 			 || other.pos <= index && other.pos + other.count >= index + hunk.length) {
 				splice.push(
 					jot.SPLICE(
-						(ltr ? other.new_pos - other.count : other.new_pos + unmoved) + (index + delta - other.pos),
+						(ltr 
+							? other.new_pos + (cursor - other.pos) - other.count
+							: other.new_pos + (index - other.pos) - (other.count - count) + before),
 						hunk.length,
 						hunk.op.new_value
 					)
 				)
-				count -= hunk.length
-				if (ltr) {
-					unmoved += hunk.length;
-					new_pos -= hunk.length
-				}
-			// Splice removes start of moved range
+				count += change
+				if (ltr)
+					unmoved -= change;
+
+			// Splice intersects with left boundary of moved range
 			} else if (index < other.pos && index + hunk.length > other.pos) {
 				var left = other.pos - index;
 				var right = hunk.length - left;
 				if (ltr) {
 					splice.push(
-						jot.SPLICE(index, left, ""),
+						jot.SPLICE(cursor, left, hunk.op.new_value),
 						jot.SPLICE(other.new_pos - left - other.count, right, "")
 					)
-					pos -= left;
-					count -= right;
-					new_pos -= hunk.length;
 					unmoved += right
 				} else {
 					splice.push(
-						jot.SPLICE(other.new_pos + prepended, right,  ""),
-						jot.SPLICE(index + count - right, left,  "")
+						jot.SPLICE(other.new_pos + before, right,  ""),
+						jot.SPLICE(cursor + count - right, left,  hunk.op.new_value)
 					);
 					unmoved += left
-					pos -= left;
-					count -= right;
 				}
+				pos += right;
+				count -= right;
 
-			// Splice removes end of moved range
+			// Splice intersects with right boundary of moved range
 			} else if (index < other.pos + other.count && index + hunk.length > other.pos + other.count) {
-				var left = (other.pos + other.count) -  index;
+				var left = (other.pos + other.count) - index;
 				var right = hunk.length - left;
 				if (ltr) {
 					splice.push(
-						jot.SPLICE(delta + index - (other.count - left), right, ""),
-						jot.SPLICE(delta + other.new_pos - other.count + (index - other.pos) - right, left, "")
+						jot.SPLICE(cursor - (other.count - left), right, ""),
+						jot.SPLICE(other.new_pos - other.count + (cursor - other.pos) - right, left, "")
 					)
 					count -= left;
-					new_pos -= hunk.length;
-					delta += left;
+					changes += left;
 				} else {
 					splice.push(
-						jot.SPLICE(delta + other.new_pos + (other.count - left),  left, ""),
-						jot.SPLICE(delta + index, right, "")
+						jot.SPLICE(other.new_pos + before + (count - left), left, ""),
+						jot.SPLICE(cursor, right, "")
 					)
 					count -= left;
 				}
 
 			// Splice comes after MOVE source region, but before target
 			} else if (index > other.pos && index < other.new_pos) {
-				splice.push(jot.SPLICE(index + delta + unmoved - other.count, hunk.length, hunk.op.new_value))
+				splice.push(jot.SPLICE(cursor + unmoved - other.count, hunk.length, hunk.op.new_value))
 
 			// Splice comes before MOVE source position but after new position
 			} else if (index < other.pos && index > other.new_pos) {
-				splice.push(jot.SPLICE(index + delta - unmoved + other.count, hunk.length, hunk.op.new_value))
-				pos -= hunk.length
+				splice.push(jot.SPLICE(cursor - unmoved + other.count, hunk.length, hunk.op.new_value))
 
 			// Splice outside of range modified by MOVE
 			} else {
-				prepended -= hunk.length;
-				splice.push(jot.SPLICE(index + delta, hunk.length, hunk.op.new_value))
+				splice.push(jot.SPLICE(cursor, hunk.length, hunk.op.new_value))
+				before += change
 			}
+			if (index < other.pos)
+				pos += change
+			if (index < other.new_pos)
+				new_pos += change
 			index += hunk.length;
-			delta -= hunk.length;
-
+			changes += change;
 		})
 
 		return [
