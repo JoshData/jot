@@ -738,7 +738,114 @@ exports.PATCH.prototype.rebase_functions = [
 		return rebase_patches(this, other, conflictless);
 	}],
 
-	[exports.MOVE, function(other, conflictless) {
+/* Rebase SPLICE hunks against MOVE by transforming
+them into sequential SPLICE commands in one pass.
+Whenever hunk deletion intersects with MOVE boundaries,
+it splits into two SPLICE commands.
+
+Example:  MOVE D E F left-to-right between I & J
+					A B C    [D E F]   G H I | J K L
+
+If we have SPLICE hunks in:
+	- A B C: will not be affected by MOVE
+	- D E F: will be offset at new_pos, affected by A B C length change
+	- G H I: will ignore length changes in D E F
+	- J K L: will not be affected by MOVE  */
+	
+		[exports.MOVE, function(other, conflictless) {
+		var splice  = [];
+		var pos     = other.pos;
+		var count   = other.count;
+		var new_pos = other.new_pos;
+		var index   = 0;  // iterator over hunks
+		var changes = 0;  // accumulator of total length change
+		var unmoved = 0;  // delta of changes not moving counter 
+		var before  = 0;  // length change before RTL MOVE source
+		var ltr = pos < new_pos;
+		this.hunks.forEach(function(hunk) {
+			index += hunk.offset;
+			var cursor = index + changes;
+			var change = hunk.op.get_length_change(hunk.length)
+			// Ranges are within one another
+			if (other.pos >= index && other.pos + other.count <= index + hunk.length
+			 || other.pos <= index && other.pos + other.count >= index + hunk.length) {
+				splice.push(
+					jot.SPLICE(
+						(ltr 
+							? other.new_pos + (cursor - other.pos) - other.count
+							: other.new_pos + (index - other.pos) - (other.count - count) + before),
+						hunk.length,
+						hunk.op.new_value
+					)
+				)
+				count += change
+				if (ltr)
+					unmoved -= change;
+
+			// Splice intersects with left boundary of moved range
+			} else if (index < other.pos && index + hunk.length > other.pos) {
+				var left = other.pos - index;
+				var right = hunk.length - left;
+				if (ltr) {
+					splice.push(
+						jot.SPLICE(cursor, left, hunk.op.new_value),
+						jot.SPLICE(other.new_pos - left - other.count, right, "")
+					)
+					unmoved += right
+				} else {
+					splice.push(
+						jot.SPLICE(other.new_pos + before, right,  ""),
+						jot.SPLICE(cursor + count - right, left,  hunk.op.new_value)
+					);
+					unmoved += left
+				}
+				pos += right;
+				count -= right;
+
+			// Splice intersects with right boundary of moved range
+			} else if (index < other.pos + other.count && index + hunk.length > other.pos + other.count) {
+				var left = (other.pos + other.count) - index;
+				var right = hunk.length - left;
+				if (ltr) {
+					splice.push(
+						jot.SPLICE(cursor - (other.count - left), right, ""),
+						jot.SPLICE(other.new_pos - other.count + (cursor - other.pos) - right, left,  hunk.op.new_value)
+					)
+					count -= left;
+					changes += left;
+				} else {
+					splice.push(
+						jot.SPLICE(other.new_pos + before + (count - left), left,  hunk.op.new_value),
+						jot.SPLICE(cursor, right, "")
+					)
+					count -= left;
+				}
+
+			// Splice comes after MOVE source region, but before target
+			} else if (index > other.pos && index < other.new_pos) {
+				splice.push(jot.SPLICE(cursor + unmoved - other.count, hunk.length, hunk.op.new_value))
+
+			// Splice comes before MOVE source position but after new position
+			} else if (index < other.pos && index > other.new_pos) {
+				splice.push(jot.SPLICE(cursor - unmoved + other.count, hunk.length, hunk.op.new_value))
+
+			// Splice outside of range modified by MOVE
+			} else {
+				splice.push(jot.SPLICE(cursor, hunk.length, hunk.op.new_value))
+				before += change
+			}
+			if (index < other.pos)
+				pos += change
+			if (index < other.new_pos)
+				new_pos += change
+			index += hunk.length;
+			changes += change;
+		})
+
+		return [
+			new jot.LIST(splice).simplify(), 
+			count ? new exports.MOVE(pos, count, new_pos) : new values.NO_OP
+		];
 		// TODO
 	}]
 ];
@@ -814,7 +921,7 @@ exports.MAP.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
 		 the same type as document but with the element modified. */
 
- 	// Turn string into array of characters.
+	// Turn string into array of characters.
 	var d;
 	if (typeof document == 'string')
 		d = document.split(/.{0}/)

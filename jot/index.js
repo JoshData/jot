@@ -33,6 +33,7 @@ exports.SET = function() { return new_op(values.SET, arguments) };
 exports.MATH = function() { return new_op(values.MATH, arguments) };
 exports.PATCH = function() { return new_op(sequences.PATCH, arguments) };
 exports.SPLICE = function() { return new_op(sequences.SPLICE, arguments) };
+exports.MOVE = function() { return new_op(sequences.MOVE, arguments) };
 exports.MAP = function() { return new_op(sequences.MAP, arguments) };
 exports.PUT = function() { return new_op(objects.PUT, arguments) };
 exports.REN = function() { return new_op(objects.REN, arguments) };
