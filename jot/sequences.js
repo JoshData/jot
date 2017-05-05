@@ -752,15 +752,15 @@ If we have SPLICE hunks in:
 	- G H I: will ignore length changes in D E F
 	- J K L: will not be affected by MOVE  */
 	
-	[exports.MOVE, function(other, conflictless) {
-		var splice = [];
-		var pos = other.pos;
-		var count = other.count;
+		[exports.MOVE, function(other, conflictless) {
+		var splice  = [];
+		var pos     = other.pos;
+		var count   = other.count;
 		var new_pos = other.new_pos;
-		var index  = 0;  // iterator over hunks
+		var index   = 0;  // iterator over hunks
 		var changes = 0;  // accumulator of total length change
-		var unmoved = 0; // delta of changes not moving counter 
-		var before = 0;  // length change before RTL MOVE source
+		var unmoved = 0;  // delta of changes not moving counter 
+		var before  = 0;  // length change before RTL MOVE source
 		var ltr = pos < new_pos;
 		this.hunks.forEach(function(hunk) {
 			index += hunk.offset;
@@ -809,13 +809,13 @@ If we have SPLICE hunks in:
 				if (ltr) {
 					splice.push(
 						jot.SPLICE(cursor - (other.count - left), right, ""),
-						jot.SPLICE(other.new_pos - other.count + (cursor - other.pos) - right, left, "")
+						jot.SPLICE(other.new_pos - other.count + (cursor - other.pos) - right, left,  hunk.op.new_value)
 					)
 					count -= left;
 					changes += left;
 				} else {
 					splice.push(
-						jot.SPLICE(other.new_pos + before + (count - left), left, ""),
+						jot.SPLICE(other.new_pos + before + (count - left), left,  hunk.op.new_value),
 						jot.SPLICE(cursor, right, "")
 					)
 					count -= left;
