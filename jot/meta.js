@@ -115,14 +115,10 @@ exports.LIST.prototype.atomic_compose = function (other) {
 	return new exports.LIST(new_ops);
 }
 
-exports.LIST.prototype.rebase = function (other, conflictless) {
-	/* Transforms this operation so that it can be composed *after* the other
-	   operation to yield the same logical effect. Returns null on conflict. 
-	   The conflictless parameter tries to prevent conflicts. */
-	return exports.rebase(other, this, conflictless);
-}
-
 exports.rebase = function(base, ops, conflictless) {
+	// Turn each argument into an array of operations.
+	// If an argument is a LIST, unwrap it.
+
 	if (base instanceof exports.LIST)
 		base = base.ops;
 	else
@@ -133,11 +129,21 @@ exports.rebase = function(base, ops, conflictless) {
 	else
 		ops = [ops];
 
-	var ops = rebase_array(base, ops, conflictless);
-	if (ops == null) return null;
-	if (ops.length == 0) return new values.NO_OP();
-	if (ops.length == 1) return ops[0];
-	return new exports.LIST(ops).simplify();
+	// Run the rebase algorithm.
+
+	var ret = rebase_array(base, ops, conflictless);
+
+	// The rebase may have failed.
+	if (ret == null) return null;
+
+	// ...or yielded no operations --- turn it into a NO_OP operation.
+	if (ret.length == 0) return new values.NO_OP();
+
+	// ...or yielded a single operation --- return it.
+	if (ret.length == 1) return ret[0];
+
+	// ...or yielded a list of operations --- re-wrap it in a LIST operation.
+	return new exports.LIST(ret).simplify();
 }
 
 function rebase_array(base, ops, conflictless) {
