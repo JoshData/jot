@@ -71,7 +71,7 @@ exports.BaseOperation.prototype.isNoOp = function() {
 
 exports.BaseOperation.prototype.toJSON = function() {
 	var repr = { };
-	repr['_type'] = { 'module': this.type[0], 'class': this.type[1] };
+	repr['_type'] = this.type[0] + "." + this.type[1];
 	var keys = Object.keys(this);
 	for (var i = 0; i < keys.length; i++) {
 		var value = this[keys[i]];
@@ -122,11 +122,14 @@ exports.opFromJSON = function(obj, op_map) {
 		extend_op_map(meta);
 	}
 
-	// Sanity check.
-	if (!('_type' in obj)) throw "Not an operation.";
+	// Fetch the constructor.
+	if (typeof obj['_type'] !== "string") throw "Not an operation.";
+	var dottedclassparts = obj._type.split(/\./g, 2);
+	if (dottedclassparts.length != 2) throw "Not an operation.";
+	var constructor = op_map[dottedclassparts[0]][dottedclassparts[1]];
 
-	// Reconstruct.
-	var constructor = op_map[obj._type.module][obj._type.class];
+	// Construct the constructor's arguments by using the class's
+	// constructor_args static field that we require op classes to have.
 	var args = constructor.prototype.constructor_args.map(function(item) {
 		var value = obj[item];
 
