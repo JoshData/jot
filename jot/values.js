@@ -1,8 +1,11 @@
-/*  An operational transformation library for atomic values. This
-	library provides three operations: NO_OP (an operation that
-	does nothing), SET (replace the document with a new value), and
-	MATH (apply a function to the document). These functions are generic
-	over various sorts of data types that they may apply to.
+/*  An operational transformation library for atomic values.
+
+	This library provides three operations: NO_OP (an operation
+	that leaves the value unchanged), SET (replaces the value
+	with a new value), and MATH (apply one of several mathematical
+	functions to the value). These functions are generic over
+	various sorts of atomic data types that they may apply to.
+
 
 	new values.NO_OP()
 
@@ -32,8 +35,15 @@
 	       as a tuple of the increment and the modulus). The document
 	       object must be non-negative and less than the modulus.
 
+	"and": bitwise and (over integers and booleans only)
+
+	"or": bitwise or (over integers and booleans only)
+	
 	"xor": bitwise exclusive-or (over integers and booleans
 	       only)
+
+	"not": bitwise not (over integers and booleans only; the operand
+	       is ignored)
 	
 	Note that by commutative we mean that the operation is commutative
 	under composition, i.e. add(1)+add(2) == add(2)+add(1).
@@ -254,16 +264,26 @@ exports.MATH.prototype.apply = function (document) {
 		throw "Invalid operation on non-numeric document."
 	if (this.operator == "add")
 		return document + this.operand;
-	if (this.operator == "rot")
-		return (document + this.operand[0]) % this.operand[1];
 	if (this.operator == "mult")
 		return document * this.operand;
+
+	if (!Number.isInteger(document) && typeof document != "boolean")
+		throw "Invalid operation on non-integer/non-boolean document."
+
+	if (this.operator == "rot")
+		return (document + this.operand[0]) % this.operand[1];
+	if (this.operator == "and")
+		return document & this.operand;
+	if (this.operator == "or")
+		return document | this.operand;
 	if (this.operator == "xor") {
 		var ret = document ^ this.operand;
 		if (typeof document == 'boolean')
 			ret = !!ret; // cast to boolean
 		return ret;
 	}
+	if (this.operator == "not")
+		return ~document;
 }
 
 exports.MATH.prototype.simplify = function () {
@@ -278,6 +298,14 @@ exports.MATH.prototype.simplify = function () {
 		return new exports.MATH("rot", [this.operand[0] % this.operand[1], this.operand[1]]);
 	if (this.operator == "mult" && this.operand == 1)
 		return new exports.NO_OP();
+	if (this.operator == "and" && this.operand === 0)
+		return new exports.SET(0);
+	if (this.operator == "and" && this.operand === false)
+		return new exports.SET(false);
+	if (this.operator == "or" && this.operand === 0)
+		return new exports.NO_OP();
+	if (this.operator == "or" && this.operand === false)
+		return new exports.NO_OP();
 	if (this.operator == "xor" && this.operand == 0)
 		return new exports.NO_OP();
 	return this;
@@ -285,19 +313,22 @@ exports.MATH.prototype.simplify = function () {
 
 exports.MATH.prototype.inverse = function (document) {
 	/* Returns a new atomic operation that is the inverse of this operation,
-	given the state of the document before the operation applies. */
-	// The document itself doesn't matter.
-	return this.invert();
-}
-
-exports.MATH.prototype.invert = function () {
+	given the state of the document before the operation applies.
+	For most of these operations the value of document doesn't
+	matter. */
 	if (this.operator == "add")
 		return new exports.MATH("add", -this.operand);
 	if (this.operator == "rot")
 		return new exports.MATH("rot", [-this.operand[0], this.operand[1]]);
 	if (this.operator == "mult")
 		return new exports.MATH("mult", 1.0/this.operand);
+	if (this.operator == "and")
+		return new exports.MATH("or", document & (~this.operand));
+	if (this.operator == "or")
+		return new exports.MATH("xor", ~document & this.operand);
 	if (this.operator == "xor")
+		return this; // is its own inverse
+	if (this.operator == "not")
 		return this; // is its own inverse
 }
 
@@ -319,9 +350,21 @@ exports.MATH.prototype.atomic_compose = function (other) {
 		if (this.operator == other.operator && this.operator == "mult")
 			return new exports.MATH("mult", this.operand * other.operand).simplify();
 
+		// two and's and the operands
+		if (this.operator == other.operator && this.operator == "and")
+			return new exports.MATH("and", this.operand & other.operand).simplify();
+
+		// two or's or the operands
+		if (this.operator == other.operator && this.operator == "or")
+			return new exports.MATH("or", this.operand | other.operand).simplify();
+
 		// two xor's xor the operands
 		if (this.operator == other.operator && this.operator == "xor")
 			return new exports.MATH("xor", this.operand ^ other.operand).simplify();
+
+		// two not's cancel each other out
+		if (this.operator == other.operator && this.operator == "not")
+			return new exports.NO_OP();
 	}
 	
 	return null; // no composition is possible
@@ -339,31 +382,6 @@ exports.MATH.prototype.rebase_functions = [
 			if (this.operator != "rot" || this.operand[1] == other.operand[1])
 				return [this, other];
 		}
-
-		// If we are given two operators, then we don't know which order they
-		// should be applied in. In a conflictless rebase, we can choose on
-		// arbitrarily (but predictably). They all operate over numbers so they
-		// can be applied in either order, it's just that the resulting value
-		// will depend on the order. We sort on both operator and operand because
-		// in a rot the operand contains information that distinguishes them.
-		if (conflictless) {
-			// The one with the lower sort order applies last. So if this has
-			// a lower sort order, then when rebasing this we don't make a
-			// change. But when rebasing other, we have to undo this, then
-			// apply other, then apply this again.
-			if (jot.cmp([this.operator, this.operand], [other.operator, other.operand]) < 0) {
-				return [
-					this,
-					jot.LIST([this.invert(), other, this])
-				];
-			}
-
-			// if cmp == 0, then the operators were the same and we handled
-			// it above. if cmp > 0 then we handle this on the call to
-			// other.rebase(this).
-
-		}
-
 		return null;
 	}]
 ];
@@ -389,12 +407,13 @@ exports.createRandomOp = function(doc, context) {
 		ops.push(function() { return new exports.SET(MISSING) });
 
 	// Set to another value of the same type.
+	ops.push(function() { return new exports.SET(doc) });
 	if (typeof doc === "boolean")
 		ops.push(function() { return new exports.SET(!doc) });
-	if (typeof doc === "number")
+	if (typeof doc === "number") {
 		ops.push(function() { return new exports.SET(doc + 50) });
-	if (typeof doc === "number")
 		ops.push(function() { return new exports.SET(doc / 2.1) });
+	}
 
 	if (typeof doc === "string" || Array.isArray(doc)) {
 		if (context != "string-character") {
@@ -464,8 +483,21 @@ exports.createRandomOp = function(doc, context) {
 		ops.push(function() { return new exports.MATH("add", 2.5); })
 		ops.push(function() { return new exports.MATH("rot", [1, 13]); })
 		ops.push(function() { return new exports.MATH("mult", .75); })
-		ops.push(function() { return new exports.MATH("xor", 0xFF); })
-
+		if (Number.isInteger(doc)) {
+			ops.push(function() { return new exports.MATH("and", 0xF1); })
+			ops.push(function() { return new exports.MATH("or", 0xF1); })
+			ops.push(function() { return new exports.MATH("xor", 0xF1); })
+			ops.push(function() { return new exports.MATH("not", null); })
+		}
+	}
+	if (typeof doc === "boolean") {
+		ops.push(function() { return new exports.MATH("and", true); })
+		ops.push(function() { return new exports.MATH("and", false); })
+		ops.push(function() { return new exports.MATH("or", true); })
+		ops.push(function() { return new exports.MATH("or", false); })
+		ops.push(function() { return new exports.MATH("xor", true); })
+		ops.push(function() { return new exports.MATH("xor", false); })
+		ops.push(function() { return new exports.MATH("not", null); })
 	}
 
 	// Select randomly.

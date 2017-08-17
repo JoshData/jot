@@ -52,6 +52,12 @@ t.equal(
 	new values.MATH("mult", 5).apply(2),
 	10);
 t.equal(
+	new values.MATH("and", 0xF0).apply(0xF1),
+	0xF0);
+t.equal(
+	new values.MATH("or", 0xF0).apply(0x1),
+	0xF1);
+t.equal(
 	new values.MATH("xor", 12).apply(25),
 	21);
 t.equal(
@@ -60,6 +66,9 @@ t.equal(
 t.equal(
 	new values.MATH("xor", 1).apply(false),
 	true);
+t.equal(
+	new values.MATH("not", null).apply(0xF1),
+	~0xF1);
 
 // simplify
 
@@ -90,6 +99,12 @@ t.deepEqual(
 	new values.MATH("mult", 1).simplify(),
 	new values.NO_OP());
 t.deepEqual(
+	new values.MATH("and", 0).simplify(),
+	new values.SET(0));
+t.deepEqual(
+	new values.MATH("or", 0).simplify(),
+	new values.NO_OP());
+t.deepEqual(
 	new values.MATH("xor", 0).simplify(),
 	new values.NO_OP());
 
@@ -104,16 +119,22 @@ t.deepEqual(
 	new values.SET(0));
 
 t.deepEqual(
-	new values.MATH("add", 5).invert(),
+	new values.MATH("add", 5).inverse(0),
 	new values.MATH("add", -5));
 t.deepEqual(
-	new values.MATH("rot", [5, 2]).invert(),
+	new values.MATH("rot", [5, 2]).inverse(0),
 	new values.MATH("rot", [-5, 2]));
 t.deepEqual(
-	new values.MATH("mult", 5).invert(),
+	new values.MATH("mult", 5).inverse(0),
 	new values.MATH("mult", 1/5));
 t.deepEqual(
-	new values.MATH("xor", 5).invert(),
+	new values.MATH("and", 0xF0).inverse(0xF),
+	new values.MATH("or", 0xF));
+t.deepEqual(
+	new values.MATH("or", 0xF0).inverse(0xF),
+	new values.MATH("xor", 0xF0));
+t.deepEqual(
+	new values.MATH("xor", 5).inverse(0),
 	new values.MATH("xor", 5));
 
 
@@ -150,9 +171,21 @@ t.deepEqual(
 		new values.MATH("mult", 2) ),
 	null);
 t.deepEqual(
+	new values.MATH("and", 0x1).atomic_compose(
+		new values.MATH("and", 0x2) ),
+	new values.SET(0));
+t.deepEqual(
+	new values.MATH("or", 0x1).atomic_compose(
+		new values.MATH("or", 0x2) ),
+	new values.MATH("or", 0x3));
+t.deepEqual(
 	new values.MATH("xor", 12).compose(
 		new values.MATH("xor", 3) ),
 	new values.MATH("xor", 15));
+t.deepEqual(
+	new values.MATH("not", null).compose(
+		new values.MATH("not", null) ),
+	new values.NO_OP());
 
 t.deepEqual(
 	new values.MATH("add", 1).compose(
@@ -202,14 +235,6 @@ t.deepEqual(
 	new values.MATH("rot", [1, 3]));
 t.notOk(
 	new values.MATH("mult", 2).rebase(new values.MATH("add", 1) )
-	);
-t.deepEqual(
-	new values.MATH("mult", 2).rebase(new values.MATH("add", 1), true),
-	new LIST([new values.MATH("add", -1), new values.MATH("mult", 2), new values.MATH("add", 1)])
-	);
-t.deepEqual(
-	new values.MATH("add", 1).rebase(new values.MATH("mult", 2), true),
-	new values.MATH("add", 1)
 	);
 t.deepEqual(
 	new values.MATH("xor", 3).rebase(new values.MATH("xor", 12) ),
