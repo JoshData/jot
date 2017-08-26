@@ -220,7 +220,7 @@ exports.SET.prototype.get_length_change = function (old_length) {
 	// length to a sequence if this operation is applied to it.
 	if (typeof this.new_value == "string" || Array.isArray(this.new_value))
 		return this.new_value.length - old_length;
-	throw new Error("not applicable");
+	throw new Error("not applicable: new value is of type " + typeof this.new_value);
 }
 
 exports.SET.prototype.decompose_right = function (at_new_index) {

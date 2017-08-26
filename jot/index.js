@@ -284,18 +284,20 @@ exports.createRandomValue = function(depth) {
 	// string
 	values.push(Math.random().toString(36).substring(7));
 
-	// array
-	if ((depth||0) < 3) {
+	// array (make nesting exponentially less likely at each level of recursion)
+	if (Math.random() < Math.exp(-(depth||0))) {
+		var n = Math.floor(Math.exp(3*Math.random()))-1;
 		var array = [];
-		while (Math.random() < .7)
+		while (array.length < n)
 			array.push(exports.createRandomValue((depth||0)+1));
 		values.push(array);
 	}
 
-	// object
-	if ((depth||0) < 3) {
+	// object (make nesting exponentially less likely at each level of recursion)
+	if (Math.random() < Math.exp(-(depth||0))) {
+		var n = Math.floor(Math.exp(2.5*Math.random()))-1;
 		var obj = { };
-		while (Math.random() < .7)
+		while (Object.keys(obj).length < n)
 			obj[Math.random().toString(36).substring(7)] = exports.createRandomValue((depth||0)+1);
 		values.push(obj);
 	}
