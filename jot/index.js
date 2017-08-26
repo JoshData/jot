@@ -43,7 +43,7 @@ exports.APPLY = function(pos_or_key) {
 		return new_op(sequences.APPLY, arguments);
 	if (typeof pos_or_key == "string")
 		return new_op(objects.APPLY, arguments);
-	throw "Invalid Argument";
+	throw new Error("Invalid Argument");
 };
 exports.UNAPPLY = function(op, pos_or_key) {
 	if (typeof pos_or_key == "number"
@@ -123,9 +123,9 @@ exports.opFromJSON = function(obj, op_map) {
 	}
 
 	// Fetch the constructor.
-	if (typeof obj['_type'] !== "string") throw "Not an operation.";
+	if (typeof obj['_type'] !== "string") throw new Error("Not an operation.");
 	var dottedclassparts = obj._type.split(/\./g, 2);
-	if (dottedclassparts.length != 2) throw "Not an operation.";
+	if (dottedclassparts.length != 2) throw new Error("Not an operation.");
 	var constructor = op_map[dottedclassparts[0]][dottedclassparts[1]];
 
 	// Construct the constructor's arguments by using the class's

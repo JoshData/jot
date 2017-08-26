@@ -53,7 +53,7 @@ console.log("")
 /* You must rebase user2's operations before composing them. */
 
 user2 = user2.rebase(user1);
-if (user2 == null) throw "hmm";
+if (user2 == null) throw new Error("hmm");
 
 console.log("Merged")
 console.log(user1.compose(user2).apply(doc)); // { title: 'My Program', count: 20 }

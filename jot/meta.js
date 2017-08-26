@@ -14,8 +14,8 @@ var values = require('./values.js');
 exports.module_name = 'meta'; // for serialization/deserialization
 
 exports.LIST = function (ops) {
-	if (ops == null) throw "Invalid Argument";
-	if (!(ops instanceof Array)) throw "Invalid Argument";
+	if (ops == null) throw new Error("Invalid Argument");
+	if (!(ops instanceof Array)) throw new Error("Invalid Argument");
 	this.ops = ops; // TODO: How to ensure this array is immutable?
 	Object.freeze(this);
 }

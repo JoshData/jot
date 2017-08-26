@@ -102,7 +102,7 @@ function map_index(pos, move_op) {
 	if (pos < move_op.pos) return pos + move_op.count; // a moved around by from right to left
 	if (pos > move_op.pos && pos >= move_op.new_pos) return pos; // after the move
 	if (pos > move_op.pos) return pos - move_op.count; // a moved around by from left to right
-	throw "unhandled problem"
+	throw new Error("unhandled problem");
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -113,26 +113,26 @@ exports.PATCH = function () {
 	/* An operation that replaces a subrange of the sequence with new elements. */
 	if (arguments[0] === "__hmm__") return; // used for subclassing
 	if (arguments.length != 1)
-		throw "Invaid Argument";
+		throw new Error("Invaid Argument");
 
 	this.hunks = arguments[0];
 
 	// Sanity check & freeze hunks.
 	if (!Array.isArray(this.hunks))
-		throw "Invaid Argument";
+		throw new Error("Invaid Argument");
 	this.hunks.forEach(function(hunk) {
 		if (typeof hunk.offset != "number")
-			throw "Invalid Argument (hunk offset not a number)";
+			throw new Error("Invalid Argument (hunk offset not a number)");
 		if (hunk.offset < 0)
-			throw "Invalid Argument (hunk offset is negative)";
+			throw new Error("Invalid Argument (hunk offset is negative)");
 		if (typeof hunk.length != "number")
-			throw "Invalid Argument (hunk length is not a number)";
+			throw new Error("Invalid Argument (hunk length is not a number)");
 		if (hunk.length < 0)
-			throw "Invalid Argument (hunk length is negative)";
+			throw new Error("Invalid Argument (hunk length is negative)");
 		if (!(hunk.op instanceof jot.BaseOperation))
-			throw "Invalid Argument (hunk operation is not an operation)";
+			throw new Error("Invalid Argument (hunk operation is not an operation)");
 		if (typeof hunk.op.get_length_change != "function")
-			throw "Invalid Argument (hunk operation does not support get_length_change)";
+			throw new Error("Invalid Argument (hunk operation does not support get_length_change)");
 		Object.freeze(hunk);
 	});
 
@@ -170,7 +170,7 @@ jot.add_op(exports.PATCH, exports, 'PATCH', ['hunks']);
 			op_map = { };
 			op_map[arguments[0]] = arguments[1];
 		} else {
-			throw "Invalid Argument"
+			throw new Error("Invalid Argument")
 		}
 
 		// Form hunks.
@@ -189,7 +189,7 @@ jot.add_op(exports.PATCH, exports, 'PATCH', ['hunks']);
 	exports.APPLY.prototype = new exports.PATCH("__hmm__"); // inherit prototype
 
 exports.MOVE = function (pos, count, new_pos) {
-	if (pos == null || count == null || count == 0 || new_pos == null) throw "Invalid Argument";
+	if (pos == null || count == null || count == 0 || new_pos == null) throw new Error("Invalid Argument");
 	this.pos = pos;
 	this.count = count;
 	this.new_pos = new_pos;
@@ -199,7 +199,7 @@ exports.MOVE.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.MOVE, exports, 'MOVE', ['pos', 'count', 'new_pos']);
 
 exports.MAP = function (op) {
-	if (op == null) throw "Invalid Argument";
+	if (op == null) throw new Error("Invalid Argument");
 	this.op = op;
 	Object.freeze(this);
 }
@@ -235,7 +235,7 @@ exports.PATCH.prototype.apply = function (document) {
 	
 	this.hunks.forEach(function(hunk) {
 		if (index + hunk.offset + hunk.length > document.length)
-			throw "offset past end of document";
+			throw new Error("offset past end of document");
 
 		// Append unchanged content before this hunk.
 		ret = concat2(ret, document.slice(index, index+hunk.offset));
@@ -245,9 +245,9 @@ exports.PATCH.prototype.apply = function (document) {
 		var new_value = hunk.op.apply(document.slice(index, index+hunk.length));
 
 		if (typeof document == "string" && typeof new_value != "string")
-			throw "operation yielded invalid substring";
+			throw new Error("operation yielded invalid substring");
 		if (Array.isArray(document) && !Array.isArray(new_value))
-			throw "operation yielded invalid subarray";
+			throw new Error("operation yielded invalid subarray");
 
 		ret = concat2(ret, new_value);
 
@@ -829,7 +829,7 @@ exports.MAP.prototype.apply = function (document) {
 
 		// An operation on strings must return a single character.
 		if (typeof document == 'string' && (typeof d[i] != 'string' || d[i].length != 1))
-			throw "Invalid operation: String type or length changed."
+			throw new Error("Invalid operation: String type or length changed.")
 	}
 
 	// Turn the array of characters back into a string.

@@ -170,8 +170,8 @@ function diff_arrays(a, b, options) {
 			).forEach(function(change) {
 				if (!change.removed && !change.added) {
 					// Same.
-					if (a_index+change.items.length > ai.length) throw "out of range";
-					if (b_index+change.items.length > bi.length) throw "out of range";
+					if (a_index+change.items.length > ai.length) throw new Error("out of range");
+					if (b_index+change.items.length > bi.length) throw new Error("out of range");
 					hunks.push({ type: 'equal', ai: ai.slice(a_index, a_index+change.items.length), bi: bi.slice(b_index, b_index+change.items.length) })
 					a_index += change.items.length;
 					b_index += change.items.length;

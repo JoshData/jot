@@ -76,7 +76,7 @@ exports.REN = function () {
 		this.map = { };
 		this.map[arguments[1]] = arguments[0];
 	} else {
-		throw "invalid arguments";
+		throw new Error("invalid arguments");
 	}
 	Object.freeze(this);
 	Object.freeze(this.map);
@@ -93,7 +93,7 @@ exports.APPLY = function () {
 		this.ops = { };
 		this.ops[arguments[0]] = arguments[1];
 	} else {
-		throw "invalid arguments";
+		throw new Error("invalid arguments");
 	}
 	Object.freeze(this);
 	Object.freeze(this.ops);

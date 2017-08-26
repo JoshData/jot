@@ -220,7 +220,7 @@ exports.SET.prototype.get_length_change = function (old_length) {
 	// length to a sequence if this operation is applied to it.
 	if (typeof this.new_value == "string" || Array.isArray(this.new_value))
 		return this.new_value.length - old_length;
-	throw "not applicable";
+	throw new Error("not applicable");
 }
 
 exports.SET.prototype.decompose_right = function (at_new_index) {
@@ -245,14 +245,14 @@ exports.MATH.prototype.apply = function (document) {
 	/* Applies the operation to this.operand. Applies the operator/operand
 	   as a function to the document. */
 	if (typeof document != "number" && typeof document != "boolean")
-		throw "Invalid operation on non-numeric document."
+		throw new Error("Invalid operation on non-numeric document.")
 	if (this.operator == "add")
 		return document + this.operand;
 	if (this.operator == "mult")
 		return document * this.operand;
 
 	if (!Number.isInteger(document) && typeof document != "boolean")
-		throw "Invalid operation on non-integer/non-boolean document."
+		throw new Error("Invalid operation on non-integer/non-boolean document.")
 
 	if (this.operator == "rot")
 		return (document + this.operand[0]) % this.operand[1];
