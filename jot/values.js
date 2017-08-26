@@ -19,21 +19,21 @@
 	new values.SET(new_value)
 	
 	The atomic replacement of one value with another. Works for
-	any data type. Supports a conflictless rebase with other SET
-	and MATH operations.
+	any data type. The SET operation supports a conflictless
+	rebase with all other operations.
 	
 
 	new values.MATH(operator, operand)
 	
-	Applies a commutative arithmetic function to a number.
+	Applies a commutative arithmetic function to a number or boolean.
 	
-	"add": addition (use a negative number to decrement)
+	"add": addition (use a negative number to decrement) (over numbers only)
 	
-	"mult": multiplication (use the reciprocal to divide)
+	"mult": multiplication (use the reciprocal to divide) (over numbers only)
 	
 	"rot": addition followed by modulus (the operand is given
 	       as a tuple of the increment and the modulus). The document
-	       object must be non-negative and less than the modulus.
+	       object must be a non-negative integer and less than the modulus.
 
 	"and": bitwise and (over integers and booleans only)
 
@@ -48,7 +48,11 @@
 	Note that by commutative we mean that the operation is commutative
 	under composition, i.e. add(1)+add(2) == add(2)+add(1).
 
-	MATH supports a conflictless rebase with other MATH and SET operations.
+	The operators are also guaranteed to not change the data type of the
+	document. Numbers remain numbers and booleans remain booleans.
+
+	MATH supports a conflictless rebase with all other operations if
+	prior document state is provided in the conflictless argument object.
 	
 	*/
 	
@@ -202,32 +206,12 @@ exports.SET.prototype.rebase_functions = [
 	[exports.MATH, function(other, conflictless) {
 		// SET (this) and MATH (other). To get a consistent effect no matter
 		// which order the operations are applied in, we say the SET comes
-		// first and the MATH second. But since MATH only works for numeric
-		// types, this isn't always possible.
-
-		// To get the logical effect of applying MATH second (even though it's
-		// the SET being rebased, meaning it will be composed second), we
-		// apply the MATH operation to its new value.
-		try {
-			// If the data types make this possible...
-			return [
-				new exports.SET(other.apply(this.new_value)),
-				other // no change is needed when it is the MATH being rebased
-				];
-		} catch (e) {
-			// Data type mismatch, e.g. the SET sets the value to a string and
-			// so the MATH operation can't be applied. In this case, we simply
-			// always prefer the SET if we're asked for a conflictless rebase.
-			// The MATH becomes a no-op.
-			if (conflictless)
-				return [
-					new exports.SET(this.new_value),
-					new exports.NO_OP()
-					];
-		}
-
-		// Can't resolve conflict.
-		return null;
+		// second. i.e. If the SET is already applied, the MATH becomes a
+		// no-op. If the MATH is already applied, the SET is applied unchanged.
+		return [
+			this,
+			new exports.NO_OP()
+			];
 	}]
 ];
 
@@ -374,14 +358,32 @@ exports.MATH.prototype.rebase_functions = [
 	// Rebase this against other and other against this.
 
 	[exports.MATH, function(other, conflictless) {
-		// Since the map operators are commutative, it doesn't matter which order
-		// they are applied in. That makes the rebase trivial -- if the operators
-		// are the same, then nothing needs to be done.
-		if (this.operator == other.operator) {
-			// rot must have same modulus
-			if (this.operator != "rot" || this.operand[1] == other.operand[1])
+		// If this and other are MATH operations with the same operator (i.e. two
+		// add's; two rot's with the same modulus), then since they are commutative
+		// their order does not matter and the rebase returns each operation
+		// unchanged.
+		if (this.operator == other.operator
+			&& (this.operator != "rot" || this.operand[1] == other.operand[1]))
 				return [this, other];
+
+		// When two different operators ocurr simultaneously, then the order matters.
+		// Since operators preserve the data type of the document, we know that both
+		// orders are valid. Choose an order based on the operations: We'll put this
+		// first and other second.
+		if (conflictless && conflictless.document) {
+			if (jot.cmp([this.operator, this.operand], [other.operator, other.operand]) < 0) {
+				return [
+					// this came second, so replace it with a SET that sets the value
+					// as if it came first
+					new exports.SET(this.compose(other).apply(conflictless.document)),
+
+					// no need to rewrite other because it's supposed to come second
+					other
+				]
+			}
 		}
+
+		// The other order is handled by the converse call handled by jot.rebase.
 		return null;
 	}]
 ];

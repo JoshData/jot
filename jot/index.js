@@ -237,6 +237,8 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless) {
 		return meta.rebase(other, this, conflictless);
 
 	// Everything can rebase against a SET in a conflictless way.
+	// Note that to resolve ties, SET rebased against SET is handled
+	// in SET's rebase_functions.
 	if (conflictless) {
 		// The SET always wins!
 		if (this instanceof values.SET)
