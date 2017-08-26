@@ -258,6 +258,9 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless, debug) {
 			if (debug) debug("rebase", this, "on", other, "=>", new values.NO_OP());
 			return new values.NO_OP();
 		}
+
+		// If conflictless rebase would fail, raise an error.
+		throw new Error("Rebase failed between " + this.inspect() + " and " + other.inspect() + ".");
 	}
 
 	return null;
