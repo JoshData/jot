@@ -238,7 +238,14 @@ exports.SET.prototype.decompose_right = function (at_new_index) {
 //////////////////////////////////////////////////////////////////////////////
 
 exports.MATH.prototype.inspect = function(depth) {
-	return util.format("<values.MATH %s:%j>", this.operator, this.operand);
+	return util.format("<values.MATH %s:%s>",
+		this.operator,
+			(typeof this.operand == "number" && (this.operator == "and" || this.operator == "or" || this.operator == "xor"))
+			?
+				("0x" + this.operand.toString(16))
+			:
+				util.format("%j", this.operand)
+		);
 }
 
 exports.MATH.prototype.apply = function (document) {
