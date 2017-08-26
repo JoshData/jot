@@ -386,7 +386,7 @@ exports.MATH.prototype.rebase_functions = [
 		// Since operators preserve the data type of the document, we know that both
 		// orders are valid. Choose an order based on the operations: We'll put this
 		// first and other second.
-		if (conflictless && conflictless.document) {
+		if (conflictless && "document" in conflictless) {
 			if (jot.cmp([this.operator, this.operand], [other.operator, other.operand]) < 0) {
 				return [
 					// this came second, so replace it with a SET that sets the value

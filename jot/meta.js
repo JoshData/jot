@@ -231,7 +231,14 @@ function rebase_array(base, ops, conflictless, debug) {
 		var r2 = rebase_array(op1, base, conflictless, debug);
 		if (r2 == null) return null; // rebase failed (must be the same as r1, so this test should never succeed)
 		
-		var r3 = rebase_array(r2, op2, conflictless, debug);
+		// For the remainder operations, we have to adjust the 'conflictless' object.
+		// If it provides the base document state, then we have to advance the document
+		// for the application of op1.
+		var conflictless2 = !conflictless ? null : Object.assign({}, conflictless);
+		if ("document" in conflictless2)
+			conflictless2.document = new jot.LIST(op1).apply(conflictless2.document);
+
+		var r3 = rebase_array(r2, op2, conflictless2, debug);
 		if (r3 == null) return null; // rebase failed
 		
 		// returns a new array
@@ -245,6 +252,11 @@ function rebase_array(base, ops, conflictless, debug) {
 		for (var i = 0; i < base.length; i++) {
 			ops = rebase_array([base[i]], ops, conflictless, debug);
 			if (ops == null) return null; // conflict
+
+			// Adjust the 'conflictless' object if it provides the base document state
+			// since for later operations we're assuming base[i] has now been applied.
+			if ("document" in conflictless)
+				conflictless.document = base[i].apply(conflictless.document);
 		}
 		return ops;
 	}
