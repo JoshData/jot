@@ -356,6 +356,15 @@ exports.MATH.prototype.atomic_compose = function (other) {
 		// two not's cancel each other out
 		if (this.operator == other.operator && this.operator == "not")
 			return new exports.NO_OP();
+
+		// and+or with the same operand is SET(operand)
+		if (this.operator == "and" && other.operator == "or" && this.operand == other.operand)
+			return new exports.SET(this.operand);
+
+		// or+xor with the same operand is AND(~operand)
+		if (this.operator == "or" && other.operator == "xor" && this.operand == other.operand)
+			return new exports.MATH("and", ~this.operand);
+
 	}
 	
 	return null; // no composition is possible
