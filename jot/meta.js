@@ -116,6 +116,12 @@ exports.LIST.prototype.atomic_compose = function (other) {
 }
 
 exports.rebase = function(base, ops, conflictless, debug) {
+	// Ensure the operations are simplified, since rebase
+	// is much more expensive than simplified.
+
+	base = base.simplify();
+	ops = ops.simplify();
+
 	// Turn each argument into an array of operations.
 	// If an argument is a LIST, unwrap it.
 
