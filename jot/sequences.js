@@ -694,8 +694,15 @@ function rebase_patches(a, b, conflictless) {
 		// They both affected the exact same region, so just rebase the
 		// inner operations and update lengths.
 		if (dx_start == 0 && dx_end == 0) {
-			var ar = a_state.old_hunks[0].op.rebase(b_state.old_hunks[0].op, conflictless);
-			var br = b_state.old_hunks[0].op.rebase(a_state.old_hunks[0].op, conflictless);
+			// When conflictless is supplied with a prior document state,
+			// the state represents the sequence, so we have to dig into
+			// it and pass an inner value
+			var conflictless2 = !conflictless ? null : Object.assign({}, conflictless);
+			if (conflictless2 && "document" in conflictless2)
+				conflictless2.document = conflictless2.document.slice(a_state.start(), a_state.end());
+
+			var ar = a_state.old_hunks[0].op.rebase(b_state.old_hunks[0].op, conflictless2);
+			var br = b_state.old_hunks[0].op.rebase(a_state.old_hunks[0].op, conflictless2);
 			if (ar == null || br == null)
 				return null;
 			a_state.old_hunks[0] = {
@@ -716,6 +723,8 @@ function rebase_patches(a, b, conflictless) {
 		// Other overlaps generate conflicts.
 		if (!conflictless)
 			return null;
+
+		throw "not implemented";
 
 		// One side starts before the other. Take it.
 		if (dx_start > 0) {
@@ -892,13 +901,123 @@ exports.MAP.prototype.rebase_functions = [
 	[exports.MAP, function(other, conflictless) {
 		// Two MAPs. The rebase succeeds only if a rebase on the
 		// inner operations succeeds.
-		var opa = this.op.rebase(other.op, conflictless);
-		var opb = other.op.rebase(this.op, conflictless);
+		var opa;
+		var opb;
+
+		// If conflictless is null or there is no prior document
+		// state, then it's safe to pass conflictless into the
+		// inner operations.
+		if (!conflictless || !("document" in conflictless)) {
+			opa = this.op.rebase(other.op, conflictless);
+			opb = other.op.rebase(this.op, conflictless);
+
+		// If there is a single element in the prior document
+		// state, then unwrap it for the inner operations.
+		} else if (conflictless.document.length == 1) {
+			var conflictless2 = Object.assign({}, conflictless); // clone
+			conflictless2.document = conflictless2.document[0];
+
+			opa = this.op.rebase(other.op, conflictless2);
+			opb = other.op.rebase(this.op, conflictless2);
+
+		// If the prior document state is an empty array, then
+		// we know these operations are NO_OPs anyway.
+		} else if (conflictless.document.length == 0) {
+			return [
+				new jot.NO_OP(),
+				new jot.NO_OP()
+			];
+
+		// The prior document state is an array of more than one
+		// element. In order to pass the prior document state into
+		// the inner operations, we have to try it for each element
+		// of the prior document state. If they all yield the same
+		// operation, then we can use that operation. Otherwise the
+		// rebases are too sensitive on prior document state and
+		// we can't rebase.
+		} else {
+			var ok = true;
+			for (var i = 0; i < conflictless.document.length; i++) {
+				var conflictless2 = Object.assign({}, conflictless); // clone
+				conflictless2.document = conflictless.document[i];
+
+				var a = this.op.rebase(other.op, conflictless2);
+				var b = other.op.rebase(this.op, conflictless2);
+				if (i == 0) {
+					opa = a;
+					opb = b;
+				} else {
+					if (!deepEqual(opa, a, { strict: true }))
+						ok = false;
+					if (!deepEqual(opb, b, { strict: true }))
+						ok = false;
+				}
+			}
+
+			if (!ok) {
+				// The rebases were not the same for all elements. Decompose
+				// the MAPs into PATCHes with individual hunks for each index,
+				// and then rebase those.
+				var _this = this;
+				opa = new exports.PATCH(
+					conflictless.document.map(function(item) {
+						return {
+							offset: 0,
+							length: 1,
+							op: _this
+						}
+					}));
+				opb = new exports.PATCH(
+					conflictless.document.map(function(item) {
+						return {
+							offset: 0,
+							length: 1,
+							op: other
+						}
+					}));
+				return rebase_patches(opa, opb, conflictless);
+			}
+		}
+
+
 		if (opa && opb)
 			return [
 				(opa instanceof values.NO_OP) ? new values.NO_OP() : new exports.MAP(opa),
 				(opb instanceof values.NO_OP) ? new values.NO_OP() : new exports.MAP(opb)
 			];
+	}],
+
+	[exports.PATCH, function(other, conflictless) {
+		// Rebase MAP and PATCH. Only a conflictless rebase is possible,
+		// and prior document state is required.
+		if (conflictless && conflictless.document) {
+			// Wrap MAP in a PATCH that spans the whole sequence, and then
+			// use rebase_patches. This will jump ahead to comparing the
+			// MAP to the PATCH's inner operations.
+			return rebase_patches(
+				new exports.PATCH([{ offset: 0, length: conflictless.document.length, op: this}]),
+				other,
+				conflictless);
+
+			/*
+			// Alternatively:
+			// Since the MAP doesn't change the number of elements in the sequence,
+			// it makes sense to have the MAP go first.
+			// But we don't do this because we have to return a SET so that LIST.rebase
+			// doesn't go into infinite recursion by returning a LIST from a rebase,
+			// and SET loses logical structure.
+			return [
+				// MAP is coming second, so create an operation that undoes
+				// the patch, applies the map, and then applies the patch.
+				// See values.MATH.rebase for why we return a SET.
+				new jot.SET(this.compose(other).apply(conflictless.document)),
+				//other.inverse(conflictless.document).compose(this).compose(other),
+
+				// PATCH is coming second, which is right
+				other
+			];
+			*/
+		}
 	}]
 ];
 

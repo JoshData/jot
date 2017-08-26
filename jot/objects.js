@@ -397,11 +397,24 @@ exports.APPLY.prototype.rebase_functions = [
 	[exports.APPLY, function(other, conflictless) {
 		// Rebase the sub-operations on corresponding keys.
 		// If any rebase fails, the whole rebase fails.
+
+		// When conflictless is supplied with a prior document state,
+		// the state represents the object, so before we call rebase
+		// on inner operations, we have to go in a level on the prior
+		// document.
+		function build_conflictless(key) {
+			if (!conflictless || !("document" in conflictless))
+				return conflictless;
+			var ret = Object.assign({}, conflictless); // shallow clone
+			ret.document = conflictless.document[key];
+			return ret;
+		}
+
 		var new_ops_left = { };
 		for (var key in this.ops) {
 			new_ops_left[key] = this.ops[key];
 			if (key in other.ops)
-				new_ops_left[key] = new_ops_left[key].rebase(other.ops[key], conflictless);
+				new_ops_left[key] = new_ops_left[key].rebase(other.ops[key], build_conflictless(key));
 			if (new_ops_left[key] === null)
 				return null;
 		}
@@ -410,7 +423,7 @@ exports.APPLY.prototype.rebase_functions = [
 		for (var key in other.ops) {
 			new_ops_right[key] = other.ops[key];
 			if (key in this.ops)
-				new_ops_right[key] = new_ops_right[key].rebase(this.ops[key], conflictless);
+				new_ops_right[key] = new_ops_right[key].rebase(this.ops[key], build_conflictless(key));
 			if (new_ops_right[key] === null)
 				return null;
 		}

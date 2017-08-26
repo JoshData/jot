@@ -389,9 +389,13 @@ exports.MATH.prototype.rebase_functions = [
 		if (conflictless && "document" in conflictless) {
 			if (jot.cmp([this.operator, this.operand], [other.operator, other.operand]) < 0) {
 				return [
-					// this came second, so replace it with a SET that sets the value
-					// as if it came first
+					// this came second, so replace it with an operation that
+					// inverts the existing other operation, then applies this,
+					// then re-applies other. Although a composition of operations
+					// is logically sensible, returning a LIST will cause LIST.rebase
+					// to go into an infinite regress in some cases.
 					new exports.SET(this.compose(other).apply(conflictless.document)),
+					//other.inverse(conflictless.document).compose(this).compose(other),
 
 					// no need to rewrite other because it's supposed to come second
 					other
