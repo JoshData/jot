@@ -935,7 +935,8 @@ exports.createRandomOp = function(doc, context) {
 			var old_length = Math.floor(Math.random() * (doc.length - offset + ((offset<doc.length) ? 1 : 0)));
 			var old_value = doc.slice(offset, offset+old_length);
 
-			// Choose an inner operation.
+			// Choose an inner operation. Only ops in values can be used
+			// because ops within PATCH must support get_length_change.
 			var op = values.createRandomOp(old_value, context);
 
 			// Push the hunk.

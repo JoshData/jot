@@ -401,7 +401,7 @@ exports.createRandomOp = function(doc, context) {
 	ops.push(function() { return new exports.SET(doc) });
 
 	// Set to null, unless in splice contexts
-	if (context != "string-character" && context != "string")
+	if (context != "string-character" && context != "string" && Math.random() < .1)
 		ops.push(function() { return new exports.SET(null) });
 
 	// Clear the key, if we're in an object.
@@ -413,9 +413,15 @@ exports.createRandomOp = function(doc, context) {
 	if (typeof doc === "boolean")
 		ops.push(function() { return new exports.SET(!doc) });
 	if (typeof doc === "number") {
-		ops.push(function() { return new exports.SET(doc + 50) });
-		ops.push(function() { return new exports.SET(doc / 2.1) });
+		if (Number.isInteger(doc)) {
+			ops.push(function() { return new exports.SET(doc + Math.floor((Math.random()+.5) * 100)) });
+		} else {
+			ops.push(function() { return new exports.SET(doc * (Math.random()+.5)) });
+		}
 	}
+
+	// Set to a random value.
+	ops.push(function() { return new exports.SET(jot.createRandomValue()) });
 
 	if (typeof doc === "string" || Array.isArray(doc)) {
 		if (context != "string-character") {
@@ -466,7 +472,9 @@ exports.createRandomOp = function(doc, context) {
 					ops.push(function() { return new exports.SET([null,null,null].map(function() { return Math.random() })); });
 			}
 		}
+	}
 
+	if (typeof doc === "string") {
 		// reverse
 		if (doc != doc.split("").reverse().join(""))
 			ops.push(function() { return new exports.SET(doc.split("").reverse().join("")); });
@@ -482,14 +490,18 @@ exports.createRandomOp = function(doc, context) {
 
 	// Math
 	if (typeof doc === "number") {
-		ops.push(function() { return new exports.MATH("add", 2.5); })
-		ops.push(function() { return new exports.MATH("rot", [1, 13]); })
-		ops.push(function() { return new exports.MATH("mult", .75); })
 		if (Number.isInteger(doc)) {
+			ops.push(function() { return new exports.MATH("add", Math.floor(100 * (Math.random() - .25))); })
+			ops.push(function() { return new exports.MATH("mult", Math.floor(Math.exp(Math.random()+.5))); })
+			if (doc > 0)
+				ops.push(function() { return new exports.MATH("rot", [1, Math.min(13, doc)]); })
 			ops.push(function() { return new exports.MATH("and", 0xF1); })
 			ops.push(function() { return new exports.MATH("or", 0xF1); })
 			ops.push(function() { return new exports.MATH("xor", 0xF1); })
 			ops.push(function() { return new exports.MATH("not", null); })
+		} else {
+			ops.push(function() { return new exports.MATH("add", 100 * (Math.random() - .25)); })
+			ops.push(function() { return new exports.MATH("mult", Math.exp(Math.random()+.5)); })
 		}
 	}
 	if (typeof doc === "boolean") {

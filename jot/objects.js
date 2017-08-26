@@ -1,20 +1,14 @@
 /* A library of operations for objects (i.e. JSON objects/Javascript associative arrays).
 
-   Two operation aliases are provided:
-   
    new objects.PUT(key, value)
     
-    Creates a property with the given value. The property must not already
-    exist in the document. This is an alias for
+    Creates a property with the given value. This is an alias for
     new objects.APPLY(key, new values.SET(value)).
 
    new objects.REM(key)
     
-    Removes a property from an object. The property must exist in the document.
-    The old value of the property is given as old_value. This is an alias for
-    new objects.APPLY(key, new values.SET(MISSING)).
-
-   Two new operation are provided:
+    Removes a property from an object. This is an alias for
+    new objects.APPLY(key, new values.SET(objects.MISSING)).
 
    new objects.REN(old_key, new_key)
    new objects.REN({ new_key: old_key })
@@ -429,5 +423,20 @@ exports.APPLY.prototype.rebase_functions = [
 ]
 
 exports.createRandomOp = function(doc, context) {
-	throw "not implemented yet";
+	// Create a random operation that could apply to doc.
+	// Choose uniformly across various options.
+	var ops = [];
+
+	// Add a random key with a random value.
+	ops.push(function() { return new exports.PUT("k"+Math.floor(1000*Math.random()), jot.createRandomValue()); });
+
+	// Apply random operations to individual keys.
+	Object.keys(doc).forEach(function(key) {
+		ops.push(function() { return jot.createRandomOp(doc[key], "object") });
+	});
+
+	// TODO: REN.
+
+	// Select randomly.
+	return ops[Math.floor(Math.random() * ops.length)]();
 }
