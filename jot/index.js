@@ -196,7 +196,7 @@ exports.BaseOperation.prototype.compose = function(other) {
 	return new meta.LIST([this, other]);
 }
 
-exports.BaseOperation.prototype.rebase = function(other, conflictless) {
+exports.BaseOperation.prototype.rebase = function(other, conflictless, debug) {
 	/* Transforms this operation so that it can be composed *after* the other
 	   operation to yield the same logical effect as if it had been executed
 	   in parallel (rather than in sequence). Returns null on conflict.
@@ -218,7 +218,10 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless) {
 	for (var i = 0; i < ((this.rebase_functions!=null) ? this.rebase_functions.length : 0); i++) {
 		if (other instanceof this.rebase_functions[i][0]) {
 			var r = this.rebase_functions[i][1].call(this, other, conflictless);
-			if (r != null && r[0] != null) return r[0];
+			if (r != null && r[0] != null) {
+				if (debug) debug("rebase", this, "on", other, "=>", r[0]);
+				return r[0];
+			}
 		}
 	}
 
@@ -227,24 +230,34 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless) {
 	for (var i = 0; i < ((other.rebase_functions!=null) ? other.rebase_functions.length : 0); i++) {
 		if (this instanceof other.rebase_functions[i][0]) {
 			var r = other.rebase_functions[i][1].call(other, this, conflictless);
-			if (r != null && r[1] != null) return r[1];
+			if (r != null && r[1] != null) {
+				if (debug) debug("rebase", this, "on", other, "=>", r[1]);
+				return r[1];
+			}
 		}
 	}
 
 	// Everything case rebase against a LIST and vice versa.
 	// This has higher precedence than the SET fallback.
-	if (this instanceof meta.LIST || other instanceof meta.LIST)
-		return meta.rebase(other, this, conflictless);
+	if (this instanceof meta.LIST || other instanceof meta.LIST) {
+		var ret = meta.rebase(other, this, conflictless, debug);
+		if (debug) debug("rebase", this, "on", other, "=>", ret);
+		return ret;
+	}
 
 	// Everything can rebase against a SET in a conflictless way.
 	// Note that to resolve ties, SET rebased against SET is handled
 	// in SET's rebase_functions.
 	if (conflictless) {
 		// The SET always wins!
-		if (this instanceof values.SET)
+		if (this instanceof values.SET) {
+			if (debug) debug("rebase", this, "on", other, "=>", this);
 			return this;
-		if (other instanceof values.SET)
+		}
+		if (other instanceof values.SET) {
+			if (debug) debug("rebase", this, "on", other, "=>", new values.NO_OP());
 			return new values.NO_OP();
+		}
 	}
 
 	return null;
