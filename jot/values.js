@@ -251,30 +251,39 @@ exports.MATH.prototype.inspect = function(depth) {
 exports.MATH.prototype.apply = function (document) {
 	/* Applies the operation to this.operand. Applies the operator/operand
 	   as a function to the document. */
-	if (typeof document != "number" && typeof document != "boolean")
-		throw new Error("Invalid operation on non-numeric document.")
-	if (this.operator == "add")
-		return document + this.operand;
-	if (this.operator == "mult")
-		return document * this.operand;
-
-	if (!Number.isInteger(document) && typeof document != "boolean")
-		throw new Error("Invalid operation on non-integer/non-boolean document.")
-
-	if (this.operator == "rot")
-		return (document + this.operand[0]) % this.operand[1];
-	if (this.operator == "and")
-		return document & this.operand;
-	if (this.operator == "or")
-		return document | this.operand;
-	if (this.operator == "xor") {
-		var ret = document ^ this.operand;
-		if (typeof document == 'boolean')
-			ret = !!ret; // cast to boolean
-		return ret;
+	if (typeof document == "number") {
+		if (this.operator == "add")
+			return document + this.operand;
+		if (this.operator == "mult")
+			return document * this.operand;
+		if (Number.isInteger(document)) {
+			if (this.operator == "rot")
+				return (document + this.operand[0]) % this.operand[1];
+			if (this.operator == "and")
+				return document & this.operand;
+			if (this.operator == "or")
+				return document | this.operand;
+			if (this.operator == "xor")
+				return document ^ this.operand;
+			if (this.operator == "not")
+				return ~document;
+		}
+		throw new Error("MATH operator " + this.operator + " cannot apply to " + document + ".");
+	
+	} else if (typeof document == "boolean") {
+		if (this.operator == "and")
+			return document && this.operand;
+		if (this.operator == "or")
+			return document || this.operand;
+		if (this.operator == "xor")
+			return !!(document ^ this.operand); // convert arithmetic result to boolean
+		if (this.operator == "not")
+			return !document;
+		throw new Error("MATH operator " + this.operator + " does not apply to boolean values.")
+	
+	} else {
+		throw new Error("MATH operations only apply to number and boolean values.")
 	}
-	if (this.operator == "not")
-		return ~document;
 }
 
 exports.MATH.prototype.simplify = function () {
@@ -342,28 +351,36 @@ exports.MATH.prototype.atomic_compose = function (other) {
 			return new exports.MATH("mult", this.operand * other.operand).simplify();
 
 		// two and's and the operands
-		if (this.operator == other.operator && this.operator == "and")
+		if (this.operator == other.operator && this.operator == "and" && typeof this.operand == typeof other.operand && typeof this.operand == "number")
 			return new exports.MATH("and", this.operand & other.operand).simplify();
+		if (this.operator == other.operator && this.operator == "and" && typeof this.operand == typeof other.operand && typeof this.operand == "boolean")
+			return new exports.MATH("and", this.operand && other.operand).simplify();
 
 		// two or's or the operands
-		if (this.operator == other.operator && this.operator == "or")
+		if (this.operator == other.operator && this.operator == "or" && typeof this.operand == typeof other.operand && typeof this.operand == "number")
 			return new exports.MATH("or", this.operand | other.operand).simplify();
+		if (this.operator == other.operator && this.operator == "or" && typeof this.operand == typeof other.operand && typeof this.operand == "boolean")
+			return new exports.MATH("or", this.operand || other.operand).simplify();
 
 		// two xor's xor the operands
-		if (this.operator == other.operator && this.operator == "xor")
+		if (this.operator == other.operator && this.operator == "xor" && typeof this.operand == typeof other.operand && typeof this.operand == "number")
 			return new exports.MATH("xor", this.operand ^ other.operand).simplify();
+		if (this.operator == other.operator && this.operator == "xor" && typeof this.operand == typeof other.operand && typeof this.operand == "boolean")
+			return new exports.MATH("xor", !!(this.operand ^ other.operand)).simplify();
 
 		// two not's cancel each other out
 		if (this.operator == other.operator && this.operator == "not")
 			return new exports.NO_OP();
 
 		// and+or with the same operand is SET(operand)
-		if (this.operator == "and" && other.operator == "or" && this.operand == other.operand)
+		if (this.operator == "and" && other.operator == "or" && this.operand === other.operand)
 			return new exports.SET(this.operand);
 
 		// or+xor with the same operand is AND(~operand)
-		if (this.operator == "or" && other.operator == "xor" && this.operand == other.operand)
+		if (this.operator == "or" && other.operator == "xor" && this.operand === other.operand && typeof this.operand == "number")
 			return new exports.MATH("and", ~this.operand);
+		if (this.operator == "or" && other.operator == "xor" && this.operand === other.operand && typeof this.operand == "boolean")
+			return new exports.MATH("and", !this.operand);
 
 	}
 	
