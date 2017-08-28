@@ -128,8 +128,18 @@ exports.NO_OP.prototype.get_length_change = function (old_length) {
 	return 0;
 }
 
-exports.NO_OP.prototype.decompose_right = function (at_old_index, at_new_index) {
-	// Support routine for sequences.PATCH.
+exports.NO_OP.prototype.decompose = function (in_out, at_index) {
+	// Support routine for when this operation is used as a hunk's
+	// op in sequences.PATCH (i.e. its document is a string or array
+	// sub-sequence) that returns a decomposition of the operation
+	// into two operations, one that applies on the left of the
+	// sequence and one on the right of the sequence, such that
+	// the length of the input (if !in_out) or output (if in_out)
+	// of the left operation is at_index, i.e. the split point
+	// at_index is relative to the document either before (if
+	// !in_out) or after (if in_out) this operation applies.
+	//
+	// Since NO_OP has no effect, its decomposition is trivial.
 	return [this, this];
 }
 
@@ -156,8 +166,8 @@ exports.SET.prototype.apply = function (document) {
 
 exports.SET.prototype.simplify = function () {
 	/* Returns a new atomic operation that is a simpler version
-	   of another operation. If the new value is the same as the
-	   old value, returns NO_OP. */
+	   of another operation. There is nothing to simplify for
+	   a SET. */
 	return this;
 }
 
@@ -223,16 +233,32 @@ exports.SET.prototype.get_length_change = function (old_length) {
 	throw new Error("not applicable: new value is of type " + typeof this.value);
 }
 
-exports.SET.prototype.decompose_right = function (at_new_index) {
-	// Support routine for sequences.PATCH that returns a decomposition
-	// of the operation (over a sequence-like object) that splits it
-	// at the given index in the new value.
-	if (typeof this.value == "string" || Array.isArray(this.value))
+exports.SET.prototype.decompose = function (in_out, at_index) {
+	// Support routine for when this operation is used as a hunk's
+	// op in sequences.PATCH (i.e. its document is a string or array
+	// sub-sequence) that returns a decomposition of the operation
+	// into two operations, one that applies on the left of the
+	// sequence and one on the right of the sequence, such that
+	// the length of the input (if !in_out) or output (if in_out)
+	// of the left operation is at_index, i.e. the split point
+	// at_index is relative to the document either before (if
+	// !in_out) or after (if in_out) this operation applies.
+	if (typeof this.value != "string" && !Array.isArray(this.value))
+		throw new Error("invalid value type for call");
+	if (!in_out) {
+		// Decompose into a delete and a replace with the value
+		// lumped on the right.
 		return [
-			new exports.SET(this.value.slice(0, at_new_index)),
-			new exports.SET(this.value.slice(at_new_index))
+			new exports.SET(this.value.slice(0,0)), // create empty string or array
+			this
 		];
-	return null;
+	} else {
+		// Split the new value at the given index.
+		return [
+			new exports.SET(this.value.slice(0, at_index)),
+			new exports.SET(this.value.slice(at_index))
+		];
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////

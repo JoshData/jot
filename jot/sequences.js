@@ -21,10 +21,9 @@
      ]
     )
 
-   The operation must define a "get_length_change" function that returns the
-   length of the subsequence after the operation is applied. Composition and
-   conflictless rebasing are also supported by a "decompose_right" function on
-   the inner operation. NO_OP, SET, and MAP define these functions.
+   The inner operation must be one of NO_OP, SET, and MAP (or any operation
+   that defines "get_length_change" and "decompose" functions.)
+
 
    This library also defines the MAP operation, which applies a jot
    operation to every element of a sequence. The MAP operation is
@@ -132,7 +131,9 @@ exports.PATCH = function () {
 		if (!(hunk.op instanceof jot.BaseOperation))
 			throw new Error("Invalid Argument (hunk operation is not an operation)");
 		if (typeof hunk.op.get_length_change != "function")
-			throw new Error("Invalid Argument (hunk operation does not support get_length_change)");
+			throw new Error("Invalid Argument (hunk operation " + hunk.op.inspect() + " does not support get_length_change)");
+		if (typeof hunk.op.decompose != "function")
+			throw new Error("Invalid Argument (hunk operation " + hunk.op.inspect() + " does not support decompose)");
 		Object.freeze(hunk);
 	});
 
@@ -295,24 +296,14 @@ exports.PATCH.prototype.simplify = function () {
 			return;
 
 		} else if (hunk.length == 0 && hunk.op.get_length_change(hunk.length) == 0) {
-			// Drop it, but adjust future offsets.
+			// The hunk does nothing. Drop it, but adjust future offsets.
 			doffset += hunk.offset;
 			return;
 
-		} else if (op instanceof exports.PATCH) {
-			// A PATCH within a PATCH, fun. Account for the range
-			// after the last inner hunk through the end of the
-			// outer hunk.
-			var count = 0;
-			op.hunks.forEach(function(hunk) {
-				handle_hunk(hunk);
-				count += hunk.offset + hunk.length;
-			});
-			doffset += hunk.length - count;
-			return;
-
 		} else if (hunks.length > 0
-			&& hunk.offset + doffset == 0) {
+			&& hunk.offset == 0
+			&& doffset == 0
+			) {
 			
 			// The hunks are adjacent. We can combine them
 			// if one of the operations is a SET and the other
@@ -362,12 +353,12 @@ exports.PATCH.prototype.simplify = function () {
 		}
 
 		// Preserve but adjust offset.
-		var newhunk = {
+		hunks.push({
 			offset: hunk.offset+doffset,
 			length: hunk.length,
 			op: op
-		}
-		hunks.push(newhunk);
+		});
+		doffset = 0;
 	}
 	
 	this.hunks.forEach(handle_hunk);
@@ -409,15 +400,15 @@ function compose_patches(a, b) {
 			hunks: op.hunks.slice(), // clone
 			empty: function() { return this.hunks.length == 0; },
 			take: function() {
-				var h = this.hunks[0];
+				var curend = this.end();
+				var h = this.hunks.shift();
 				hunks.push({
 					offset: this.index + h.offset - index,
 					length: h.length,
 					op: h.op
 				});
-				this.index = this.end();
+				this.index = curend;
 				index = this.index;
-				this.hunks.shift();
 			},
 			skip: function() {
 				this.index = this.end();
@@ -476,66 +467,71 @@ function compose_patches(a, b) {
 			// atomic_compose. If the two hunks changed the exact same
 			// elements, then we can compose the two operations directly.
 			var b_op = b_state.hunks[0].op;
-			if (dx_start != 0 || dx_end != 0) {
-				// If 'a' whole encompasses 'b', we can make an operation
-				// that spans the same elements by wrapping b's operation
-				// in a PATCH.
+			var dx = b_op.get_length_change(b_state.hunks[0].length);
+			if (dx_start != 0) {
+				// If a starts before b, wrap b_op in a PATCH operation
+				// so that they can be considered to start at the same
+				// location.
 				b_op = new exports.PATCH([{ offset: dx_start, length: b_state.hunks[0].length, op: b_op }]);
 			}
 
-			// Replace the 'a' operation with itself composed with b's operation.
-			// Don't take it yet because there could be more coming on b's
-			// side that is within the range of 'a'.
-			a_state.hunks[0] = {
-				offset: a_state.hunks[0].offset,
-				length: a_state.hunks[0].length,
-				op: a_state.hunks[0].op.atomic_compose(b_op)
-			};
-			if (a_state.hunks[0].op == null)
-				return null;
+			// Try an atomic composition.
+			var ab = a_state.hunks[0].op.atomic_compose(b_op);
+			if (ab) {
+				// Replace the 'a' operation with itself composed with b's operation.
+				// Don't take it yet because there could be more coming on b's
+				// side that is within the range of 'a'.
+				a_state.hunks[0] = {
+					offset: a_state.hunks[0].offset,
+					length: a_state.hunks[0].length,
+					op: ab
+				};
 
-			// Drop b.
-			b_state.skip();
-			continue;
-		}
+				// Since the a_state hunks have been rewritten, the indexing needs
+				// to be adjusted.
+				b_state.index += dx;
 
-		if (dx_start <= 0 && dx_end >= 0) {
-			// 'b' wholly consumes 'a'. We can't drop a's operation, in the
-			// general case. If 'b' is a SET, then we can drop a's operation
-			// because we know it does not depend on prior state.
-			// Update b's length since it is operating on elements that were
-			// inserted/deleted by a.
-			if (b_state.hunks[0].op instanceof values.SET) {
-				b_state.take();
-				hunks[hunks.length-1].length -= a_state.hunks[0].op.get_length_change(a_state.hunks[0].length);
-				a_state.skip();
+				// Drop b.
+				b_state.skip();
 				continue;
 			}
+
+			// If no atomic composition is possible, another case may work below
+			// by decomposing the operations.
 		}
 
 		// There is some sort of other overlap. We can handle this by attempting
 		// to decompose the operations.
 		if (dx_start > 0) {
 			// 'a' begins first. Attempt to decompose it into two operations.
-			if (!a_state.hunks[0].op.decompose_right)
-				return null;
-			var decomp = a_state.hunks[0].op.decompose_right(dx_start);
-			if (!decomp)
-				return null;
+			// Indexing of dx_start is based on the value *after* 'a' applies,
+			// so we have to decompose it based on new-value indexes.
+			var decomp = a_state.hunks[0].op.decompose(true, dx_start);
+
+			// But we need to know the length of the original hunk so that
+			// the operation causes its final length to be dx_start.
+			var alen0;
+			if (decomp[0].get_length_change(dx_start) == 0)
+				// This is probably a MAP. If the hunk's length is dx_start
+				// and the operation causes no length change, then that's
+				// the right length!
+				alen0 = dx_start;
+			else
+				throw new Error("Not sure what to do in this case.")
 
 			// Take the left part of the decomposition.
 			hunks.push({
 				offset: a_state.index + a_state.hunks[0].offset - index,
-				length: a_state.hunks[0].length,
+				length: alen0,
 				op: decomp[0]
 			});
-			a_state.index += dx_start;
-			index += dx_start;
+			a_state.index = a_state.start() + dx_start;
+			index = a_state.index;
 
 			// Return the right part of the decomposition to the hunks array.
 			a_state.hunks[0] = {
 				offset: 0,
-				length: 0,
+				length: a_state.hunks[0].length - alen0,
 				op: decomp[1]
 			};
 			continue;
@@ -543,15 +539,7 @@ function compose_patches(a, b) {
 
 		if (dx_start < 0) {
 			// 'b' begins first. Attempt to decompose it into two operations.
-			// The decompose_right method takes an index into the sequence
-			// after the operation applies, but dx_start applies to the
-			// document before 'b' applies, so we pass it an arbitrary
-			// index of zero.
-			if (!b_state.hunks[0].op.decompose_right)
-				return null;
-			var decomp = b_state.hunks[0].op.decompose_right(0);
-			if (!decomp)
-				return null;
+			var decomp = b_state.hunks[0].op.decompose(false, -dx_start);
 
 			// Take the left part of the decomposition.
 			hunks.push({
@@ -559,8 +547,8 @@ function compose_patches(a, b) {
 				length: (-dx_start),
 				op: decomp[0]
 			});
-			b_state.index += (-dx_start);
-			index += (-dx_start);
+			b_state.index = b_state.start() + (-dx_start);
+			index = b_state.index;
 
 			// Return the right part of the decomposition to the hunks array.
 			b_state.hunks[0] = {
@@ -570,6 +558,10 @@ function compose_patches(a, b) {
 			};
 			continue;
 		}
+
+		// The two hunks start at the same location but have different
+		// lengths.
+		// TODO.
 
 		// There is no atomic composition.
 		return null;
@@ -603,19 +595,19 @@ function rebase_patches(a, b, conflictless) {
 		return {
 			old_index: 0,
 			old_hunks: op.hunks.slice(),
-			new_index: 0,
+			dx_index: 0,
 			new_hunks: [],
 			empty: function() { return this.old_hunks.length == 0; },
-			take: function() {
-				var h = this.old_hunks[0];
+			take: function(other, hold_dx_index) {
+				var h = this.old_hunks.shift();
 				this.new_hunks.push({
-					offset: this.old_index + h.offset - this.new_index,
-					length: h.length,
+					offset: h.offset + this.dx_index,
+					length: h.length+(h.dlength||0),
 					op: h.op
 				});
-				this.old_index = this.end();
-				this.new_index = this.old_index;
-				this.old_hunks.shift();
+				this.dx_index = 0;
+				this.old_index += h.offset + h.length;
+				if (!hold_dx_index) other.dx_index += h.op.get_length_change(h.length);
 			},
 			skip: function() {
 				this.old_index = this.end();
@@ -637,13 +629,13 @@ function rebase_patches(a, b, conflictless) {
 	while (!a_state.empty() || !b_state.empty()) {
 		// Only operations in 'a' are remaining.
 		if (b_state.empty()) {
-			a_state.take();
+			a_state.take(b_state);
 			continue;
 		}
 
 		// Only operations in 'b' are remaining.
 		if (a_state.empty()) {
-			b_state.take();
+			b_state.take(a_state);
 			continue;
 		}
 
@@ -659,11 +651,9 @@ function rebase_patches(a, b, conflictless) {
 
 			// Or we can resolve the conflict.
 			if (jot.cmp(a_state.old_hunks[0].op, b_state.old_hunks[0].op) < 0) {
-				b_state.new_index -= a_state.old_hunks[0].op.get_length_change(a_state.old_hunks[0].length);
-				a_state.take();
+				a_state.take(b_state);
 			} else {
-				a_state.new_index -= b_state.old_hunks[0].op.get_length_change(b_state.old_hunks[0].length);
-				b_state.take();
+				b_state.take(a_state);
 			}
 			continue;
 		}
@@ -672,16 +662,14 @@ function rebase_patches(a, b, conflictless) {
 		// The next hunk in 'a' precedes the next hunk in 'b'.
 		// Take 'a' and adjust b's next offset.
 		if (a_state.end() <= b_state.start()) {
-			b_state.new_index -= a_state.old_hunks[0].op.get_length_change(a_state.old_hunks[0].length);
-			a_state.take();
+			a_state.take(b_state);
 			continue;
 		}
 
 		// The next hunk in 'b' precedes the next hunk in 'a'.
 		// Take 'b' and adjust a's next offset.
 		if (b_state.end() <= a_state.start()) {
-			a_state.new_index -= b_state.old_hunks[0].op.get_length_change(b_state.old_hunks[0].length);
-			b_state.take();
+			b_state.take(a_state);
 			continue;
 		}
 
@@ -704,18 +692,21 @@ function rebase_patches(a, b, conflictless) {
 			var br = b_state.old_hunks[0].op.rebase(a_state.old_hunks[0].op, conflictless2);
 			if (ar == null || br == null)
 				return null;
+
 			a_state.old_hunks[0] = {
 				offset: a_state.old_hunks[0].offset,
-				length: a_state.old_hunks[0].length + b_state.old_hunks[0].op.get_length_change(b_state.old_hunks[0].length),
+				length: a_state.old_hunks[0].length,
+				dlength: b_state.old_hunks[0].op.get_length_change(b_state.old_hunks[0].length),
 				op: ar
 			}
 			b_state.old_hunks[0] = {
 				offset: b_state.old_hunks[0].offset,
-				length: b_state.old_hunks[0].length + a_state.old_hunks[0].op.get_length_change(a_state.old_hunks[0].length),
+				length: b_state.old_hunks[0].length,
+				dlength: a_state.old_hunks[0].op.get_length_change(a_state.old_hunks[0].length),
 				op: br
 			}
-			a_state.take();
-			b_state.take();
+			a_state.take(b_state, true);
+			b_state.take(a_state, true);
 			continue;
 		}
 
@@ -723,13 +714,109 @@ function rebase_patches(a, b, conflictless) {
 		if (!conflictless)
 			return null;
 
-		throw "not implemented";
-
-		// One side starts before the other. Take it.
+		// Decompose whichever one starts first into two operations.
 		if (dx_start > 0) {
-			// 'a' starts first.
-			
+			// a starts first.
+			var hunk = a_state.old_hunks.shift();
+			var decomp = hunk.op.decompose(false, dx_start);
+
+			// Unshift the right half of the decomposition.
+			a_state.old_hunks.unshift({
+				offset: 0,
+				length: hunk.length-dx_start,
+				op: decomp[1]
+			});
+
+			// Unshift the left half of the decomposition.
+			a_state.old_hunks.unshift({
+				offset: hunk.offset,
+				length: dx_start,
+				op: decomp[0]
+			});
+
+			// Since we know the left half occurs first, take it.
+			a_state.take(b_state)
+
+			// Start the iteration over -- we should end up at the block
+			// for two hunks that modify the exact same range.
+			continue;
+
+		} else if (dx_start < 0) {
+			// b starts first.
+			var hunk = b_state.old_hunks.shift();
+			var decomp = hunk.op.decompose(false, -dx_start);
+
+			// Unshift the right half of the decomposition.
+			b_state.old_hunks.unshift({
+				offset: 0,
+				length: hunk.length+dx_start,
+				op: decomp[1]
+			});
+
+			// Unshift the left half of the decomposition.
+			b_state.old_hunks.unshift({
+				offset: hunk.offset,
+				length: -dx_start,
+				op: decomp[0]
+			});
+
+			// Since we know the left half occurs first, take it.
+			b_state.take(a_state)
+
+			// Start the iteration over -- we should end up at the block
+			// for two hunks that modify the exact same range.
+			continue;
 		}
+
+		// They start at the same point, but don't end at the same
+		// point. Decompose the longer one.
+		else if (dx_end < 0) {
+			// a is longer.
+			var hunk = a_state.old_hunks.shift();
+			var decomp = hunk.op.decompose(false, hunk.length+dx_end);
+
+			// Unshift the right half of the decomposition.
+			a_state.old_hunks.unshift({
+				offset: 0,
+				length: -dx_end,
+				op: decomp[1]
+			});
+
+			// Unshift the left half of the decomposition.
+			a_state.old_hunks.unshift({
+				offset: hunk.offset,
+				length: hunk.length+dx_end,
+				op: decomp[0]
+			});
+
+			// Start the iteration over -- we should end up at the block
+			// for two hunks that modify the exact same range.
+			continue;
+		} else if (dx_end > 0) {
+			// b is longer.
+			var hunk = b_state.old_hunks.shift();
+			var decomp = hunk.op.decompose(false, hunk.length-dx_end);
+
+			// Unshift the right half of the decomposition.
+			b_state.old_hunks.unshift({
+				offset: 0,
+				length: dx_end,
+				op: decomp[1]
+			});
+
+			// Unshift the left half of the decomposition.
+			b_state.old_hunks.unshift({
+				offset: hunk.offset,
+				length: hunk.length-dx_end,
+				op: decomp[0]
+			});
+
+			// Start the iteration over -- we should end up at the block
+			// for two hunks that modify the exact same range.
+			continue;
+		}
+
+		throw new Error("We thought this line was not reachable.");
 	}
 
 	return [
@@ -1026,10 +1113,18 @@ exports.MAP.prototype.get_length_change = function (old_length) {
 	return 0;
 }
 
-exports.MAP.prototype.decompose_right = function (at_old_index, at_new_index) {
-	// Support routine for PATCH that returns a decomposition of the
-	// operation splitting it at a point in the subsequence this operation
-	// applies to. But since MAP applies to all elements, the decomposition
+exports.MAP.prototype.decompose = function (in_out, at_index) {
+	// Support routine for when this operation is used as a hunk's
+	// op in sequences.PATCH (i.e. its document is a string or array
+	// sub-sequence) that returns a decomposition of the operation
+	// into two operations, one that applies on the left of the
+	// sequence and one on the right of the sequence, such that
+	// the length of the input (if !in_out) or output (if in_out)
+	// of the left operation is at_index, i.e. the split point
+	// at_index is relative to the document either before (if
+	// !in_out) or after (if in_out) this operation applies.
+	//
+	// Since MAP applies to all elements, the decomposition
 	// is trivial.
 	return [this, this];
 }

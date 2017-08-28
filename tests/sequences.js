@@ -252,11 +252,11 @@ t.deepEqual(
 t.deepEqual(
 	new seqs.SPLICE(3, 3, "456").rebase(
 		new seqs.SPLICE(3, 1, "ABC"), true),
-	new seqs.SPLICE(3, 5, "456"));
+	new seqs.SPLICE(6, 2, "456"));
 t.deepEqual(
 	new seqs.SPLICE(3, 3, "456").rebase(
 		new seqs.SPLICE(4, 1, "ABC"), true),
-	new seqs.SPLICE(3, 5, "456"));
+	new seqs.SPLICE(3, 1, "").compose(new seqs.SPLICE(3, 1, "56")));
 t.deepEqual(
 	new seqs.SPLICE(3, 3, "456").rebase(
 		new seqs.SPLICE(5, 1, "ABC"), true),
