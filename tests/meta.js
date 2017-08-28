@@ -97,8 +97,8 @@ test('meta', function(t) {
                 )
             ),
             jot.APPLY(
-                'bar', jot.INS(
-                    0, [{baz: 'quux'}]
+                'bar', jot.SPLICE(
+                    0, 0, [{baz: 'quux'}]
                 )
             )
         ])

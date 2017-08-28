@@ -56,7 +56,7 @@ t.deepEqual(
 t.deepEqual(
 	new objs.APPLY(
 		"a",
-		new seqs.SPLICE(0, "b", "Hello"))
+		new seqs.SPLICE(0, 1, "Hello"))
 		.apply({"a": "b"}),
 	{ "a": "Hello" });
 t.deepEqual(
@@ -119,11 +119,11 @@ t.notOk(
 		new objs.PUT("key", "value2")))
 t.deepEqual(
 	new objs.PUT("key", "value1").rebase(
-		new objs.PUT("key", "value2"), true),
+		new objs.PUT("key", "value2"), {}),
 	new values.NO_OP())
 t.deepEqual(
 	new objs.PUT("key", "value2").rebase(
-		new objs.PUT("key", "value1"), true),
+		new objs.PUT("key", "value1"), {}),
 	new objs.APPLY("key", new values.SET("value2")))
 
 t.deepEqual(
@@ -160,12 +160,12 @@ t.deepEqual(
 
 t.deepEqual(
 	new objs.REM("key", "old_value").rebase(
-		new objs.APPLY("key", new values.SET("new_value")), true),
+		new objs.APPLY("key", new values.SET("new_value")), {}),
 	new values.NO_OP()
 	)
 t.deepEqual(
 	new objs.APPLY("key", new values.SET("new_value")).rebase(
-		new objs.REM("key", "old_value"), true),
+		new objs.REM("key", "old_value"), {}),
 	new objs.PUT("key", "new_value")
 	)
 
@@ -228,12 +228,12 @@ t.notOk(
 		new objs.APPLY('key', new values.SET("z"))))
 t.deepEqual(
 	new objs.APPLY('key', new values.SET("y")).rebase(
-		new objs.APPLY('key', new values.SET("z")), true),
+		new objs.APPLY('key', new values.SET("z")), {}),
 	new values.NO_OP()
 	)
 t.deepEqual(
 	new objs.APPLY('key', new values.SET("z")).rebase(
-		new objs.APPLY('key', new values.SET("y")), true),
+		new objs.APPLY('key', new values.SET("y")), {}),
 	new objs.APPLY('key', new values.SET("z"))
 	)
 
