@@ -93,6 +93,13 @@ exports.BaseOperation.prototype.toJSON = function() {
             for (var key in value)
             	v[key] = value[key].toJSON();
         }
+        else if (keys[i] === 'hunks') {
+            v = value.map(function(hunk) {
+            	var ret = Object.assign({}, hunk);
+            	ret.op = ret.op.toJSON();
+                return ret;
+            });
+        }
 		else if (typeof value !== 'undefined') {
 			v = value;
         }
@@ -153,6 +160,14 @@ exports.opFromJSON = function(obj, op_map) {
         	for (var key in value)
         		newvalue[key] = exports.opFromJSON(value[key]);
         	value = newvalue;
+
+        } else if (item === 'hunks') {
+        	// Value is a list of PATCH hunks.
+            value = value.map(function(hunk) {
+            	var ret = Object.assign({}, hunk);
+                ret.op = exports.opFromJSON(hunk.op);
+                return ret;
+            });
         
         } else {
         	// Value is just a raw JSON value.
