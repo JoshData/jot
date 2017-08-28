@@ -208,7 +208,9 @@ function diff_arrays(a, b, options) {
 				//console.log(op);
 
 				// Increment counters.
-				var dd = (JSON.stringify(op.old_value) + JSON.stringify(op.new_value)).length/2;
+				var dd = (JSON.stringify(hunk.ai.map(function(i) { return a[i]; }))
+				         + JSON.stringify(hunk.bi.map(function(i) { return b[i]; })));
+				dd = dd.length/2;
 				total_content += dd;
 				changed_content += dd;
 
