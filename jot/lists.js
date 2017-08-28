@@ -1,4 +1,4 @@
-/*  A library of meta-operations.
+/*  A library of lists-operations.
 	
 	LIST(array_of_operations)
 	
@@ -11,7 +11,7 @@ var util = require("util");
 var jot = require("./index.js");
 var values = require('./values.js');
 
-exports.module_name = 'meta'; // for serialization/deserialization
+exports.module_name = 'lists'; // for serialization/deserialization
 
 exports.LIST = function (ops) {
 	if (ops == null) throw new Error("Invalid Argument");
@@ -23,7 +23,7 @@ exports.LIST.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.LIST, exports, 'LIST', ['ops']);
 
 exports.LIST.prototype.inspect = function(depth) {
-	return util.format("<meta.LIST [%s]>",
+	return util.format("<lists.LIST [%s]>",
 		this.ops.map(function(item) { return item.inspect(depth-1) }).join(", "));
 }
 

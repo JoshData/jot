@@ -3,7 +3,7 @@ var jot = require("../jot");
 var values = require("../jot/values.js");
 var seqs = require("../jot/sequences.js");
 var objs = require("../jot/objects.js");
-var meta = require("../jot/meta.js");
+var lists = require("../jot/lists.js");
 
 test('objects', function(t) {
 
@@ -101,7 +101,7 @@ t.deepEqual(
 	new values.NO_OP());
 t.deepEqual(
 	new objs.APPLY("key", new values.MATH('add', 1)).compose(new objs.APPLY("key", new values.MATH('mult', 1))),
-	new objs.APPLY("key", new meta.LIST([new values.MATH('add', 1), new values.MATH('mult', 1)])));
+	new objs.APPLY("key", new lists.LIST([new values.MATH('add', 1), new values.MATH('mult', 1)])));
 t.deepEqual(
 	new objs.APPLY("key1", new values.MATH('add', 1)).compose(new objs.APPLY("key2", new values.MATH('mult', 2))),
 	new objs.APPLY({ "key1": new values.MATH('add', 1), "key2": new values.MATH('mult', 2)}));
@@ -237,12 +237,12 @@ t.deepEqual(
 	new objs.APPLY('key', new values.SET("z"))
 	)
 
-// meta
+// lists
 
 t.deepEqual(
 	new objs.APPLY(
 		"a",
-		new meta.LIST([
+		new lists.LIST([
 			new seqs.APPLY(
 				1,
 				new values.MATH("add", 1)

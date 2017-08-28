@@ -34,8 +34,8 @@ var op1 = createRandomOpSequence(initial_value, 10);
 var op2 = createRandomOpSequence(initial_value, 10);
 
 //var initial_value = -1000;
-//var op1 = jot.opFromJSON({"_type":"meta.LIST","ops":[{"_type":"values.MATH","operator":"xor","operand":241}]}).simplify();
-//var op2 = jot.opFromJSON({"_type":"meta.LIST","ops":[{"_type":"values.MATH","operator":"and","operand":241},{"_type":"values.MATH","operator":"or","operand":241}]});
+//var op1 = jot.opFromJSON({"_type":"lists.LIST","ops":[{"_type":"values.MATH","operator":"xor","operand":241}]}).simplify();
+//var op2 = jot.opFromJSON({"_type":"lists.LIST","ops":[{"_type":"values.MATH","operator":"and","operand":241},{"_type":"values.MATH","operator":"or","operand":241}]});
 
 //console.log(initial_value)
 //console.log(op1)

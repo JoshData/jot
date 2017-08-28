@@ -1,7 +1,7 @@
 var test = require('tap').test;
 var jot = require('../jot')
 var values = require("../jot/values.js");
-var LIST = require("../jot/meta.js").LIST;
+var LIST = require("../jot/lists.js").LIST;
 
 test('values', function(t) {
 

@@ -52,7 +52,7 @@ var util = require('util');
 var deepEqual = require("deep-equal");
 var jot = require("./index.js");
 var values = require("./values.js");
-var LIST = require("./meta.js").LIST;
+var LIST = require("./lists.js").LIST;
 
 //////////////////////////////////////////////////////////////////////////////
 

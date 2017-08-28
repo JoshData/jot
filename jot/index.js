@@ -20,7 +20,7 @@ exports.add_op = function(constructor, module, opname, constructor_args) {
 var values = require("./values.js");
 var sequences = require("./sequences.js");
 var objects = require("./objects.js");
-var meta = require("./meta.js");
+var lists = require("./lists.js");
 
 // Define aliases.
 function new_op(op_class, args) {
@@ -37,7 +37,7 @@ exports.MAP = function() { return new_op(sequences.MAP, arguments) };
 exports.PUT = function() { return new_op(objects.PUT, arguments) };
 exports.REN = function() { return new_op(objects.REN, arguments) };
 exports.REM = function() { return new_op(objects.REM, arguments) };
-exports.LIST = function() { return new_op(meta.LIST, arguments) };
+exports.LIST = function() { return new_op(lists.LIST, arguments) };
 exports.APPLY = function(pos_or_key) {
 	if (typeof pos_or_key == "number")
 		return new_op(sequences.APPLY, arguments);
@@ -54,8 +54,8 @@ exports.UNAPPLY = function(op, pos_or_key) {
 		&& op instanceof objects.APPLY
 		&& pos_or_key in op.ops)
 		return op.ops[pos_or_key];
-	if (op instanceof meta.LIST)
-		return new meta.LIST(op.ops.map(function(op) {
+	if (op instanceof lists.LIST)
+		return new lists.LIST(op.ops.map(function(op) {
 			return exports.UNAPPLY(op, pos_or_key)
 		}));
 	return new values.NO_OP();
@@ -126,7 +126,7 @@ exports.opFromJSON = function(obj, op_map) {
 		extend_op_map(values);
 		extend_op_map(sequences);
 		extend_op_map(objects);
-		extend_op_map(meta);
+		extend_op_map(lists);
 	}
 
 	// Fetch the constructor.
@@ -208,7 +208,7 @@ exports.BaseOperation.prototype.compose = function(other) {
 	}
 
 	// Fall back to creating a LIST.
-	return new meta.LIST([this, other]);
+	return new lists.LIST([this, other]);
 }
 
 exports.BaseOperation.prototype.rebase = function(other, conflictless, debug) {
@@ -254,8 +254,8 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless, debug) {
 
 	// Everything case rebase against a LIST and vice versa.
 	// This has higher precedence than the SET fallback.
-	if (this instanceof meta.LIST || other instanceof meta.LIST) {
-		var ret = meta.rebase(other, this, conflictless, debug);
+	if (this instanceof lists.LIST || other instanceof lists.LIST) {
+		var ret = lists.rebase(other, this, conflictless, debug);
 		if (debug) debug("rebase", this, "on", other, "=>", ret);
 		return ret;
 	}
@@ -337,10 +337,10 @@ exports.createRandomOp = function(doc, context) {
 	else if (typeof doc === "object" && doc !== null)
 		modules.push(objects);
 
-	// the meta module only defines LIST which can also
+	// the lists module only defines LIST which can also
 	// be applied to any data type but gives us stack
 	// overflows
-	//modules.push(meta);
+	//modules.push(lists);
 
 	return modules[Math.floor(Math.random() * modules.length)]
 		.createRandomOp(doc, context);
