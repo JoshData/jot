@@ -97,11 +97,11 @@ function diff_strings(a, b, options) {
 				// Increment counter of changed characters.
 				changed_content += change.value.length;
 
-				// Create a SPLICE operation for this change.
-				var old_value = "", new_value = "";
-				if (change.removed) old_value = change.value;
+				// Create a hunk for this change.
+				var length = 0, new_value = "";
+				if (change.removed) length = change.value.length;
 				if (change.added) new_value = change.value;
-				var ret = { offset: offset, old_value: old_value, new_value: new_value };
+				var ret = { offset: offset, length: length, op: jot.SET(new_value) };
 				offset = 0;
 				return ret;
 			} else {
@@ -112,12 +112,12 @@ function diff_strings(a, b, options) {
 		})
 		.filter(function(item) { return item != null; });
 
-	// Form the SPLICE operation.
-	var op = jot.SPLICE(hunks).simplify();
+	// Form the PATCH operation.
+	var op = jot.PATCH(hunks).simplify();
 
 	// If the change is a single operation that replaces the whole content
-	// of the string, use a SET operation rather than a SPLICE operation.
-	if (op instanceof sequences.SPLICE && op.hunks.length == 1 
+	// of the string, use a SET operation rather than a PATCH operation.
+	if (op instanceof sequences.PATCH && op.hunks.length == 1 
 		&& op.hunks[0].old_value == a && op.hunks[0].new_value == b) {
 		return {
 			op: jot.SET(b),
@@ -214,7 +214,7 @@ function diff_arrays(a, b, options) {
 				// subsequence.
 				var op = jot.SPLICE(
 					pos,
-					hunk.ai.map(function(i) { return a[i]; }),
+					hunk.ai.length,
 					hunk.bi.map(function(i) { return b[i]; }));
 				ops.push(op);
 				//console.log(op);
