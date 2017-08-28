@@ -10,15 +10,19 @@ License: GPL v3 <http://choosealicense.com/licenses/gpl-v3/>
 This module implements operational transformation on a JSON data model,
 written in JavaScript for use either in node.js or browsers.
 
-Basically this is the core of real time simultaneous editing, like Etherpad,
+While most collaborative editing models operate on plain text, i.e. with
+operations like insert and delete on strings, the document model in JOT is JSON
+--- i.e. the value space of null, booleans, numbers, strings, arrays, and
+objects (key-value pairs with string keys). JOT includes the basic insert/delete
+operations on strings but adds many other operations that make JOT useful
+for tracking changes to any sort of data that can be encoded in JSON.
+
+Basically, this is the core of real time simultaneous editing, like Etherpad,
 but for structured data rather than just plain text. Since everything can
 be represented in JSON, this provides a superset of plain text collaboration
 functionality.
 
-This library models atomic changes to JSON data structures (operations
-over numbers, strings, arrays, and objects) and inverts, composes, and
-rebases those operations (transformations). There is no UI or collaboration
-framework here.
+This is a work in progress. There is no UI or collaboration framework here.
 
 Introduction
 ------------
@@ -154,31 +158,41 @@ care of that.
 Operations
 ----------
 
-Unlike most collaborative editing models where operations like insert and
-delete apply simply to strings, the document model in JOT is JSON. This
-makes JOT useful when tracking changes to data, rather than to text.
+Unlike most collaborative editing models where operations like insert and delete apply simply to strings, the document model in JOT is JSON --- i.e. the value space of null, booleans, numbers, strings, arrays, and objects (key-value pairs with string keys). This makes JOT useful when tracking changes to data, rather than simply to plain text.
 
-The operations in JOT are:
+The operations in JOT are...
 
-* `SPLICE(index, length, new_value)`: Replaces text in a string or array elements in an array at the given index and length in the original. To delete, new_value should be an empty string or zero-length array. To insert, length should be zero.
-* `PUT(key, value)`: Add a new property to an object. `key` is any valid JSON key (a string) and `value` is any valid JSON object.
-* `REM(key, old_value)`: Remove a property from an object. `key` is a string and `old_value` is the value of the property before the property is removed.
-* `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings. It can also take a mapping from new keys to old keys they are renamed from, as `REN({new_name: key, ...})`, which also allows for the duplication of property values.
-* `MOVE(index, count, new_index)`: Move consecutive elements of an array from one index to another.
-* `APPLY(index | key, operation)`: Apply any operation to a particular array element (`index`, for arrays) or property (`key`, for objects). `operation` is any operation created by these constructors. The operation can also take a mapping from indexes or keys to operations, as `APPLY({index | key: operation, ...})`.
-* `SET(new_value)`: Set a value (an array element, an object property, or an atomic value). `new_value` is the new value after the operation.
-* `MATH(op, value)`: Increment (`op`="add"), multiply (`op`="mult"), increment w/ modulus (`op`="rot"), bitwise-and (`op`="and"), bitwise or (`op`="or"), bitwise exclusive-or (`op`="xor"), or bitwise negation (`op`="not") a number. For `rot`, the value is given as an array of [increment, modulus]. For `not`, `value` is ignored and should be null. Rot and the bitwise operations only apply to integers and booleans.
+### General operations
+
+* `SET(new_value)`: Replaces any value with any other JSON-able value. `new_value` is the new value after the operation applies.
+
+### Operations on booleans and numbers
+
+* `MATH(op, value)`: Applies an arithmetic or boolean operation to a value. `op` is one of "add", "mult" (multiply), "rot" (increment w/ modulus), "and" (boolean or bitwise and), "or" (boolean or bitwise or), "xor" (boolean or bitwise exclusive-or), "not" (boolean or bitwise negation). For `rot`, `value` is given as an array of `[increment, modulus]`. For `not`, `value` is ignored and should be `null`. `add` and `mult` apply to any number, `rot` applies to integers only, and the boolean/bitwise operations only apply to integers and booleans.
+
+### Operations on strings and arrays
+
+The same operation is used for both strings and arrays:
+
+* `SPLICE(index, length, new_value)`: Replaces text in a string or array elements in an array at the given index and length in the original. To delete, `new_value` should be an empty string or zero-length array. To insert, `length` should be zero.
+* `APPLY(index, operation)`: Apply any operation to a particular array element at `index`. `operation` is any operation. The operation can also take a mapping from indexes to operations, as `APPLY({index: operation, ...})`. (Overloaded with APPLY for objects.)
 * `MAP(operation)`: Apply any operation to all elements of an array (or all characters in a string). `operation` is any operation created by these constructors.
+* `MOVE(index, count, new_index)`: Move consecutive elements of an array from one index to another.
 
-The JOT model is a superset of the model you need for basic plain text concurrent
-editing. That is, it includes the entire text editing model in the SPLICE
-operations plus it adds new operations for non-string data structures.
+SPLICE is the only operation you need for basic plain text concurrent
+editing. JOT includes the entire text editing model in the SPLICE
+operations plus it adds new operations for non-string data structures!
 
-Note that some operations (DEL) require passing the value
-being modified before the modification took place (i.e. what the value
-was before the operation).
+(Note that interally `SPLICE` and `APPLY` are subcases of an internal PATCH operation that maintains an ordered list of edits to a string or array.)
 
-(Also note that interally PUT and REM are subcases of SET that use a special value to signal the absense of an object property.)
+### Operations on objects
+
+* `PUT(key, value)`: Adds a new property to an object. `key` is any valid JSON key (a string) and `value` is any valid JSON object.
+* `REM(key)`: Remove a property from an object.
+* `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings. It can also take a mapping from new keys to old keys they are renamed from, as `REN({new_name: key, ...})`, which also allows for the duplication of property values.
+* `APPLY(key, operation)`: Apply any operation to a particular property named `key`. `operation` is any operation. The operation can also take a mapping from keys to operations, as `APPLY({key: operation, ...})`. (Overloaded with APPLY for strings and arrays.)
+
+(Note that interally `PUT` and `REM` are subcases of SET that use a special value to signal the absense of an object property.)
 
 
 Transformations
