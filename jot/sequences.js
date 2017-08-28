@@ -406,7 +406,7 @@ function compose_patches(a, b) {
 	function make_state(op, side) {
 		return {
 			index: 0,
-			hunks: op.hunks.slice(),
+			hunks: op.hunks.slice(), // clone
 			empty: function() { return this.hunks.length == 0; },
 			take: function() {
 				var h = this.hunks[0];
@@ -502,11 +502,10 @@ function compose_patches(a, b) {
 		if (dx_start <= 0 && dx_end >= 0) {
 			// 'b' wholly consumes 'a'. We can't drop a's operation, in the
 			// general case. If 'b' is a SET, then we can drop a's operation
-			// because we know it does not depend on prior state. Same with
-			// NO_OP. In either case we have to update b's length since it
-			// is operating on elements that were inserted/deleted by a.
-			if (b_state.hunks[0].op.isNoOp()
-				|| b_state.hunks[0].op instanceof values.SET) {
+			// because we know it does not depend on prior state.
+			// Update b's length since it is operating on elements that were
+			// inserted/deleted by a.
+			if (b_state.hunks[0].op instanceof values.SET) {
 				b_state.take();
 				hunks[hunks.length-1].length -= a_state.hunks[0].op.get_length_change(a_state.hunks[0].length);
 				a_state.skip();
