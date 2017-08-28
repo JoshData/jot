@@ -1143,10 +1143,11 @@ exports.createRandomOp = function(doc, context) {
 
 		while (dx < doc.length) {
 			// Construct a random hunk. First select a range in the
-			// document to modify.
-			var offset = dx + Math.floor(Math.random() * (doc.length+1-dx));
-			var old_length = Math.floor(Math.random() * (doc.length - offset + ((offset<doc.length) ? 1 : 0)));
-			var old_value = doc.slice(offset, offset+old_length);
+			// document to modify. We can start at any element index,
+			// or one past the end to insert at the end.
+			var start = dx + Math.floor(Math.random() * (doc.length+1-dx));
+			var old_length = (start < doc.length) ? Math.floor(Math.random() * (doc.length - start + 1)) : 0;
+			var old_value = doc.slice(start, start+old_length);
 
 			// Choose an inner operation. Only ops in values can be used
 			// because ops within PATCH must support get_length_change.
@@ -1154,12 +1155,12 @@ exports.createRandomOp = function(doc, context) {
 
 			// Push the hunk.
 			hunks.push({
-				offset: offset-dx,
+				offset: start-dx,
 				length: old_length,
 				op: op
 			});
 
-			dx = offset + old_length;
+			dx = start + old_length;
 
 			// Create another hunk?
 			if (Math.random() < .25)
@@ -1169,16 +1170,40 @@ exports.createRandomOp = function(doc, context) {
 		return new exports.PATCH(hunks);
 	});
 
-	// Construct a MAP. We may not construct a valid MAP because
-	// the random inner operation that we construct for one element
-	// may not be valid on all elements.
-	if (doc.length > 0) {
-		ops.push(function() {
-			var random_elem = elem(doc, Math.floor(Math.random() * doc.length));
+	// Construct a MAP.
+	ops.push(function() {
+		while (true) {
+			// Choose a random element to use as the template for the
+			// random operation. If the sequence is empty, use "" or null.
+			var random_elem;
+			if (doc.length == 0) {
+				if (typeof doc === "string")
+					random_elem = "";
+				else if (Array.isArray(doc))
+					random_elem = null;
+			} else {
+				random_elem = elem(doc, Math.floor(Math.random() * doc.length));
+			}
+
+			// Construct a random operation.
 			var op = values.createRandomOp(random_elem, context);
-			return new exports.MAP(op);
-		});
-	}
+
+			// Test that it is valid on all elements of doc.
+			try {
+				if (typeof doc === "string") doc = doc.split(''); // convert to array
+				doc.forEach(function(item) {
+					op.apply(item);
+				});
+				return new exports.MAP(op);
+			} catch (e) {
+				// It's invalid. Try again to find a valid operation
+				// that can apply to all elements, looping indefinitely
+				// until one can be found. SET is always valid and is
+				// highly probable to be selected so this shouldn't
+				// take long.
+			}
+		}
+	});
 
 	// Select randomly.
 	return ops[Math.floor(Math.random() * ops.length)]();
