@@ -44,6 +44,9 @@ exports.LIST.prototype.simplify = function (aggressive) {
 	for (var i = 0; i < this.ops.length; i++) {
 		var op = this.ops[i];
 		if (op instanceof values.NO_OP) continue; // don't put no-ops into the new list
+
+		// simplify the inner op
+		op = op.simplify();
 		
 		if (new_ops.length == 0) {
 			// first operation
@@ -242,7 +245,7 @@ function rebase_array(base, ops, conflictless, debug) {
 		// for the application of op1.
 		var conflictless2 = !conflictless ? null : Object.assign({}, conflictless);
 		if ("document" in conflictless2)
-			conflictless2.document = new jot.LIST(op1).apply(conflictless2.document);
+			conflictless2.document = op1[0].apply(conflictless2.document);
 
 		var r3 = rebase_array(r2, op2, conflictless2, debug);
 		if (r3 == null) return null; // rebase failed
@@ -255,15 +258,20 @@ function rebase_array(base, ops, conflictless, debug) {
 		//
 		// From the second part of the rebase contract, we can rebase ops
 		// against each operation in the base sequentially (base[0], base[1], ...).
+		
+		// shallow clone
+		conflictless = !conflictless ? null : Object.assign({}, conflictless);
+
 		for (var i = 0; i < base.length; i++) {
 			ops = rebase_array([base[i]], ops, conflictless, debug);
 			if (ops == null) return null; // conflict
 
 			// Adjust the 'conflictless' object if it provides the base document state
 			// since for later operations we're assuming base[i] has now been applied.
-			if ("document" in conflictless)
+			if (conflictless && "document" in conflictless)
 				conflictless.document = base[i].apply(conflictless.document);
 		}
+
 		return ops;
 	}
 }
