@@ -216,10 +216,7 @@ t.deepEqual(
 
 t.deepEqual(
 	new values.SET(2).rebase(new values.MATH("add", 3)),
-	new values.SET(5));
-t.deepEqual(
-	new values.SET("2").rebase(new values.MATH("add", 3)),
-	null);
+	new values.SET(2));
 t.deepEqual(
 	new values.SET("2").rebase(new values.MATH("add", 3), true),
 	new values.SET("2"));
@@ -241,11 +238,8 @@ t.deepEqual(
 	new values.MATH("xor", 3));
 
 t.deepEqual(
-	new values.MATH("add", 3).rebase(new values.SET(2) ),
-	new values.MATH("add", 3));
-t.notOk(
-	new values.MATH("add", 3).rebase(new values.SET("2"))
-	);
+	new values.MATH("add", 3).rebase(new values.SET(2)),
+	new values.NO_OP());
 t.deepEqual(
 	new values.MATH("add", 3).rebase(new values.SET("2"), true),
 	new values.NO_OP());
