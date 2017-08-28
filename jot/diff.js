@@ -114,18 +114,6 @@ function diff_strings(a, b, options) {
 
 	// Form the PATCH operation.
 	var op = jot.PATCH(hunks).simplify();
-
-	// If the change is a single operation that replaces the whole content
-	// of the string, use a SET operation rather than a PATCH operation.
-	if (op instanceof sequences.PATCH && op.hunks.length == 1 
-		&& op.hunks[0].old_value == a && op.hunks[0].new_value == b) {
-		return {
-			op: jot.SET(b),
-			pct: 1.0,
-			size: total_content
-		};
-	}
-
 	return {
 		op: op,
 		pct: (changed_content+1)/(total_content+1), // avoid divizion by zero

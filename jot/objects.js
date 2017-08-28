@@ -40,11 +40,11 @@
     
     To replace the value of a property with a new value:
     
-      new objects.APPLY("key1", new values.SET("new_value"))
+      new objects.APPLY("key1", new values.SET("value"))
 
 	or
 
-      new objects.APPLY({ key1: new values.SET("new_value") })
+      new objects.APPLY({ key1: new values.SET("value") })
 
    */
    
@@ -103,7 +103,7 @@ jot.add_op(exports.APPLY, exports, 'APPLY', ['ops']);
 
 // The MISSING object is a sentinel to signal the state of an Object property
 // that does not exist. It is the old_value to SET when adding a new property
-// and the new_value when removing a property.
+// and the value when removing a property.
 exports.MISSING = new Object();
 Object.freeze(exports.MISSING);
 

@@ -166,7 +166,7 @@ The operations in JOT are:
 * `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings. It can also take a mapping from new keys to old keys they are renamed from, as `REN({new_name: key, ...})`, which also allows for the duplication of property values.
 * `MOVE(index, count, new_index)`: Move consecutive elements of an array from one index to another.
 * `APPLY(index | key, operation)`: Apply any operation to a particular array element (`index`, for arrays) or property (`key`, for objects). `operation` is any operation created by these constructors. The operation can also take a mapping from indexes or keys to operations, as `APPLY({index | key: operation, ...})`.
-* `SET(old_value, new_value)`: Set a value (an array element, an object property, or an atomic value). `old_value` is the value the document had prior to this operation, and `new_value` is the new value after the operation.
+* `SET(new_value)`: Set a value (an array element, an object property, or an atomic value). `new_value` is the new value after the operation.
 * `MATH(op, value)`: Increment (`op`="add"), multiply (`op`="mult"), increment w/ modulus (`op`="rot"), bitwise-and (`op`="and"), bitwise or (`op`="or"), bitwise exclusive-or (`op`="xor"), or bitwise negation (`op`="not") a number. For `rot`, the value is given as an array of [increment, modulus]. For `not`, `value` is ignored and should be null. Rot and the bitwise operations only apply to integers and booleans.
 * `MAP(operation)`: Apply any operation to all elements of an array (or all characters in a string). `operation` is any operation created by these constructors.
 

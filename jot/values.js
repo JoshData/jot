@@ -16,7 +16,7 @@
 	rebased against it.
 	
 
-	new values.SET(new_value)
+	new values.SET(value)
 	
 	The atomic replacement of one value with another. Works for
 	any data type. The SET operation supports a conflictless
@@ -72,13 +72,13 @@ exports.NO_OP = function() {
 exports.NO_OP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.NO_OP, exports, 'NO_OP', []);
 
-exports.SET = function(new_value) {
+exports.SET = function(value) {
 	/* An operation that replaces the document with a new (atomic) value. */
-	this.new_value = new_value;
+	this.value = value;
 	Object.freeze(this);
 }
 exports.SET.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.SET, exports, 'SET', ['new_value']);
+jot.add_op(exports.SET, exports, 'SET', ['value']);
 
 exports.MATH = function(operator, operand) {
 	/* An operation that applies addition, multiplication, or rotation (modulus addition)
@@ -145,13 +145,13 @@ exports.SET.prototype.inspect = function(depth) {
 		// Render any other value as a JSON string.
 		return util.format("%j", v);
 	}
-	return util.format("<values.SET %s>", str(this.new_value));
+	return util.format("<values.SET %s>", str(this.value));
 }
 
 exports.SET.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns the new
 	   value, regardless of the document. */
-	return this.new_value;
+	return this.value;
 }
 
 exports.SET.prototype.simplify = function () {
@@ -173,7 +173,7 @@ exports.SET.prototype.atomic_compose = function (other) {
 	   null if no atomic operation is possible.
 	   Returns a new SET operation that simply sets the value to what
 	   the value would be when the two operations are composed. */
-	return new exports.SET(other.apply(this.new_value)).simplify();
+	return new exports.SET(other.apply(this.value)).simplify();
 }
 
 exports.SET.prototype.rebase_functions = [
@@ -186,13 +186,13 @@ exports.SET.prototype.rebase_functions = [
 		// applied second (the one being rebased) becomes a no-op. Since the
 		// two parts of the return value are for each rebased against the
 		// other, both are returned as no-ops.
-		if (deepEqual(this.new_value, other.new_value, { strict: true }))
+		if (deepEqual(this.value, other.value, { strict: true }))
 			return [new exports.NO_OP(), new exports.NO_OP()];
 		
 		// If they set the document to different values and conflictless is
 		// true, then we clobber the one whose value has a lower sort order.
-		if (conflictless && jot.cmp(this.new_value, other.new_value) < 0)
-			return [new exports.NO_OP(), new exports.SET(other.new_value)];
+		if (conflictless && jot.cmp(this.value, other.value) < 0)
+			return [new exports.NO_OP(), new exports.SET(other.value)];
 
 		// cmp > 0 is handled by a call to this function with the arguments
 		// reversed, so we don't need to explicltly code that logic.
@@ -218,19 +218,19 @@ exports.SET.prototype.rebase_functions = [
 exports.SET.prototype.get_length_change = function (old_length) {
 	// Support routine for sequences.PATCH that returns the change in
 	// length to a sequence if this operation is applied to it.
-	if (typeof this.new_value == "string" || Array.isArray(this.new_value))
-		return this.new_value.length - old_length;
-	throw new Error("not applicable: new value is of type " + typeof this.new_value);
+	if (typeof this.value == "string" || Array.isArray(this.value))
+		return this.value.length - old_length;
+	throw new Error("not applicable: new value is of type " + typeof this.value);
 }
 
 exports.SET.prototype.decompose_right = function (at_new_index) {
 	// Support routine for sequences.PATCH that returns a decomposition
 	// of the operation (over a sequence-like object) that splits it
 	// at the given index in the new value.
-	if (typeof this.new_value == "string" || Array.isArray(this.new_value))
+	if (typeof this.value == "string" || Array.isArray(this.value))
 		return [
-			new exports.SET(this.new_value.slice(0, at_new_index)),
-			new exports.SET(this.new_value.slice(at_new_index))
+			new exports.SET(this.value.slice(0, at_new_index)),
+			new exports.SET(this.value.slice(at_new_index))
 		];
 	return null;
 }

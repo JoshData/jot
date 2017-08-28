@@ -39,14 +39,14 @@
  
    Shortcuts for constructing useful PATCH operations are provided:
 
-		new sequences.SPLICE(pos, length, new_value)
+		new sequences.SPLICE(pos, length, value)
 
 			 Equivalent to:
 
 			 PATCH([{
 				 offset: pos,
 				 length: length,
-				 op: new values.SET(new_value)
+				 op: new values.SET(value)
 				 }])
 			 
 			 i.e. replace elements with other elements
@@ -143,12 +143,12 @@ jot.add_op(exports.PATCH, exports, 'PATCH', ['hunks']);
 
 	// shortcuts
 
-	exports.SPLICE = function (pos, length, new_value) {
+	exports.SPLICE = function (pos, length, value) {
 		// value.slice(0,0) is a shorthand for constructing an empty string or empty list, generically
 		exports.PATCH.apply(this, [[{
 			offset: pos,
 			length: length,
-			op: new values.SET(new_value)
+			op: new values.SET(value)
 		}]]);
 	}
 	exports.SPLICE.prototype = new exports.PATCH("__hmm__"); // inherit prototype
@@ -221,7 +221,7 @@ exports.PATCH.prototype.inspect = function(depth) {
 				hunk.offset,
 				hunk.length,
 				hunk.op instanceof values.SET
-					? util.format("%j", hunk.op.new_value)
+					? util.format("%j", hunk.op.value)
 					: hunk.op.inspect(depth-1))
 		}).join(","));
 }
@@ -274,9 +274,9 @@ exports.PATCH.prototype.simplify = function () {
 	var doctype = null;
 	this.hunks.forEach(function (hunk) {
 		if (hunk.op instanceof values.SET) {
-			if (typeof hunk.op.new_value == "string")
+			if (typeof hunk.op.value == "string")
 				doctype = "string";
-			else if (Array.isArray(hunk.op.new_value))
+			else if (Array.isArray(hunk.op.value))
 				doctype = "array";
 		}
 	});
@@ -328,15 +328,15 @@ exports.PATCH.prototype.simplify = function () {
 
 				function get_value(hunk) {
 				 	if (hunk.op instanceof values.SET) {
-				 		// The value is just the SET's new_value.
-				 		return hunk.op.new_value;
+				 		// The value is just the SET's value.
+				 		return hunk.op.value;
 				 	} else {
 				 		// The value is a sequence of the hunk's length
 				 		// where each element is the value of the inner
-				 		// SET's new_value.
+				 		// SET's value.
 					 	var value = [];
 					 	for (var i = 0; i < hunk.length; i++)
-					 		value.push(hunk.op.op.new_value);
+					 		value.push(hunk.op.op.value);
 
 					 	// If the outer value is a string, reform it as
 					 	// a string.
