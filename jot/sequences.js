@@ -1095,7 +1095,11 @@ exports.MAP.prototype.rebase_functions = [
 
 		// If the PATCH hunks are all MAP operations and the rebase
 		// between this and the hunk operations are all the same,
-		// then we can use that.
+		// *and* the rebase of this is the same as this, then we can
+		// use that. If the rebase is different from this operation,
+		// then we can't use it because it wouldn't have the same
+		// effect on parts of the sequence that the PATCH does not
+		// affect.
 		var _this = this;
 		var rebase_result;
 		other.hunks.forEach(function(hunk) {
@@ -1123,7 +1127,7 @@ exports.MAP.prototype.rebase_functions = [
 				|| !deepEqual(rebase_result[1], r[1], { strict: true }))
 				rebase_result = null;
 		})
-		if (rebase_result != null) {
+		if (rebase_result != null && deepEqual(rebase_result[0], this, { strict: true })) {
 			// Rebase was possible and the same for every operation.
 			return [
 				rebase_result[0],
