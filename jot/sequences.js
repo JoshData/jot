@@ -1132,6 +1132,12 @@ exports.MAP.prototype.decompose = function (in_out, at_index) {
 ////
 
 exports.createRandomOp = function(doc, context) {
+	// Not all inner operations are valid for PATCH and MAP. When they
+	// apply to arrays, any inner operation is valid. But when they
+	// apply to strings, the inner operations must yield a string
+	// and the inner operation of a MAP must yield a length-one string.
+	context = (typeof doc == "string") ? "string" : "array";
+
 	// Create a random operation that could apply to doc.
 	// Choose uniformly across various options.
 	var ops = [];
@@ -1174,11 +1180,13 @@ exports.createRandomOp = function(doc, context) {
 	ops.push(function() {
 		while (true) {
 			// Choose a random element to use as the template for the
-			// random operation. If the sequence is empty, use "" or null.
+			// random operation. If the sequence is empty, use "?" or null.
+			// Don't use an empty string because we can't replace an
+			// element of the string with an empty string.
 			var random_elem;
 			if (doc.length == 0) {
 				if (typeof doc === "string")
-					random_elem = "";
+					random_elem = "?";
 				else if (Array.isArray(doc))
 					random_elem = null;
 			} else {
@@ -1186,7 +1194,7 @@ exports.createRandomOp = function(doc, context) {
 			}
 
 			// Construct a random operation.
-			var op = values.createRandomOp(random_elem, context);
+			var op = values.createRandomOp(random_elem, context+"-elem");
 
 			// Test that it is valid on all elements of doc.
 			try {

@@ -463,16 +463,17 @@ exports.createRandomOp = function(doc, context) {
 	// An identity SET is always a possibility.
 	ops.push(function() { return new exports.SET(doc) });
 
-	// Set to null, unless in splice contexts
-	if (context != "string-character" && context != "string" && Math.random() < .1)
-		ops.push(function() { return new exports.SET(null) });
+	// Set to another random value of a different type.
+	// Can't do this in a context where changing the type is not valid,
+	// i.e. when in a PATCH or MAP operation on a string.
+	if (context != "string-elem" && context != "string")
+		ops.push(function() { return new exports.SET(jot.createRandomValue()) });
 
 	// Clear the key, if we're in an object.
 	if (context == "object")
 		ops.push(function() { return new exports.SET(MISSING) });
 
 	// Set to another value of the same type.
-	ops.push(function() { return new exports.SET(doc) });
 	if (typeof doc === "boolean")
 		ops.push(function() { return new exports.SET(!doc) });
 	if (typeof doc === "number") {
@@ -483,57 +484,52 @@ exports.createRandomOp = function(doc, context) {
 		}
 	}
 
-	// Set to a random value.
-	ops.push(function() { return new exports.SET(jot.createRandomValue()) });
+	if ((typeof doc === "string" || Array.isArray(doc)) && context != "string-elem") {
+		// Delete (if not already empty).
+		if (doc.length > 0)
+			ops.push(function() { return new exports.SET(doc.slice(0, 0)) });
 
-	if (typeof doc === "string" || Array.isArray(doc)) {
-		if (context != "string-character") {
-			// Delete (if not already empty).
-			if (doc.length > 0)
-				ops.push(function() { return new exports.SET(doc.slice(0, 0)) });
+		if (doc.length >= 1) {
+			// shorten at start
+			ops.push(function() { return new exports.SET(doc.slice(Math.floor(Math.random()*(doc.length-1)), doc.length)) });
 
-			if (doc.length >= 1) {
-				// shorten at start
-				ops.push(function() { return new exports.SET(doc.slice(Math.floor(Math.random()*(doc.length-1)), doc.length)) });
+			// shorten at end
+			ops.push(function() { return new exports.SET(doc.slice(0, Math.floor(Math.random()*(doc.length-1)))) });
+		}
 
-				// shorten at end
-				ops.push(function() { return new exports.SET(doc.slice(0, Math.floor(Math.random()*(doc.length-1)))) });
+		if (doc.length >= 2) {
+			// shorten by on both sides
+			var a = Math.floor(Math.random()*doc.length-1);
+			var b = Math.floor(Math.random()*(doc.length-a));
+			ops.push(function() { return new exports.SET(doc.slice(a, a+b)) });
+		}
+
+		if (doc.length > 0) {
+			// expand by copying existing elements from document
+
+			function concat2(item1, item2) {
+				if (item1 instanceof String)
+					return item1 + item2;
+				return item1.concat(item2);
 			}
-
-			if (doc.length >= 2) {
-				// shorten by on both sides
-				var a = Math.floor(Math.random()*doc.length-1);
-				var b = Math.floor(Math.random()*(doc.length-a));
-				ops.push(function() { return new exports.SET(doc.slice(a, a+b)) });
+			function concat3(item1, item2, item3) {
+				if (item1 instanceof String)
+					return item1 + item2 + item3;
+				return item1.concat(item2).concat(item3);
 			}
-
-			if (doc.length > 0) {
-				// expand by copying existing elements from document
-
-				function concat2(item1, item2) {
-					if (item1 instanceof String)
-						return item1 + item2;
-					return item1.concat(item2);
-				}
-				function concat3(item1, item2, item3) {
-					if (item1 instanceof String)
-						return item1 + item2 + item3;
-					return item1.concat(item2).concat(item3);
-				}
-			
-				// expand by elements at start
-				ops.push(function() { return new exports.SET(concat2(doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))), doc)) });
-				// expand by elements at end
-				ops.push(function() { return new exports.SET(concat2(doc, doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))))); });
-				// expand by elements on both sides
-				ops.push(function() { return new exports.SET(concat3(doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))), doc, doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))))); });
-			} else {
-				// expand by generating new elements
-				if (typeof doc === "string")
-					ops.push(function() { return new exports.SET((Math.random()+"").slice(2)); });
-				else if (Array.isArray(doc))
-					ops.push(function() { return new exports.SET([null,null,null].map(function() { return Math.random() })); });
-			}
+		
+			// expand by elements at start
+			ops.push(function() { return new exports.SET(concat2(doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))), doc)) });
+			// expand by elements at end
+			ops.push(function() { return new exports.SET(concat2(doc, doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))))); });
+			// expand by elements on both sides
+			ops.push(function() { return new exports.SET(concat3(doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))), doc, doc.slice(0, 1+Math.floor(Math.random()*(doc.length-1))))); });
+		} else {
+			// expand by generating new elements
+			if (typeof doc === "string")
+				ops.push(function() { return new exports.SET((Math.random()+"").slice(2)); });
+			else if (Array.isArray(doc))
+				ops.push(function() { return new exports.SET([null,null,null].map(function() { return Math.random() })); });
 		}
 	}
 
@@ -543,7 +539,7 @@ exports.createRandomOp = function(doc, context) {
 			ops.push(function() { return new exports.SET(doc.split("").reverse().join("")); });
 
 		// replace with new elements of the same length
-		if (doc.length > 0 && typeof doc === "string") {
+		if (doc.length > 0) {
 			var newvalue = "";
 			for (var i = 0; i < doc.length; i++)
 				newvalue += (Math.random()+"").slice(2, 3);
@@ -556,13 +552,15 @@ exports.createRandomOp = function(doc, context) {
 		if (Number.isInteger(doc)) {
 			ops.push(function() { return new exports.MATH("add", Math.floor(100 * (Math.random() - .25))); })
 			ops.push(function() { return new exports.MATH("mult", Math.floor(Math.exp(Math.random()+.5))); })
-			if (doc > 0)
+			if (doc > 1)
 				ops.push(function() { return new exports.MATH("rot", [1, Math.min(13, doc)]); })
 			ops.push(function() { return new exports.MATH("and", 0xF1); })
 			ops.push(function() { return new exports.MATH("or", 0xF1); })
 			ops.push(function() { return new exports.MATH("xor", 0xF1); })
 			ops.push(function() { return new exports.MATH("not", null); })
 		} else {
+			// floating point math yields inexact/inconsistent results if operation
+			// order changes, so you may want to disable these in testing
 			ops.push(function() { return new exports.MATH("add", 100 * (Math.random() - .25)); })
 			ops.push(function() { return new exports.MATH("mult", Math.exp(Math.random()+.5)); })
 		}
