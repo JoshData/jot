@@ -109,7 +109,7 @@ exports.MATH = function(operator, operand) {
 			throw new Error("MATH[rot] operand must be an array with two integer elements.")
 		if (this.operand[1] <= 1)
 			throw new Error("MATH[rot]'s second operand, the modulus, must be greater than one.")
-		if (this.operand[0] >= this.operand[1])
+		if (this.operand[0] >= Math.abs(this.operand[1]))
 			throw new Error("MATH[rot]'s first operand, the increment, must be less than its second operand, the modulus.")
 	}
 

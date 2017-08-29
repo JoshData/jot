@@ -46,7 +46,7 @@ t.equal(
 	new values.MATH("add", 5).apply(1),
 	6);
 t.equal(
-	new values.MATH("rot", [5, 3]).apply(1),
+	new values.MATH("rot", [2, 3]).apply(1),
 	0);
 t.equal(
 	new values.MATH("mult", 5).apply(2),
@@ -90,9 +90,6 @@ t.deepEqual(
 	new values.MATH("rot", [0, 999]).simplify(),
 	new values.NO_OP());
 t.deepEqual(
-	new values.MATH("rot", [5, 3]).simplify(),
-	new values.MATH("rot", [2, 3]));
-t.deepEqual(
 	new values.MATH("mult", 0).simplify(),
 	new values.MATH("mult", 0));
 t.deepEqual(
@@ -122,8 +119,8 @@ t.deepEqual(
 	new values.MATH("add", 5).inverse(0),
 	new values.MATH("add", -5));
 t.deepEqual(
-	new values.MATH("rot", [5, 2]).inverse(0),
-	new values.MATH("rot", [-5, 2]));
+	new values.MATH("rot", [5, 20]).inverse(0),
+	new values.MATH("rot", [-5, 20]));
 t.deepEqual(
 	new values.MATH("mult", 5).inverse(0),
 	new values.MATH("mult", 1/5));
@@ -228,7 +225,7 @@ t.deepEqual(
 	new values.MATH("add", 2).rebase(new values.MATH("add", 1) ),
 	new values.MATH("add", 2));
 t.deepEqual(
-	new values.MATH("rot", [1, 3]).rebase(new values.MATH("rot", [5, 3]) ),
+	new values.MATH("rot", [1, 3]).rebase(new values.MATH("rot", [2, 3]) ),
 	new values.MATH("rot", [1, 3]));
 t.notOk(
 	new values.MATH("mult", 2).rebase(new values.MATH("add", 1) )

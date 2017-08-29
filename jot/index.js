@@ -207,8 +207,9 @@ exports.BaseOperation.prototype.compose = function(other) {
 			return op;
 	}
 
-	// Fall back to creating a LIST.
-	return new lists.LIST([this, other]);
+	// Fall back to creating a LIST. Call simplify() to weed out
+	// anything equivalent to a NO_OP.
+	return new lists.LIST([this, other]).simplify();
 }
 
 exports.BaseOperation.prototype.rebase = function(other, conflictless, debug) {

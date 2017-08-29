@@ -101,7 +101,7 @@ t.deepEqual(
 	new values.NO_OP());
 t.deepEqual(
 	new objs.APPLY("key", new values.MATH('add', 1)).compose(new objs.APPLY("key", new values.MATH('mult', 1))),
-	new objs.APPLY("key", new lists.LIST([new values.MATH('add', 1), new values.MATH('mult', 1)])));
+	new objs.APPLY("key", new values.MATH('add', 1)));
 t.deepEqual(
 	new objs.APPLY("key1", new values.MATH('add', 1)).compose(new objs.APPLY("key2", new values.MATH('mult', 2))),
 	new objs.APPLY({ "key1": new values.MATH('add', 1), "key2": new values.MATH('mult', 2)}));
