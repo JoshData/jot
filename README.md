@@ -34,7 +34,7 @@ is merging edits made simultaneously, i.e. asynchronously, by two or more
 users, and the handling of potential conflicts that arise when multiple
 users edit the same part of the document.
 
-To illustrate the problem, imagine two user open the following JSON document:
+To illustrate the problem, imagine two users open the following JSON document:
 
 	{ "key1": "Hello world!", "key2": 10 }
 
@@ -98,11 +98,9 @@ we want the second user's changes to look like
 Note how the property names have changed. These changes now _can_ be applied after the first user's changes because they refer to the updated property names.
 
 JOT provides a `rebase` function on operation objects that can make this
-transformation. (The transformation is named after [git's rebase](https://git-scm.com/book/en/v2/Git-Branching-Rebasing).) The `rebase` function takes two arguments: base revisions and an optional options object that can help resolve conflicts. To transform the second user's changes, call:
+transformation. (The transformation is named after [git's rebase](https://git-scm.com/book/en/v2/Git-Branching-Rebasing).) The `rebase` function transforms the operation and yields a new operation that should be applied instead, taking as an argument the operations executed by another user concurrently that have already applied to the document:
 
-	user2 = user2.rebase(
-		user1,
-		{ document: { "key1": "Hello world!", "key2": 10 } })
+	user2 = user2.rebase(user1)
 
 The object now holds:
 
@@ -202,6 +200,7 @@ The operations in JOT are...
 ### General operations
 
 * `SET(new_value)`: Replaces any value with any other JSON-able value. `new_value` is the new value after the operation applies.
+* `LIST([op1, op2, op3, ...])`: Executes a series of operations in order. `op1`, `op2`, `op3`, ... are other JOT operations. Equivalent to `op1.compose(op2).compose(op3)...`.
 
 ### Operations on booleans and numbers
 
@@ -215,8 +214,8 @@ The same operation is used for both strings and arrays:
 * `APPLY(index, operation)`: Apply any operation to a particular array element at `index`. `operation` is any operation. (Overloaded with APPLY for objects.)
 * `MAP(operation)`: Apply any operation to all elements of an array (or all characters in a string). `operation` is any operation created by these constructors.
 
-SPLICE is the only operation you need for basic plain text concurrent
-editing. JOT includes the entire text editing model in the SPLICE
+`SPLICE` is the only operation you need for basic plain text concurrent
+editing. JOT includes the entire text editing model in the `SPLICE`
 operations plus it adds new operations for non-string data structures!
 
 (Note that interally `SPLICE` and `APPLY` are subcases of an internal PATCH operation that maintains an ordered list of edits to a string or array.)
