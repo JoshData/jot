@@ -1,16 +1,16 @@
 JSON Operational Transformation (JOT)
 =====================================
 
-By Joshua Tauberer <http://razor.occams.info>.
+By Joshua Tauberer <https://razor.occams.info>.
 
 August 2013.
 
 License: GPL v3 <http://choosealicense.com/licenses/gpl-v3/>
 
-This module implements operational transformation on a JSON data model,
+This module implements operational transformation (OT) on a JSON data model,
 written in JavaScript for use either in node.js or browsers.
 
-While most collaborative editing models operate on plain text, i.e. with
+While most collaborative editing models operate on plain text documents with
 operations like insert and delete on strings, the document model in JOT is JSON
 --- i.e. the value space of null, booleans, numbers, strings, arrays, and
 objects (key-value pairs with string keys). JOT includes the basic insert/delete
@@ -19,51 +19,149 @@ for tracking changes to any sort of data that can be encoded in JSON.
 
 Basically, this is the core of real time simultaneous editing, like Etherpad,
 but for structured data rather than just plain text. Since everything can
-be represented in JSON, this provides a superset of plain text collaboration
-functionality.
+be represented in JSON, this provides plain text collaboration functionality
+and much more.
 
 This is a work in progress. There is no UI or collaboration framework here.
 
-Introduction
-------------
+Why JOT?
+--------
 
-Here's an example of what this is all about. Say you start with:
+### Introduction
 
-	{
-		"key1": "Hello world!",
-		"key2": 10
-	}
+The core problem addressed by operational transformation libraries like JOT
+is merging edits made simultaneously, i.e. asynchronously, by two or more
+users, and the handling of potential conflicts that arise when multiple
+users edit the same part of the document.
 
-Then user A makes the following changes:
+To illustrate the problem, imagine two user open the following JSON document:
 
-	{
-		"title": "Hello world!",
-		"count": 10
-	}
+	{ "key1": "Hello world!", "key2": 10 }
 
-and *simultanesouly* user B makes the following changes (to the original):
+Each user now has a copy of this document in their local memory. The first user renames the properties from `key1` and `key2` to `title` and `count`
+in their copy of the document:
 
-	{
-		"key1": "My Program",
-		"key2": 20
-	}
+	{ "title": "Hello world!", "count": 10 }
 
-How do you merge changes? In operational transformation, changes are represented
-structurally:
+At the same time, the second user changes the values of the properties in their copy of the document from `Hello world!` to `My Program` and from `10` to `20`. Since the second user does not yet have the first user's changes, the resulting document still has the old property names:
 
-	A = [("rename" : "key1" => "title"), ("rename" : "key2" => "count")]
-	B = [("set" : "key1" => "My Program"), ("set" : "key2" => 20)]
+	{ "key1": "My Program", "key2": 20 }
 
-If you were to apply these changes in sequence, you would have a problem.
-By the time you get to B's changes, the keys "key1" and "key2" are no
-longer there!
+### Structured representation of changes
 
-What you need is git's "rebase" that revises B given the simultaneous
-edits in A. Here's what you get after "rebasing" B against A:
+In order to merge these changes, one must have a structured representation of the
+changes being applied to the document. In JOT, it is up to the library user to
+form structured representations of changes. The changes above are represented in pseudocode as:
 
-	B = [("set" : "title" => "My Program"), ("set" : "count" => 20)]
+	User 1: RENAME key1 TO title; RENAME key2 TO count
 
-Now you *can* apply A and B sequentially.
+	User 2: IN key1 SET TO "My Program"; IN key2 INCREMENT BY 10
+
+Using JOT, these changes are represented by "operation" objects as follows:
+
+	var user1 = new jot.REN({ title: "key1",
+	                          count: "key2" })
+
+	var user2 = new jot.APPLY({ "key1": new jot.SET("My Program"),
+	                            "key2": new jot.MATH("add", 10)  })
+
+However these changes cannot yet be combined. If they were applied in order,
+there would be an error. We could start with the original document:
+
+	{ "key1": "Hello world!", "key2": 10 }
+
+and then apply the first user's change, resulting in:
+
+	{ "title": "Hello world!", "count": 10 }
+
+but when we get to the second user's changes, which say to change the values of `key1` and `key2`, there is a problem --- those properties no longer exist!
+
+The second user's changes must be "transformed" to take into account the changes
+to the property names made by the first user before they can be applied. 
+
+### Transformation
+
+JOT provides an algorithm to transform the structured representation of changes so 
+that simultaneous changes can be combined sequentially.
+
+Continuing the example, we desire to transform the second user's changes so that
+they can be applied in sequence after the first user's changes.
+
+Instead of
+
+	User 2: IN key1 SET TO "My Program"; IN key2 INCREMENT BY 10
+
+we want the second user's changes to look like
+
+	User 2: IN title SET TO "My Program"; IN count INCREMENT BY 10
+
+Note how the property names have changed. These changes now _can_ be applied after the first user's changes because they refer to the updated property names.
+
+JOT provides a `rebase` function on operation objects that can make this
+transformation. (The transformation is named after [git's rebase](https://git-scm.com/book/en/v2/Git-Branching-Rebasing).) The `rebase` function takes two arguments: base revisions and an optional options object that can help resolve conflicts. To transform the second user's changes, call:
+
+	user2 = user2.rebase(
+		user1,
+		{ document: { "key1": "Hello world!", "key2": 10 } })
+
+The object now holds:
+
+	new jot.APPLY({ "title": new jot.SET("My Program"),
+	                "count": new jot.MATH("add", 10)  })
+
+Note again how the property names have changed. These changes can now be merged using `compose`:
+
+	var all_changes = user1.compose(user2);
+
+and then applied to the base document:
+
+	var document = { "key1": "Hello world!", "key2": 10 };
+	document = all_changes.apply(document)
+
+after which the base document will include both user's changes:
+
+	{ "title": "My Program", "count": 20 }
+
+It would also have been possible to rebase `user1` first and then compose the operations in the other order, for the exact same result.
+
+See [example.js](example.js) for the complete example.
+
+### Compared to other OT libraries
+
+Operational transformation libraries often operate only over strings. JOT has
+those operations too. For instance, start with the document:
+
+	Hello world!
+
+Two simultaenous changes might be:
+
+	User 1: REPLACE CHARS 0-4 WITH "Brave new"
+
+	User 2: REPLACE CHARS 11-11 WITH "."
+
+To merge these changes, the second user's changes must be rebased to:
+
+	User 2: REPLACE CHARS 15-15 WITH "."
+
+JOT's rebase algorithm can handle this case too:
+
+	// Construct operations
+	var document = "Hello world!";
+	var user1 = new jot.SPLICE(0, 5, "Brave new");
+	var user2 = new jot.SPLICE(11, 1, ".");
+
+	// Rebase user 2
+	user2 = user2.rebase(user1, { document: document })
+
+	// user2 now holds:
+	// new jot.SPLICE(15, 1, ".")
+
+	// Merge
+	user1.compose(user2).apply(document);
+	> 'Brave new world.'
+
+Unlike most collaborative editing models where there are only operations like insert and delete that apply to strings, the document model in JOT is JSON --- i.e. the value space of null, booleans, numbers, strings, arrays, and objects (key-value pairs with string keys). Operations are provided that manipulate all of these data types. This makes JOT useful when tracking changes to data, rather than simply to plain text.
+
 
 Installation
 ------------
@@ -75,10 +173,14 @@ Before running anything, you'll need to install node, and then jot's dependencie
 	# change to this directory
 	npm install
 
-To build the library for browsers, do the above, and then run:
+In a node script, import the library:
+
+	var jot = require("./jot");
+
+To build the library for browsers, run:
 
 	npm install -g browserify
-	browserify browser_example/browserfy_root.js -d -o browser_example/jot.js
+	browserify browser_example/browserfy_root.js -d -o dist/jot.js
 
 Then use the library in your HTML page (see [the example](browser_example/example.html) for details):
 
@@ -91,74 +193,9 @@ Then use the library in your HTML page (see [the example](browser_example/exampl
 		</body>
 	</html>
 
-Example
--------
-
-Here's example code that follows the example in the introduction:
-
-	/* load libraries */
-	var jot = require("./jot"); // omit this line when in a browser, 'jot' is defined globally
-
-	/* The Base Document */
-
-	var doc = {
-		key1: "Hello World!",
-		key2: 10,
-	};
-
-	/* User 1 makes changes to the document's keys so
-	 * that the document becomes:
-	 *
-	 * { title: 'Hello World!', count: 10 }
-	 *
-	 */
-
-	var user1 = jot.LIST([
-		jot.REN("key1", "title"),
-		jot.REN("key2", "count")
-	]);
-
-	/* User 2 makes changes to the document's values so
-	 * that the document becomes:
-	 *
-	 * { key1: 'My Program', key2: 20 }
-	 *
-	 */
-
-	var user2 = jot.LIST([
-		jot.APPLY("key1", jot.SET("My Program")),
-		jot.APPLY("key2", jot.MATH('add', 10))
-	]);
-
-	/* You can't do this! */
-
-	doc = user1.compose(user2).apply(doc);
-
-	/* You must rebase user2's operations before composing them. */
-
-	user2 = user2.rebase(user1);
-
-	doc = user1.compose(user2).apply(doc);
-
-	/* The document now looks like this:
-	 *
-	 * { title: 'My Program', count: 20 }
-	 *
-	 */
-
-To run:
-
-	node example.js
-
-Note how the output applies both users' changes logically, even though the
-second user's changes specified "key1" and "key2", neither of which exist
-by the time the revision is applied. It's the `rebase` call that takes
-care of that.
 
 Operations
 ----------
-
-Unlike most collaborative editing models where operations like insert and delete apply simply to strings, the document model in JOT is JSON --- i.e. the value space of null, booleans, numbers, strings, arrays, and objects (key-value pairs with string keys). This makes JOT useful when tracking changes to data, rather than simply to plain text.
 
 The operations in JOT are...
 
@@ -168,7 +205,7 @@ The operations in JOT are...
 
 ### Operations on booleans and numbers
 
-* `MATH(op, value)`: Applies an arithmetic or boolean operation to a value. `op` is one of "add", "mult" (multiply), "rot" (increment w/ modulus), "and" (boolean or bitwise and), "or" (boolean or bitwise or), "xor" (boolean or bitwise exclusive-or), "not" (boolean or bitwise negation). For `rot`, `value` is given as an array of `[increment, modulus]`. For `not`, `value` is ignored and should be `null`. `add` and `mult` apply to any number, `rot` applies to integers only, and the boolean/bitwise operations only apply to integers and booleans.
+* `MATH(op, value)`: Applies an arithmetic or boolean operation to a value. `op` is one of "add", "mult" (multiply), "rot" (increment w/ modulus), "and" (boolean or bitwise and), "or" (boolean or bitwise or), "xor" (boolean or bitwise exclusive-or), "not" (boolean or bitwise negation). For `rot`, `value` is given as an array of `[increment, modulus]`. For `not`, `value` is ignored and should be `null`. `add` and `mult` apply to any number, `rot` applies to integers only, and the boolean/bitwise operations only apply to integers and booleans. Because of rounding, operations on floating-point numbers or with floating-point operands could result in inconsistent state depending on the order of execution of the operations.
 
 ### Operations on strings and arrays
 
@@ -177,7 +214,6 @@ The same operation is used for both strings and arrays:
 * `SPLICE(index, length, new_value)`: Replaces text in a string or array elements in an array at the given index and length in the original. To delete, `new_value` should be an empty string or zero-length array. To insert, `length` should be zero.
 * `APPLY(index, operation)`: Apply any operation to a particular array element at `index`. `operation` is any operation. (Overloaded with APPLY for objects.)
 * `MAP(operation)`: Apply any operation to all elements of an array (or all characters in a string). `operation` is any operation created by these constructors.
-* `MOVE(index, count, new_index)`: Move consecutive elements of an array from one index to another.
 
 SPLICE is the only operation you need for basic plain text concurrent
 editing. JOT includes the entire text editing model in the SPLICE
@@ -194,68 +230,72 @@ operations plus it adds new operations for non-string data structures!
 
 (Note that interally `PUT` and `REM` are subcases of SET that use a special value to signal the absense of an object property.)
 
+All of these operations are accessed as `new jot.OPERATION(arguments)`.
 
-Transformations
----------------
+Conflictless Rebase
+-------------------
 
 What makes JOT useful is that each operation knows how to "rebase" itself against
 every other operation. This is the "transformation" part of operational transformation,
 and it's what you do when you have two concurrent edits that need to be merged.
 
-Let's say you have two operations A and B which represent simultaneous edits to
-a common base document. For instance, A inserts three characters at the start of
-the document and B, which was generated on some other machine concurrently, deletes
-the character at index 6. Rebasing B against A yields a new operation B' that can be
-applied sequentially *after* A but causes the same logical effect as the original B.
-In this example, B' is the deletion of the character at index 9.
+The rebase operation guarantees that any two operations can be combined in any order
+and result in the same document. In other words, rebase satisfies the constraints
+`A ○ (B/A) == B ○ (A/B)` and `C / (A○B) == (C/A) / B`, where `○` is `compose`
+and `/` is rebase.
 
-To get B' from B, call `b.rebase(a)`. Not all operations can be rebased against
-all other operations. When the logical intent of both operations cannot be preserved,
-such as if there are two edits to the same character in a string, then `rebase`
-returns null, signaling a conflict. But see the section Conflictless Rebase below.
+### Rebase conflicts
 
-Applying two operations in sequence is called composition and is denoted with the
-symbol ○. And lets denote B rebased against A as "B / A". So before the rebase we
-have two operations A and B. After the rebase we have A and B/A, such that A ○ (B/A)
-combines the logical intent of both A and B.
+In general, not all rebases are possible in a way that preserves the logical intent
+of each change. This is what results in a merge conflict in source code control
+software like git. The conflict indicates where two operations could not be merged
+without losing the logical intent of the changes and intervention by a human is
+necessary. `rebase` will return `null` in these cases.
 
-The rebase operation satisfies the constraints that 1) A ○ (B/A) == B ○ (A/B), and
-2) C / (A ○ B) == (C / A) / B.
+For example, two `MATH` operations with different operators will conflict because
+the order that these operations apply is significant:
 
-Conflictless Rebase
--------------------
+	> new jot.MATH("add", 1)
+	    .rebase( new jot.MATH("mult", 2) )
+	null
 
-The rebase method takes a second optional argument `conflictless`. When `conflictless`
-is true, `rebase` tries harder to avoid returning null. It may return an operation
-that while not preseving the logical intent of the operation at least makes a
-rebase consistent, avoiding hard-to-handle conflict situations. In the case of two
-edits to the same character in a string, a conflictless rebase will cause one of
-the edits to be squashed in a predictable way.
+(10 + 1) * 2 = 22 but (10 * 2) + 1 == 21. `rebase` will return `null` in this case
+to signal that human intervention is needed to choose which operation should apply
+first.
 
-The following operations support conflictless rebase with each other:
+### Using conflictless rebase
 
-* On numbers: SET, MATH
+However, JOT provides a way to guarantee that `rebase` will return *some* operation,
+so that a merge conflict cannot occur. We call this "conflictless" rebase. The result
+of a conflictless rebase comes *close* to preserving the logical intent of the
+operations by choosing one operation over the other *or* choosing an order that
+the operations will apply in.
 
-* On strings and arrays: SET, SPLICE, APPLY
+To get a conflictless rebase, pass a second options argument to `rebase` with the
+`document` option set to the content of the document prior to both operations applying:
 
-* On objects: SET, PUT, REM, APPLY
+	> new jot.MATH("add", 1)
+	    .rebase( new jot.MATH("mult", 2),
+	             { document: 10 } )
+	<values.SET 22>
 
-If you stick to those operations, you can have merges without ever experiencing a conflict.
+The rebase returns a valid operation now, in this case telling us that to add 1 *after the multiplication has applied*, we should simply set the
+result to 22 instead of adding 1. In other words, the rebase has chosen the order
+where multiplication goes second.
 
-(MAP, MOVE, and REN still need work.)
+Rebasing the other way around yields a consistent operation:
 
+	> new jot.MATH("mult", 2)
+	    .rebase( new jot.MATH("add", 1),
+	             { document: 10 } )
+	<values.MATH mult:2>
 
-Real Time Collaboration
------------------------
-  
-You could put these pieces together into a real time collaboration server, but that
-involves more complicated handling of conflicts and synchronization, which is out
-of scope for this project.
+In other words, if we're multing by 2 *after the addition has applied*, we should
+continue to multiply by 2. That's the same order as rebase chose above.
 
 Notes
 -----
 
 Thanks to @konklone for some inspiration and the first pull request.
 
-The Substance Operator library is very similar to this library. https://github.com/substance/operator
-
+Similar work: [Apache Wave](http://incubator.apache.org/wave/) (formerly Google Wave), [Substance Operator](https://github.com/substance/operator) (defunct).
