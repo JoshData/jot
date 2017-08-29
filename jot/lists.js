@@ -43,35 +43,37 @@ exports.LIST.prototype.simplify = function (aggressive) {
 	var new_ops = [];
 	for (var i = 0; i < this.ops.length; i++) {
 		var op = this.ops[i];
-		if (op instanceof values.NO_OP) continue; // don't put no-ops into the new list
 
 		// simplify the inner op
 		op = op.simplify();
-		
-		if (new_ops.length == 0) {
-			// first operation
-			new_ops.push(op);
 
-		} else {
-			for (var j = new_ops.length-1; j >= 0; j--) {
-				// try to compose with op[j]
-				var c = new_ops[j].atomic_compose(op);
-				if (c) {
-					if (c instanceof values.NO_OP)
-						// they obliterated each other, so remove the one that we already added
-						new_ops.splice(j, 1);
-					else
-						// replace op[j] with the composition
-						new_ops[j] = c;
-					break;
+		// if this isn't the first operation, try to atomic_compose the operation
+		// with the previous one.
+		while (new_ops.length > 0) {
+			// Don't bother with atomic_compose if the op to add is a no-op.
+			if (op.isNoOp())
+				break;
 
-				} else {
-					// We can't bring the op back any further. Insert here.
-					new_ops.splice(j+1, 0, op);
-					break;
-				}
-			}
+			var c = new_ops[new_ops.length-1].atomic_compose(op);
+
+			// If there is no atomic composition, there's nothing more we can do.
+			if (!c)
+				break;
+
+			// The atomic composition was successful. Remove the old previous operation.
+			new_ops.pop();
+
+			// Use the atomic_composition as the next op to add. On the next iteration
+			// try composing it with the new last element of new_ops.
+			op = c;
 		}
+
+		// Don't add to the new list if it is a no-op.
+		if (op.isNoOp())
+			continue;
+
+		// if it's the first operation, or atomic_compose failed, add it to the new_ops list
+		new_ops.push(op);
 	}
 
 	if (new_ops.length == 0)
