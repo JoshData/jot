@@ -234,7 +234,7 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless, debug) {
 		if (other instanceof this.rebase_functions[i][0]) {
 			var r = this.rebase_functions[i][1].call(this, other, conflictless);
 			if (r != null && r[0] != null) {
-				if (debug) debug("rebase", this, "on", other, "=>", r[0]);
+				if (debug) debug("rebase", this, "on", other, (conflictless ? "conflictless" : ""), ("document" in conflictless ? JSON.stringify(conflictless.document) : ""), "=>", r[0]);
 				return r[0];
 			}
 		}
@@ -246,7 +246,7 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless, debug) {
 		if (this instanceof other.rebase_functions[i][0]) {
 			var r = other.rebase_functions[i][1].call(other, this, conflictless);
 			if (r != null && r[1] != null) {
-				if (debug) debug("rebase", this, "on", other, "=>", r[1]);
+				if (debug) debug("rebase", this, "on", other, (conflictless ? "conflictless" : ""), ("document" in conflictless ? JSON.stringify(conflictless.document) : ""), "=>", r[0]);
 				return r[1];
 			}
 		}

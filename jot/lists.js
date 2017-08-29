@@ -217,7 +217,7 @@ function rebase_array(base, ops, conflictless, debug) {
 	
 	if (debug) {
 		// Wrap the debug function to emit an extra argument to show depth.
-		debug("rebasing", ops, "on", base, "...");
+		debug("rebasing", ops, "on", base, conflictless ? "conflictless" : "", "document" in conflictless ? JSON.stringify(conflictless.document) : "", "...");
 		var original_debug = debug;
 		debug = function() { var args = [">"].concat(Array.from(arguments)); original_debug.apply(null, args); }
 	}

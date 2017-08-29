@@ -1076,7 +1076,7 @@ exports.MAP.prototype.rebase_functions = [
 	[exports.PATCH, function(other, conflictless) {
 		// Rebase MAP and PATCH. Only a conflictless rebase is possible,
 		// and prior document state is required.
-		if (conflictless && conflictless.document) {
+		if (conflictless && "document" in conflictless) {
 			// Wrap MAP in a PATCH that spans the whole sequence, and then
 			// use rebase_patches. This will jump ahead to comparing the
 			// MAP to the PATCH's inner operations.
