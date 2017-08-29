@@ -1087,7 +1087,53 @@ exports.MAP.prototype.rebase_functions = [
 	}],
 
 	[exports.PATCH, function(other, conflictless) {
-		// Rebase MAP and PATCH. Only a conflictless rebase is possible,
+		// Rebase MAP and PATCH.
+
+		// If the PATCH has no hunks, then the rebase is trivial.
+		if (other.hunks.length == 0)
+			return [this, other];
+
+		// If the PATCH hunks are all MAP operations and the rebase
+		// between this and the hunk operations are all the same,
+		// then we can use that.
+		var _this = this;
+		var rebase_result;
+		other.hunks.forEach(function(hunk) {
+			if (!(hunk.op instanceof exports.MAP)) {
+				// Rebase is not possible. Flag that it is not possible.
+				rebase_result = null;
+				return;
+			}
+
+			var r = _this.rebase_functions[0][1].call(_this, hunk.op);
+			if (!r) {
+				// Rebase failed. Flag it.
+				rebase_result = null;
+				return;
+			}
+
+			if (typeof rebase_result == "undefined") {
+				// This is the first one.
+				rebase_result = r;
+				return;
+			}
+
+			// Check that it is equal to the last one. If not, flag.
+			if (!deepEqual(rebase_result[0], r[0], { strict: true })
+				|| !deepEqual(rebase_result[1], r[1], { strict: true }))
+				rebase_result = null;
+		})
+		if (rebase_result != null) {
+			// Rebase was possible and the same for every operation.
+			return [
+				rebase_result[0],
+				new exports.PATCH(other.hunks.map(function(hunk) {
+					return Object.assign({}, hunk, { op: rebase_result[1]}); // clone & update
+				})),
+			]
+		}
+
+		// Only a conflictless rebase is possible in other cases,
 		// and prior document state is required.
 		if (conflictless && "document" in conflictless) {
 			// Wrap MAP in a PATCH that spans the whole sequence, and then
