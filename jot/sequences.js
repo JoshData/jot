@@ -21,8 +21,10 @@
      ]
     )
 
-   The inner operation must be one of NO_OP, SET, and MAP (or any operation
-   that defines "get_length_change" and "decompose" functions.)
+   The inner operation must be one of NO_OP, SET, and MAP (or any
+   operation that defines "get_length_change" and "decompose" functions
+   and whose rebase always yields an operation that also satisfies these
+   same constraints.)
 
 
    This library also defines the MAP operation, which applies a jot
@@ -838,6 +840,17 @@ exports.PATCH.prototype.rebase_functions = [
 	}]
 ];
 
+
+exports.PATCH.prototype.get_length_change = function (old_length) {
+	// Support routine for PATCH that returns the change in
+	// length to a sequence if this operation is applied to it.
+	var dlen = 0;
+	this.hunks.forEach(function(hunk) {
+		dlen += hunk.op.get_length_change(hunk.length);
+	});
+	return dlen;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 exports.MOVE.prototype.inspect = function(depth) {
@@ -1080,6 +1093,13 @@ exports.MAP.prototype.rebase_functions = [
 			// Wrap MAP in a PATCH that spans the whole sequence, and then
 			// use rebase_patches. This will jump ahead to comparing the
 			// MAP to the PATCH's inner operations.
+			//
+			// NOTE: Operations that are allowed inside PATCH (including MAP)
+			// normally must not rebase to an operation that is not allowed
+			// inside PATCH. Returning a PATCH here would therefore normally
+			// not be valid. We've partially satisfied the contract for PATCH
+			// by defining PATCH.get_length_change, but not PATCH.decompose.
+			// That seems to be enough.
 			return rebase_patches(
 				new exports.PATCH([{ offset: 0, length: conflictless.document.length, op: this}]),
 				other,
