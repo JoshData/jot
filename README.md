@@ -175,7 +175,7 @@ The operations in JOT are...
 The same operation is used for both strings and arrays:
 
 * `SPLICE(index, length, new_value)`: Replaces text in a string or array elements in an array at the given index and length in the original. To delete, `new_value` should be an empty string or zero-length array. To insert, `length` should be zero.
-* `APPLY(index, operation)`: Apply any operation to a particular array element at `index`. `operation` is any operation. The operation can also take a mapping from indexes to operations, as `APPLY({index: operation, ...})`. (Overloaded with APPLY for objects.)
+* `APPLY(index, operation)`: Apply any operation to a particular array element at `index`. `operation` is any operation. (Overloaded with APPLY for objects.)
 * `MAP(operation)`: Apply any operation to all elements of an array (or all characters in a string). `operation` is any operation created by these constructors.
 * `MOVE(index, count, new_index)`: Move consecutive elements of an array from one index to another.
 

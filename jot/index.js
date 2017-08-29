@@ -41,7 +41,7 @@ exports.LIST = function() { return new_op(lists.LIST, arguments) };
 exports.APPLY = function(pos_or_key) {
 	if (typeof pos_or_key == "number")
 		return new_op(sequences.APPLY, arguments);
-	if (typeof pos_or_key == "string")
+	if (typeof pos_or_key == "string" || typeof pos_or_key == "object")
 		return new_op(objects.APPLY, arguments);
 	throw new Error("Invalid Argument");
 };
