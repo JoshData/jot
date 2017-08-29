@@ -468,7 +468,7 @@ function compose_patches(a, b) {
 			// elements, then we can compose the two operations directly.
 			var b_op = b_state.hunks[0].op;
 			var dx = b_op.get_length_change(b_state.hunks[0].length);
-			if (dx_start != 0) {
+			if (dx_start != 0 || dx_end != 0) {
 				// If a starts before b, wrap b_op in a PATCH operation
 				// so that they can be considered to start at the same
 				// location.
