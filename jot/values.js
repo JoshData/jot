@@ -85,6 +85,34 @@ exports.MATH = function(operator, operand) {
 	   to a numeric document. */
 	this.operator = operator;
 	this.operand = operand;
+
+	if (this.operator == "add" || this.operator == "mult") {
+		if (typeof this.operand != "number")
+			throw new Error("MATH[add] and MATH[mult]'s operand must be a number.")
+	}
+
+	if (this.operator == "and" || this.operator == "or" || this.operator == "xor") {
+		if (!Number.isInteger(this.operand) && typeof this.operand != "boolean")
+			throw new Error("MATH[and] and MATH[or] and MATH[xor]'s operand must be a boolean or integer.")
+	}
+
+	if (this.operator == "not") {
+		if (this.operand !== null)
+			throw new Error("MATH[not]'s operand must be null --- it is not used.")
+	}
+
+	if (this.operator == "rot") {
+		if (   !Array.isArray(this.operand)
+			|| this.operand.length != 2
+			|| !Number.isInteger(this.operand[0])
+			|| !Number.isInteger(this.operand[1]))
+			throw new Error("MATH[rot] operand must be an array with two integer elements.")
+		if (this.operand[1] <= 1)
+			throw new Error("MATH[rot]'s second operand, the modulus, must be greater than one.")
+		if (this.operand[0] >= this.operand[1])
+			throw new Error("MATH[rot]'s first operand, the increment, must be less than its second operand, the modulus.")
+	}
+
 	Object.freeze(this);
 }
 exports.MATH.prototype = Object.create(jot.BaseOperation.prototype); // inherit
@@ -320,8 +348,6 @@ exports.MATH.prototype.simplify = function () {
 		return new exports.NO_OP();
 	if (this.operator == "rot" && this.operand[0] == 0)
 		return new exports.NO_OP();
-	if (this.operator == "rot") // ensure the first value is less than the modulus
-		return new exports.MATH("rot", [this.operand[0] % this.operand[1], this.operand[1]]);
 	if (this.operator == "mult" && this.operand == 1)
 		return new exports.NO_OP();
 	if (this.operator == "and" && this.operand === 0)
