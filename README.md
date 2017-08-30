@@ -131,7 +131,7 @@ those operations too. For instance, start with the document:
 
 	Hello world!
 
-Two simultaenous changes might be:
+Two simultaneous changes might be:
 
 	User 1: REPLACE CHARS 0-4 WITH "Brave new"
 
@@ -218,7 +218,7 @@ The same operation is used for both strings and arrays:
 editing. JOT includes the entire text editing model in the `SPLICE`
 operations plus it adds new operations for non-string data structures!
 
-(Note that interally `SPLICE` and `APPLY` are subcases of an internal PATCH operation that maintains an ordered list of edits to a string or array.)
+(Note that internally `SPLICE` and `APPLY` are sub-cases of an internal PATCH operation that maintains an ordered list of edits to a string or array.)
 
 ### Operations on objects
 
@@ -227,7 +227,7 @@ operations plus it adds new operations for non-string data structures!
 * `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings. It can also take a mapping from new keys to old keys they are renamed from, as `REN({new_name: key, ...})`, which also allows for the duplication of property values.
 * `APPLY(key, operation)`: Apply any operation to a particular property named `key`. `operation` is any operation. The operation can also take a mapping from keys to operations, as `APPLY({key: operation, ...})`. (Overloaded with APPLY for strings and arrays.)
 
-(Note that interally `PUT` and `REM` are subcases of SET that use a special value to signal the absense of an object property.)
+(Note that internally `PUT` and `REM` are sub-cases of SET that use a special value to signal the absence of an object property.)
 
 All of these operations are accessed as `new jot.OPERATION(arguments)`.
 
