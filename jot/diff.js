@@ -18,6 +18,29 @@ function diff(a, b, options) {
 	//         content in characters, which is used for weighting
 	// }
 
+
+	// Run the diff method appropriate for the pair of data types.
+	// Do a type-check for valid types early, before deepEqual is called.
+	// We can't call JSON.stringify below if we get a non-JSONable
+	// data type.
+
+	function typename(val) {
+		if (typeof val == "undefined")
+			throw new Error("Illegal argument: undefined passed to diff");
+		if (val === null)
+			return "null";
+		if (typeof val == "string" || typeof val == "number" || typeof val == "boolean")
+			return typeof val;
+		if (Array.isArray(val))
+			return "array";
+		if (typeof val != "object")
+			throw new Error("Illegal argument: " + typeof val + " passed to diff");
+		return "object";
+	}
+
+	var ta = typename(a);
+	var tb = typename(b);
+
 	// Return fast if the objects are equal. This is muuuuuch
 	// faster than doing our stuff recursively.
 
@@ -28,21 +51,6 @@ function diff(a, b, options) {
 			size: JSON.stringify(a).length
 		};
 	}
-
-	// Run the diff method appropriate for the pair of data types.
-
-	function typename(val) {
-		if (val === null)
-			return "null";
-		if (typeof val == "string" || typeof val == "number" || typeof val == "boolean")
-			return typeof val;
-		if (Array.isArray(val))
-			return "array";
-		return "object";
-	}
-
-	var ta = typename(a);
-	var tb = typename(b);
 	
 	if (ta == "string" && tb == "string")
 		return diff_strings(a, b, options);
