@@ -282,6 +282,10 @@ function diff_objects(a, b, options) {
 	// store pairs with nothing in common.
 	var pairs = [ ];
 	for (var key1 in a) {
+		// TODO: Since the REN operation is not conflictless
+		// at the moment, don't generate any RENs.
+		break;
+
 		if (key1 in b) continue;
 		for (var key2 in b) {
 			if (key2 in a) continue;
