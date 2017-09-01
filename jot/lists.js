@@ -278,6 +278,12 @@ function rebase_array(base, ops, conflictless, debug) {
 	}
 }
 
+exports.LIST.prototype.drilldown = function(index_or_key) {
+	return new exports.LIST(this.ops.map(function(op) {
+		return op.drilldown(pos_or_key)
+	})).simplify();
+}
+
 exports.createRandomOp = function(doc, context) {
 	// Create a random LIST that could apply to doc.
 	var ops = [];

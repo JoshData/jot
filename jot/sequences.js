@@ -1199,6 +1199,18 @@ exports.MAP.prototype.decompose = function (in_out, at_index) {
 	return [this, this];
 }
 
+exports.PATCH.prototype.drilldown = function(index_or_key) {
+	var index = 0;
+	var ret = null;
+	this.hunks.forEach(function(hunk) {
+		index += hunk.offset;
+		if (index == index_or_key && hunk.length == 1)
+			ret = hunk.op;
+		index += hunk.length;
+	})
+	return ret ? ret : new values.NO_OP();
+}
+
 ////
 
 exports.createRandomOp = function(doc, context) {

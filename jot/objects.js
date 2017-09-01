@@ -435,6 +435,12 @@ exports.APPLY.prototype.rebase_functions = [
 	}]
 ]
 
+exports.APPLY.prototype.drilldown = function(index_or_key) {
+	if (index_or_key in this.ops)
+		return this.ops[index_or_key];
+	return new values.NO_OP();
+}
+
 exports.createRandomOp = function(doc, context) {
 	// Create a random operation that could apply to doc.
 	// Choose uniformly across various options.
