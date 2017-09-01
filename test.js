@@ -60,6 +60,9 @@ while (true) {
 		var val1c = op2r ? op1.compose(op2r).apply(initial_value) : null;
 		var val2c = op1r ? op2.compose(op1r).apply(initial_value) : null;
 
+		// Check that we can compute a diff.
+		var d = jot.diff(initial_value, val1b);
+
 		if (op2r === null || op1r === null
 		 || !deepEqual(val1b, val2b, { strict: true })
 		 ) {
