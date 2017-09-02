@@ -207,7 +207,7 @@ exports.REN.prototype.rebase_functions = [
 
 		// Fast path: If the renames are identical, then each goes
 		// to a NO_OP when rebased against the other.
-		if (deepEqual(this.map, other.map))
+		if (deepEqual(this.map, other.map, { strict: true }))
 			return [new values.NO_OP(), new values.NO_OP()];
 
 		function inner_rebase(a, b) {

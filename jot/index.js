@@ -336,7 +336,7 @@ exports.createRandomOp = function(doc, context) {
 		.createRandomOp(doc, context);
 }
 
-function type_name(x) {
+exports.type_name = function(x) {
 	if (typeof x == 'object') {
 		if (Array.isArray(x))
 			return 'array';
@@ -360,8 +360,8 @@ exports.cmp = function(a, b) {
 
 	// Comparing strings to numbers, numbers to objects, etc.
 	// just sort based on the type name.
-	if (type_name(a) != type_name(b)) {
-		return exports.cmp(type_name(a), type_name(b));
+	if (exports.type_name(a) != exports.type_name(b)) {
+		return exports.cmp(exports.type_name(a), exports.type_name(b));
 	
 	} else if (typeof a == "number") {
 		if (a < b)

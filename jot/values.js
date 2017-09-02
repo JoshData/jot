@@ -336,7 +336,7 @@ exports.MATH.prototype.apply = function (document) {
 		throw new Error("MATH operator " + this.operator + " does not apply to boolean values.")
 	
 	} else {
-		throw new Error("MATH operations only apply to number and boolean values.")
+		throw new Error("MATH operations only apply to number and boolean values, not " + jot.type_name(document) + ".")
 	}
 }
 
