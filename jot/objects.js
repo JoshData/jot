@@ -215,11 +215,25 @@ exports.REN.prototype.rebase_functions = [
 			// Just stop if there is a conflict.
 			var new_map = shallow_clone(a.map);
 			for (var new_key in b.map) {
-				var old_key = b.map[new_key];
 				if (new_key in a.map) {
 					if (a.map[new_key] != b.map[new_key]) {
 						// Both RENs create a property of the same name
-						// and not by renaming the same property.
+						// and not by renaming the same property ---
+						// i.e. renames clashed.
+						if (conflictless && !(b.map[new_key] in new_map)) {
+							// We can do a conflictless rebase. The old
+							// key with the higher sort order wins.
+							if (jot.cmp(a.map[new_key], b.map[new_key]) > 0)
+								// a wins, so keep the mapping but b already applied, so
+								// put that rename back.
+								new_map[b.map[new_key]] = new_key;
+							else
+								// b wins, so leave a as a no-op
+								delete new_map[new_key];
+							continue;
+						} else if (conflictless) {
+							// TODO
+						}
 						return null;
 					} else {
 						// Both RENs renamed the same property to the same
@@ -230,18 +244,31 @@ exports.REN.prototype.rebase_functions = [
 				} else {
 					// Since a rename has taken place, update any renames
 					// in a that are affected.
+					var old_key = b.map[new_key];
 					for (var a_key in new_map) {
 						if (new_map[a_key] == old_key) {
 							// Both RENs renamed the same property, but
 							// to different keys (if they were the same
 							// key then new_key would be in a.map which
 							// we already checked).
+							if (conflictless) {
+								// We can do a conflictless rebase. The new
+								// key with the higher sort order wins.
+								if (jot.cmp(a_key, new_key) > 0)
+									// a wins, but b already applied, so
+									// rename it to what a wanted
+									new_map[a_key] = new_key;
+								else
+									// b wins, so leave a as a no-op
+									delete new_map[a_key];
+								continue;
+							}
 							return null;
 						}
 					}
 				}
 			}
-			return new exports.REN(new_map);
+			return new exports.REN(new_map).simplify();
 		}
 
 		var x = inner_rebase(this, other);
@@ -253,34 +280,24 @@ exports.REN.prototype.rebase_functions = [
 	}],
 
 	[exports.APPLY, function(other, conflictless) {
-		// An APPLY applied simultaneously and may have created the
-		// key that this operation is also creating through a rename
-		// or duplication. That's a conflict.
-		// TODO: How to do this in a conflictless way?
-		for (var new_key in this.map)
-			if (new_key in other.ops)
-				return null;
+		// Adjust the APPLY's keys due to the renaming of keys.
 
-		// If an APPLY applied simultaneously to a key that is not
-		// mentioned as a new key in map, there is no conflict but
-		// the APPLY's keys may need to be renamed. If a key in the
-		// APPLY is involved in duplication, then we must duplicate
-		// the operations too.
-		//
-		// The logic here parallels the logic of REN.apply.
-
-		// Apply duplications.
+		// Because we allow REN To duplicate keys, we have to do this in
+		// two passes, like REN.apply. First handle renames & duplicates.
 		var new_apply_ops = shallow_clone(other.ops);
+		var newly_set_keys = { };
 		for (var new_key in this.map) {
 			var old_key = this.map[new_key];
-			if (old_key in new_apply_ops)
-				new_apply_ops[new_key] = new_apply_ops[old_key];
+			if (old_key in other.ops) {
+				new_apply_ops[new_key] = other.ops[old_key];
+				newly_set_keys[new_key] = true;
+			}
 		}
 
 		// Delete old keys.
 		for (var new_key in this.map) {
 			var old_key = this.map[new_key];
-			if (!(old_key in this.map))
+			if (!(old_key in this.map) || !(old_key in newly_set_keys))
 				delete new_apply_ops[old_key];
 		}
 
@@ -452,6 +469,11 @@ exports.createRandomOp = function(doc, context) {
 	// Apply random operations to individual keys.
 	Object.keys(doc).forEach(function(key) {
 		ops.push(function() { return jot.createRandomOp(doc[key], "object") });
+	});
+
+	// Rename keys.
+	Object.keys(doc).forEach(function(key) {
+		ops.push(function() { return new exports.REN(key, Math.random().toString(36).substring(7)) });
 	});
 
 	// TODO: REN.
