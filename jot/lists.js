@@ -8,6 +8,8 @@
 	
 var util = require("util");
 
+var shallow_clone = require('shallow-clone');
+
 var jot = require("./index.js");
 var values = require('./values.js');
 
@@ -245,7 +247,7 @@ function rebase_array(base, ops, conflictless, debug) {
 		// For the remainder operations, we have to adjust the 'conflictless' object.
 		// If it provides the base document state, then we have to advance the document
 		// for the application of op1.
-		var conflictless2 = !conflictless ? null : Object.assign({}, conflictless);
+		var conflictless2 = !conflictless ? null : shallow_clone(conflictless);
 		if ("document" in conflictless2)
 			conflictless2.document = op1[0].apply(conflictless2.document);
 
@@ -262,7 +264,7 @@ function rebase_array(base, ops, conflictless, debug) {
 		// against each operation in the base sequentially (base[0], base[1], ...).
 		
 		// shallow clone
-		conflictless = !conflictless ? null : Object.assign({}, conflictless);
+		conflictless = !conflictless ? null : shallow_clone(conflictless);
 
 		for (var i = 0; i < base.length; i++) {
 			ops = rebase_array([base[i]], ops, conflictless, debug);

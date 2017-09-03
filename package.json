@@ -5,7 +5,8 @@
   "dependencies": {
     "deep-equal": "1.0.1",
     "diff": "3.0.1",
-    "generic-diff": "1.0.1"
+    "generic-diff": "1.0.1",
+    "shallow-clone": "^1.0.0"
   },
   "repository": {
     "type": "git",

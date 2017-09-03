@@ -222,22 +222,22 @@ t.notOk(
 		new seqs.SPLICE(0, 0, "456")));
 t.deepEqual(
 	new seqs.SPLICE(0, 0, "123").rebase(
-		new seqs.SPLICE(0, 0, "456"), true),
+		new seqs.SPLICE(0, 0, "456"), { }),
 	new seqs.SPLICE(0, 0, "123"));
 t.deepEqual(
 	new seqs.SPLICE(0, 0, "456").rebase(
-		new seqs.SPLICE(0, 0, "123"), true),
+		new seqs.SPLICE(0, 0, "123"), { }),
 	new seqs.SPLICE(3, 0, "456"));
 t.notOk(
 	new seqs.SPLICE(0, 3, "456").rebase(
 		new seqs.SPLICE(0, 3, "789")));
 t.deepEqual(
 	new seqs.SPLICE(0, 3, "456").rebase(
-		new seqs.SPLICE(0, 3, "789"), true),
+		new seqs.SPLICE(0, 3, "789"), { }),
 	new values.NO_OP());
 t.deepEqual(
 	new seqs.SPLICE(0, 3, "789").rebase(
-		new seqs.SPLICE(0, 3, "456"), true),
+		new seqs.SPLICE(0, 3, "456"), { }),
 	new seqs.SPLICE(0, 3, "789"));
 t.deepEqual(
 	new seqs.SPLICE(0, 3, "456").rebase(
@@ -251,68 +251,68 @@ t.deepEqual(
 // one encompasses the other
 t.deepEqual(
 	new seqs.SPLICE(3, 3, "456").rebase(
-		new seqs.SPLICE(3, 1, "ABC"), true),
+		new seqs.SPLICE(3, 1, "ABC"), { }),
 	new seqs.SPLICE(6, 2, "456"));
 t.deepEqual(
 	new seqs.SPLICE(3, 3, "456").rebase(
-		new seqs.SPLICE(4, 1, "ABC"), true),
+		new seqs.SPLICE(4, 1, "ABC"), { }),
 	new seqs.SPLICE(3, 1, "").compose(new seqs.SPLICE(6, 1, "456")));
 t.deepEqual(
 	new seqs.SPLICE(3, 3, "456").rebase(
-		new seqs.SPLICE(5, 1, "ABC"), true),
+		new seqs.SPLICE(5, 1, "ABC"), { }),
 	new seqs.SPLICE(3, 2, ""));
 t.deepEqual(
 	new seqs.SPLICE(3, 1, "ABC").rebase(
-		new seqs.SPLICE(3, 3, "456"), true),
+		new seqs.SPLICE(3, 3, "456"), { }),
 	new seqs.SPLICE(3, 0, "ABC"));
 t.deepEqual(
 	new seqs.SPLICE(4, 1, "ABC").rebase(
-		new seqs.SPLICE(3, 3, "456"), true),
+		new seqs.SPLICE(3, 3, "456"), { }),
 	new seqs.SPLICE(3, 0, "ABC"));
 t.deepEqual(
 	new seqs.SPLICE(5, 1, "ABC").rebase(
-		new seqs.SPLICE(3, 3, "456"), true),
+		new seqs.SPLICE(3, 3, "456"), { }),
 	new seqs.SPLICE(3, 3, "ABC"));
 t.deepEqual(
 	new seqs.SPLICE(3, 3, "456").rebase(
-		new seqs.SPLICE(2, 4, "ABC"), true),
+		new seqs.SPLICE(2, 4, "ABC"), { }),
 	new values.NO_OP());
 t.deepEqual(
 	new seqs.SPLICE(3, 3, "456").rebase(
-		new seqs.SPLICE(2, 5, "ABC"), true),
+		new seqs.SPLICE(2, 5, "ABC"), { }),
 	new seqs.SPLICE(2, 0, "456"));
 
 // partial overlap
 t.deepEqual(
 	new seqs.SPLICE(3, 3, "456").rebase(
-		new seqs.SPLICE(2, 2, "ABC"), true),
+		new seqs.SPLICE(2, 2, "ABC"), { }),
 	new seqs.SPLICE(5, 2, "456"));
 t.deepEqual(
 	new seqs.SPLICE(3, 3, "456").rebase(
-		new seqs.SPLICE(5, 2, "ABC"), true),
+		new seqs.SPLICE(5, 2, "ABC"), { }),
 	new seqs.SPLICE(3, 2, "456"));
 t.deepEqual(
 	new seqs.SPLICE(3, 3, "456").rebase(
-		new seqs.SPLICE(4, 3, "AB"), true),
+		new seqs.SPLICE(4, 3, "AB"), { }),
 	new seqs.SPLICE(3, 1, "456"));
 t.deepEqual(
 	new seqs.SPLICE(2, 2, "ABC").rebase(
-		new seqs.SPLICE(3, 3, "46"), true),
+		new seqs.SPLICE(3, 3, "46"), { }),
 	new seqs.SPLICE(2, 1, "ABC"));
 t.deepEqual(
 	new seqs.SPLICE(5, 2, "ABC").rebase(
-		new seqs.SPLICE(3, 3, "46"), true),
+		new seqs.SPLICE(3, 3, "46"), { }),
 	new seqs.SPLICE(5, 1, "ABC"));
 t.deepEqual(
 	new seqs.SPLICE(4, 3, "ABC").rebase(
-		new seqs.SPLICE(3, 3, "46"), true),
+		new seqs.SPLICE(3, 3, "46"), { }),
 	new seqs.SPLICE(5, 1, "ABC"));
 
 // splice vs apply
 
 t.deepEqual(
 	new seqs.SPLICE(0, 3, [4,5,6]).rebase(
-		new seqs.APPLY(0, new values.MATH("add", 1)), true),
+		new seqs.APPLY(0, new values.MATH("add", 1)), { }),
 	new seqs.SPLICE(0, 3, [4,5,6]));
 
 // splice vs map
@@ -351,17 +351,17 @@ t.notOk(
 		new seqs.APPLY(555, new values.SET("z"))))
 t.deepEqual(
 	new seqs.APPLY(555, new values.SET("y")).rebase(
-		new seqs.APPLY(555, new values.SET("z")), true),
+		new seqs.APPLY(555, new values.SET("z")), { }),
 	new values.NO_OP()
 	)
 t.deepEqual(
 	new seqs.APPLY(555, new values.SET("z")).rebase(
-		new seqs.APPLY(555, new values.SET("y")), true),
+		new seqs.APPLY(555, new values.SET("y")), { }),
 	new seqs.APPLY(555, new values.SET("z"))
 	)
 t.deepEqual(
 	new seqs.APPLY({0: new values.SET("z"), 1: new values.SET("b"), 2: new values.SET("N")}).rebase(
-		new seqs.APPLY({0: new values.SET("y"), 1: new values.SET(" ")}), true),
+		new seqs.APPLY({0: new values.SET("y"), 1: new values.SET(" ")}), { }),
 	new seqs.APPLY({0: new values.SET("z"), 1: new values.SET("b"), 2: new values.SET("N")})
 	)
 

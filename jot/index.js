@@ -1,6 +1,7 @@
 /* Base functions for the operational transformation library. */
 
 var util = require('util');
+var shallow_clone = require('shallow-clone');
 
 // Must define this ahead of any imports below so that this constructor
 // is available to the operation classes.
@@ -80,7 +81,7 @@ exports.BaseOperation.prototype.toJSON = function() {
         }
         else if (keys[i] === 'hunks') {
             v = value.map(function(hunk) {
-            	var ret = Object.assign({}, hunk);
+            	var ret = shallow_clone(hunk);
             	ret.op = ret.op.toJSON();
                 return ret;
             });
@@ -149,7 +150,7 @@ exports.opFromJSON = function(obj, op_map) {
         } else if (item === 'hunks') {
         	// Value is a list of PATCH hunks.
             value = value.map(function(hunk) {
-            	var ret = Object.assign({}, hunk);
+            	var ret = shallow_clone(hunk);
                 ret.op = exports.opFromJSON(hunk.op);
                 return ret;
             });

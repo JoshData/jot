@@ -49,19 +49,13 @@
    */
    
 var util = require('util');
+
 var deepEqual = require("deep-equal");
+var shallow_clone = require('shallow-clone');
+
 var jot = require("./index.js");
 var values = require("./values.js");
 var LIST = require("./lists.js").LIST;
-
-//////////////////////////////////////////////////////////////////////////////
-
-function shallow_clone(document) {
-	var d = { };
-	for (var k in document)
-		d[k] = document[k];
-	return d;
-}
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -422,7 +416,7 @@ exports.APPLY.prototype.rebase_functions = [
 		function build_conflictless(key) {
 			if (!conflictless || !("document" in conflictless))
 				return conflictless;
-			var ret = Object.assign({}, conflictless); // shallow clone
+			var ret = shallow_clone(conflictless);
 			ret.document = conflictless.document[key];
 			return ret;
 		}

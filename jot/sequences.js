@@ -73,7 +73,10 @@
 	 */
 	 
 var util = require('util');
+
 var deepEqual = require("deep-equal");
+var shallow_clone = require('shallow-clone');
+
 var jot = require("./index.js");
 var values = require("./values.js");
 var LIST = require("./lists.js").LIST;
@@ -686,7 +689,7 @@ function rebase_patches(a, b, conflictless) {
 			// When conflictless is supplied with a prior document state,
 			// the state represents the sequence, so we have to dig into
 			// it and pass an inner value
-			var conflictless2 = !conflictless ? null : Object.assign({}, conflictless);
+			var conflictless2 = !conflictless ? null : shallow_clone(conflictless);
 			if (conflictless2 && "document" in conflictless2)
 				conflictless2.document = conflictless2.document.slice(a_state.start(), a_state.end());
 
@@ -1013,7 +1016,7 @@ exports.MAP.prototype.rebase_functions = [
 		// If there is a single element in the prior document
 		// state, then unwrap it for the inner operations.
 		} else if (conflictless.document.length == 1) {
-			var conflictless2 = Object.assign({}, conflictless); // clone
+			var conflictless2 = shallow_clone(conflictless);
 			conflictless2.document = conflictless2.document[0];
 
 			opa = this.op.rebase(other.op, conflictless2);
@@ -1037,7 +1040,7 @@ exports.MAP.prototype.rebase_functions = [
 		} else {
 			var ok = true;
 			for (var i = 0; i < conflictless.document.length; i++) {
-				var conflictless2 = Object.assign({}, conflictless); // clone
+				var conflictless2 = shallow_clone(conflictless);
 				conflictless2.document = conflictless.document[i];
 
 				var a = this.op.rebase(other.op, conflictless2);
@@ -1132,7 +1135,9 @@ exports.MAP.prototype.rebase_functions = [
 			return [
 				rebase_result[0],
 				new exports.PATCH(other.hunks.map(function(hunk) {
-					return Object.assign({}, hunk, { op: rebase_result[1]}); // clone & update
+					hunk = shallow_clone(hunk);
+					hunk.op = rebase_result[1];
+					return hunk;
 				})),
 			]
 		}
