@@ -28,18 +28,13 @@ exports.SET = values.SET;
 exports.MATH = values.MATH;
 exports.PATCH = sequences.PATCH;
 exports.SPLICE = sequences.SPLICE;
+exports.ATINDEX = sequences.ATINDEX;
 exports.MAP = sequences.MAP;
 exports.PUT = objects.PUT;
 exports.REN = objects.REN;
 exports.REM = objects.REM;
+exports.APPLY = objects.APPLY;
 exports.LIST = lists.LIST;
-exports.APPLY = function(pos_or_key) {
-	if (typeof pos_or_key == "number")
-		return new_op(sequences.APPLY, arguments);
-	if (typeof pos_or_key == "string" || typeof pos_or_key == "object")
-		return new_op(objects.APPLY, arguments);
-	throw new Error("Invalid Argument");
-};
 
 // Expose the diff function too.
 exports.diff = require('./diff.js').diff;

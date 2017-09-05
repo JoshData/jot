@@ -229,7 +229,7 @@ function diff_arrays(a, b, options) {
 
 					// Add an operation.
 					if (!d.op.isNoOp())
-						ops.push(new jot.APPLY(hunk.bi[i], d.op));
+						ops.push(new jot.ATINDEX(hunk.bi[i], d.op));
 
 					// Increment counters.
 					total_content += d.size;

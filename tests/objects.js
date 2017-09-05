@@ -62,7 +62,7 @@ t.deepEqual(
 t.deepEqual(
 	new objs.APPLY(
 		"a",
-		new seqs.APPLY(
+		new seqs.ATINDEX(
 			1,
 			new values.MATH("add", 1)
 			))
@@ -243,11 +243,11 @@ t.deepEqual(
 	new objs.APPLY(
 		"a",
 		new lists.LIST([
-			new seqs.APPLY(
+			new seqs.ATINDEX(
 				1,
 				new values.MATH("add", 1)
 				),
-			new seqs.APPLY(
+			new seqs.ATINDEX(
 				2,
 				new values.MATH("add", -1)
 				)

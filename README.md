@@ -211,21 +211,21 @@ The operations in JOT are...
 The same operation is used for both strings and arrays:
 
 * `SPLICE(index, length, new_value)`: Replaces text in a string or array elements in an array at the given index and length in the original. To delete, `new_value` should be an empty string or zero-length array. To insert, `length` should be zero.
-* `APPLY(index, operation)`: Apply any operation to a particular array element at `index`. `operation` is any operation. (Overloaded with APPLY for objects.)
+* `ATINDEX(index, operation)`: Apply any operation to a particular array element at `index`. `operation` is any operation. Operations at multiple indexes can be applied simultaneously using `ATINDEX({ index1: op1, index2: op2, ... })`.
 * `MAP(operation)`: Apply any operation to all elements of an array (or all characters in a string). `operation` is any operation created by these constructors.
 
 `SPLICE` is the only operation you need for basic plain text concurrent
 editing. JOT includes the entire text editing model in the `SPLICE`
 operations plus it adds new operations for non-string data structures!
 
-(Note that internally `SPLICE` and `APPLY` are sub-cases of an internal PATCH operation that maintains an ordered list of edits to a string or array.)
+(Note that internally `SPLICE` and `ATINDEX` are sub-cases of an internal PATCH operation that maintains an ordered list of edits to a string or array.)
 
 ### Operations on objects
 
 * `PUT(key, value)`: Adds a new property to an object. `key` is any valid JSON key (a string) and `value` is any valid JSON object.
 * `REM(key)`: Remove a property from an object.
 * `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings. It can also take a mapping from new keys to old keys they are renamed from, as `REN({new_name: key, ...})`, which also allows for the duplication of property values.
-* `APPLY(key, operation)`: Apply any operation to a particular property named `key`. `operation` is any operation. The operation can also take a mapping from keys to operations, as `APPLY({key: operation, ...})`. (Overloaded with APPLY for strings and arrays.)
+* `APPLY(key, operation)`: Apply any operation to a particular property named `key`. `operation` is any operation. The operation can also take a mapping from keys to operations, as `APPLY({key: operation, ...})`.
 
 (Note that internally `PUT` and `REM` are sub-cases of SET that use a special value to signal the absence of an object property.)
 

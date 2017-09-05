@@ -52,7 +52,7 @@
 			 
 			 i.e. replace elements with other elements
 		
-		new sequences.APPLY(pos, op)
+		new sequences.ATINDEX(pos, op)
 
 			 Equivalent to:
 
@@ -64,7 +64,7 @@
 			 
 			 i.e. apply the operation to the single element at pos
 
-		new sequences.APPLY({ pos: op, ... })
+		new sequences.ATINDEX({ pos: op, ... })
 
 			 Similar to the above but for multiple operations at once.
 
@@ -159,7 +159,7 @@ jot.add_op(exports.PATCH, exports, 'PATCH', ['hunks']);
 	}
 	exports.SPLICE.prototype = new exports.PATCH("__hmm__"); // inherit prototype
 
-	exports.APPLY = function () {
+	exports.ATINDEX = function () {
 		var indexes;
 		var op_map;
 		if (arguments.length == 1) {
@@ -192,7 +192,7 @@ jot.add_op(exports.PATCH, exports, 'PATCH', ['hunks']);
 		});
 		exports.PATCH.apply(this, [hunks]);
 	}
-	exports.APPLY.prototype = new exports.PATCH("__hmm__"); // inherit prototype
+	exports.ATINDEX.prototype = new exports.PATCH("__hmm__"); // inherit prototype
 
 exports.MOVE = function (pos, count, new_pos) {
 	if (pos == null || count == null || count == 0 || new_pos == null) throw new Error("Invalid Argument");

@@ -14,10 +14,10 @@ t.equal(
 	new seqs.MOVE(0, 2, 5).inspect(),
 	'<sequences.MOVE @0x2 => @5>');
 t.equal(
-	new seqs.APPLY(0, new values.SET(2)).inspect(),
+	new seqs.ATINDEX(0, new values.SET(2)).inspect(),
 	'<sequences.PATCH +0 <values.SET 2>>');
 t.equal(
-	new seqs.APPLY({ 0: new values.SET(2), 4: new values.SET(10) }).inspect(),
+	new seqs.ATINDEX({ 0: new values.SET(2), 4: new values.SET(10) }).inspect(),
 	'<sequences.PATCH +0 <values.SET 2>, +3 <values.SET 10>>');
 t.equal(
 	new seqs.MAP(new values.MATH('add', 1)).inspect(),
@@ -32,11 +32,11 @@ t.deepEqual(
 	jot.opFromJSON(new seqs.MOVE(0, 2, 5).toJSON()),
 	new seqs.MOVE(0, 2, 5));
 t.deepEqual(
-	jot.opFromJSON(new seqs.APPLY(0, new values.SET(2)).toJSON()),
-	new seqs.APPLY(0, new values.SET(2)));
+	jot.opFromJSON(new seqs.ATINDEX(0, new values.SET(2)).toJSON()),
+	new seqs.ATINDEX(0, new values.SET(2)));
 t.deepEqual(
-	jot.opFromJSON(new seqs.APPLY({ 0: new values.SET(2), 4: new values.SET(10) }).toJSON()),
-	new seqs.APPLY({ 0: new values.SET(2), 4: new values.SET(10) }));
+	jot.opFromJSON(new seqs.ATINDEX({ 0: new values.SET(2), 4: new values.SET(10) }).toJSON()),
+	new seqs.ATINDEX({ 0: new values.SET(2), 4: new values.SET(10) }));
 t.deepEqual(
 	jot.opFromJSON(new seqs.MAP(new values.MATH('add', 1)).toJSON()),
 	new seqs.MAP(new values.MATH('add', 1)));
@@ -64,30 +64,30 @@ t.equal(
 	"312");
 
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET(4)).apply([1, 2, 3]),
+	new seqs.ATINDEX(0, new values.SET(4)).apply([1, 2, 3]),
 	[4, 2, 3]);
 t.deepEqual(
-	new seqs.APPLY(1, new values.SET(4)).apply([1, 2, 3]),
+	new seqs.ATINDEX(1, new values.SET(4)).apply([1, 2, 3]),
 	[1, 4, 3]);
 t.deepEqual(
-	new seqs.APPLY(2, new values.SET(4)).apply([1, 2, 3]),
+	new seqs.ATINDEX(2, new values.SET(4)).apply([1, 2, 3]),
 	[1, 2, 4]);
 t.deepEqual(
-	new seqs.APPLY({ 0: new values.SET(4), 1: new values.SET(5) })
+	new seqs.ATINDEX({ 0: new values.SET(4), 1: new values.SET(5) })
 	.apply([1, 2, 3]),
 	[4, 5, 3]);
 
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET("d")).apply("abc"),
+	new seqs.ATINDEX(0, new values.SET("d")).apply("abc"),
 	"dbc");
 t.deepEqual(
-	new seqs.APPLY(1, new values.SET("d")).apply("abc"),
+	new seqs.ATINDEX(1, new values.SET("d")).apply("abc"),
 	"adc");
 t.deepEqual(
-	new seqs.APPLY(2, new values.SET("d")).apply("abc"),
+	new seqs.ATINDEX(2, new values.SET("d")).apply("abc"),
 	"abd");
 t.deepEqual(
-	new seqs.APPLY({ 0: new values.SET("d"), 1: new values.SET("e") })
+	new seqs.ATINDEX({ 0: new values.SET("d"), 1: new values.SET("e") })
 	.apply("abc"),
 	"dec");
 
@@ -106,13 +106,13 @@ t.deepEqual(
 	new seqs.MOVE(3, 5, 4).simplify(),
 	new seqs.MOVE(3, 5, 4));
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET(2)).simplify(),
-	new seqs.APPLY(0, new values.SET(2)));
+	new seqs.ATINDEX(0, new values.SET(2)).simplify(),
+	new seqs.ATINDEX(0, new values.SET(2)));
 t.deepEqual(
-	new seqs.APPLY({
+	new seqs.ATINDEX({
 		0: new values.SET(1),
 		1: new jot.LIST([]) }).simplify(),
-	new seqs.APPLY(0, new values.SET(1)));
+	new seqs.ATINDEX(0, new values.SET(1)));
 
 // invert
 
@@ -126,11 +126,11 @@ t.deepEqual(
 	new seqs.MOVE(10, 3, 3).inverse("anything here"),
 	new seqs.MOVE(3, 3, 13));
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET(2)).inverse([1]),
-	new seqs.APPLY(0, new values.SET(1)));
+	new seqs.ATINDEX(0, new values.SET(2)).inverse([1]),
+	new seqs.ATINDEX(0, new values.SET(1)));
 t.deepEqual(
-	new seqs.APPLY({ 0: new values.SET("d"), 1: new values.SET("e") }).inverse(['a', 'b']),
-	new seqs.APPLY({ 0: new values.SET("a"), 1: new values.SET("b") }));
+	new seqs.ATINDEX({ 0: new values.SET("d"), 1: new values.SET("e") }).inverse(['a', 'b']),
+	new seqs.ATINDEX({ 0: new values.SET("a"), 1: new values.SET("b") }));
 
 
 // atomic_compose
@@ -180,13 +180,13 @@ t.deepEqual(
 
 t.deepEqual(
 	new seqs.PATCH([{offset: 0, length: 4, op: new values.SET("ab")}, {offset: 1, length: 4, op: new values.SET("defg")}])
-		.atomic_compose(new seqs.APPLY(4, new values.SET("E"))),
+		.atomic_compose(new seqs.ATINDEX(4, new values.SET("E"))),
 	new seqs.PATCH([{offset: 0, length: 4, op: new values.SET("ab")}, {offset: 1, length: 4, op: new values.SET("dEfg")}]));
 t.deepEqual(
-	new seqs.SPLICE(0, 4, "5678").atomic_compose(new seqs.APPLY(1, new values.SET("0"))),
+	new seqs.SPLICE(0, 4, "5678").atomic_compose(new seqs.ATINDEX(1, new values.SET("0"))),
 	new seqs.SPLICE(0, 4, "5078"));
 t.deepEqual(
-	new seqs.SPLICE(0, 4, "5678").atomic_compose(new seqs.APPLY(4, new values.SET("0"))),
+	new seqs.SPLICE(0, 4, "5678").atomic_compose(new seqs.ATINDEX(4, new values.SET("0"))),
 	new seqs.SPLICE(0, 5, "56780"));
 
 t.deepEqual(
@@ -194,22 +194,22 @@ t.deepEqual(
 	null);
 
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET("0")).atomic_compose(new seqs.SPLICE(0, 4, "5678")),
+	new seqs.ATINDEX(0, new values.SET("0")).atomic_compose(new seqs.SPLICE(0, 4, "5678")),
 	null);
 t.deepEqual(
-	new seqs.APPLY(555, new values.SET("B"))
-		.atomic_compose(new seqs.APPLY(555, new values.SET("C"))),
-	new seqs.APPLY(555, new values.SET("C")));
+	new seqs.ATINDEX(555, new values.SET("B"))
+		.atomic_compose(new seqs.ATINDEX(555, new values.SET("C"))),
+	new seqs.ATINDEX(555, new values.SET("C")));
 t.deepEqual(
-	new seqs.APPLY(555, new values.MATH("add", 1))
-		.atomic_compose(new seqs.APPLY(555, new values.MATH("mult", 1))),
+	new seqs.ATINDEX(555, new values.MATH("add", 1))
+		.atomic_compose(new seqs.ATINDEX(555, new values.MATH("mult", 1))),
 	null);
 t.deepEqual(
-	new seqs.APPLY(0, new values.SET("d")).atomic_compose(new seqs.APPLY(1, new values.SET("e"))),
-	new seqs.APPLY({ 0: new values.SET("d"), 1: new values.SET("e") }));
+	new seqs.ATINDEX(0, new values.SET("d")).atomic_compose(new seqs.ATINDEX(1, new values.SET("e"))),
+	new seqs.ATINDEX({ 0: new values.SET("d"), 1: new values.SET("e") }));
 t.deepEqual(
-	new seqs.APPLY({ 0: new values.SET("d"), 1: new values.SET("e") }).atomic_compose(new seqs.APPLY(0, new values.SET("f"))),
-	new seqs.APPLY({ 0: new values.SET("f"), 1: new values.SET("e") }));
+	new seqs.ATINDEX({ 0: new values.SET("d"), 1: new values.SET("e") }).atomic_compose(new seqs.ATINDEX(0, new values.SET("f"))),
+	new seqs.ATINDEX({ 0: new values.SET("f"), 1: new values.SET("e") }));
 
 // rebase
 
@@ -312,7 +312,7 @@ t.deepEqual(
 
 t.deepEqual(
 	new seqs.SPLICE(0, 3, [4,5,6]).rebase(
-		new seqs.APPLY(0, new values.MATH("add", 1)), { }),
+		new seqs.ATINDEX(0, new values.MATH("add", 1)), { }),
 	new seqs.SPLICE(0, 3, [4,5,6]));
 
 // splice vs map
@@ -336,58 +336,58 @@ t.deepEqual(
 // apply vs splice
 
 t.deepEqual(
-	new seqs.APPLY(555, new values.MATH("add", 3)).rebase(
+	new seqs.ATINDEX(555, new values.MATH("add", 3)).rebase(
 		new seqs.SPLICE(555, 0, [5])),
-	new seqs.APPLY(556, new values.MATH("add", 3)));
+	new seqs.ATINDEX(556, new values.MATH("add", 3)));
 
 // apply vs apply
 
 t.deepEqual(
-	new seqs.APPLY(555, new values.MATH("add", 3)).rebase(
-		new seqs.APPLY(555, new values.MATH("add", 1))),
-	new seqs.APPLY(555, new values.MATH("add", 3)));
+	new seqs.ATINDEX(555, new values.MATH("add", 3)).rebase(
+		new seqs.ATINDEX(555, new values.MATH("add", 1))),
+	new seqs.ATINDEX(555, new values.MATH("add", 3)));
 t.notOk(
-	new seqs.APPLY(555, new values.SET("y")).rebase(
-		new seqs.APPLY(555, new values.SET("z"))))
+	new seqs.ATINDEX(555, new values.SET("y")).rebase(
+		new seqs.ATINDEX(555, new values.SET("z"))))
 t.deepEqual(
-	new seqs.APPLY(555, new values.SET("y")).rebase(
-		new seqs.APPLY(555, new values.SET("z")), { }),
+	new seqs.ATINDEX(555, new values.SET("y")).rebase(
+		new seqs.ATINDEX(555, new values.SET("z")), { }),
 	new values.NO_OP()
 	)
 t.deepEqual(
-	new seqs.APPLY(555, new values.SET("z")).rebase(
-		new seqs.APPLY(555, new values.SET("y")), { }),
-	new seqs.APPLY(555, new values.SET("z"))
+	new seqs.ATINDEX(555, new values.SET("z")).rebase(
+		new seqs.ATINDEX(555, new values.SET("y")), { }),
+	new seqs.ATINDEX(555, new values.SET("z"))
 	)
 t.deepEqual(
-	new seqs.APPLY({0: new values.SET("z"), 1: new values.SET("b"), 2: new values.SET("N")}).rebase(
-		new seqs.APPLY({0: new values.SET("y"), 1: new values.SET(" ")}), { }),
-	new seqs.APPLY({0: new values.SET("z"), 1: new values.SET("b"), 2: new values.SET("N")})
+	new seqs.ATINDEX({0: new values.SET("z"), 1: new values.SET("b"), 2: new values.SET("N")}).rebase(
+		new seqs.ATINDEX({0: new values.SET("y"), 1: new values.SET(" ")}), { }),
+	new seqs.ATINDEX({0: new values.SET("z"), 1: new values.SET("b"), 2: new values.SET("N")})
 	)
 
 // apply vs move
 
 t.deepEqual(
-	new seqs.APPLY(555, new values.MATH("add", 3)).rebase(
+	new seqs.ATINDEX(555, new values.MATH("add", 3)).rebase(
 		new seqs.MOVE(555, 3, 0)),
 	null);
 
 // apply vs map
 
 t.deepEqual(
-	new seqs.APPLY(555, new values.MATH("add", 3)).rebase(
+	new seqs.ATINDEX(555, new values.MATH("add", 3)).rebase(
 		new seqs.MAP(new values.MATH("add", 1))),
-	new seqs.APPLY(555, new values.MATH("add", 3)));
+	new seqs.ATINDEX(555, new values.MATH("add", 3)));
 
 // map vs apply
 
 t.deepEqual(
 	new seqs.MAP(new values.MATH("add", 1)).rebase(
-		new seqs.APPLY(555, new values.MATH("add", 3))),
+		new seqs.ATINDEX(555, new values.MATH("add", 3))),
 	new seqs.MAP(new values.MATH("add", 1)));
 t.notOk(
 	new seqs.MAP(new values.MATH("add", 1)).rebase(
-		new seqs.APPLY(555, new values.MATH("mult", 2))));
+		new seqs.ATINDEX(555, new values.MATH("mult", 2))));
 
 // map vs map
 
