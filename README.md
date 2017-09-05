@@ -164,16 +164,15 @@ Unlike most collaborative editing models where there are only operations like in
 Installation
 ------------
 
-The code is written for the node.js platform.
+The code is written for the node.js platform and can also be used client-side in modern browsers.
 
-Before running anything, you'll need to install node, and then jot's dependencies:
+First install node, then install this package:
 
-	# change to this directory
-	npm install
+	npm install git+https://github.com/joshdata/jot.git
 
 In a node script, import the library:
 
-	var jot = require("./jot");
+	var jot = require("jot");
 
 To build the library for browsers, run:
 
