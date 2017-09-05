@@ -10,94 +10,94 @@ test('lists', function(t) {
         "<lists.LIST []>");
 
     t.deepEqual(
-        new lists.LIST([jot.SET("X")]).inspect(),
+        new lists.LIST([new jot.SET("X")]).inspect(),
         "<lists.LIST [<values.SET \"X\">]>");
 
     t.deepEqual(
-        new lists.LIST([jot.SET("X"), jot.SET("Y")]).inspect(),
+        new lists.LIST([new jot.SET("X"), new jot.SET("Y")]).inspect(),
         "<lists.LIST [<values.SET \"X\">, <values.SET \"Y\">]>");
 
 	// simplify
 
 	t.deepEqual(
 		new lists.LIST([]).simplify(),
-		jot.NO_OP());
+		new jot.NO_OP());
 
 	t.deepEqual(
-		new lists.LIST([ jot.SET("X"), jot.SET("Y") ]).simplify(),
-		jot.SET("Y") );
+		new lists.LIST([ new jot.SET("X"), new jot.SET("Y") ]).simplify(),
+		new jot.SET("Y") );
 
 	t.deepEqual(
-		new lists.LIST([ jot.MATH("add", 1), jot.MATH("add", 2) ]).simplify(),
-		jot.MATH("add", 3) );
+		new lists.LIST([ new jot.MATH("add", 1), new jot.MATH("add", 2) ]).simplify(),
+		new jot.MATH("add", 3) );
 
 	t.deepEqual(
-		new lists.LIST([ jot.MATH("add", 1), jot.MATH("mult", 2) ]).simplify(),
-		new lists.LIST([ jot.MATH("add", 1), jot.MATH("mult", 2) ]));
+		new lists.LIST([ new jot.MATH("add", 1), new jot.MATH("mult", 2) ]).simplify(),
+		new lists.LIST([ new jot.MATH("add", 1), new jot.MATH("mult", 2) ]));
 
 	t.deepEqual(
-		new lists.LIST([ jot.MATH("add", 1), jot.MATH("mult", 2), jot.MATH("xor", 1) ]).simplify(),
-		new lists.LIST([ jot.MATH("add", 1), jot.MATH("mult", 2), jot.MATH("xor", 1) ]));
+		new lists.LIST([ new jot.MATH("add", 1), new jot.MATH("mult", 2), new jot.MATH("xor", 1) ]).simplify(),
+		new lists.LIST([ new jot.MATH("add", 1), new jot.MATH("mult", 2), new jot.MATH("xor", 1) ]));
 
     // compose
 
     t.deepEqual(
         new lists.LIST([ ])
             .compose(
-                jot.PUT('x', 'y')
+                new jot.PUT('x', 'y')
             ),
-        jot.PUT('x', 'y')
+        new jot.PUT('x', 'y')
     )
 
     t.deepEqual(
-        new lists.LIST([ jot.PUT('x', 'y') ])
+        new lists.LIST([ new jot.PUT('x', 'y') ])
             .compose(
                 new lists.LIST([ ])
             ),
-        new lists.LIST([ jot.PUT('x', 'y') ])
+        new lists.LIST([ new jot.PUT('x', 'y') ])
     )
 
     t.deepEqual(
-        new lists.LIST([ jot.PUT('x', 'y') ])
+        new lists.LIST([ new jot.PUT('x', 'y') ])
             .compose(
-                jot.PUT('x', 'z')
+                new jot.PUT('x', 'z')
             ),
-        new lists.LIST([ jot.PUT('x', 'y'), jot.PUT('x', 'z') ])
+        new lists.LIST([ new jot.PUT('x', 'y'), new jot.PUT('x', 'z') ])
     )
 
     t.deepEqual(
-        new lists.LIST([ jot.PUT('x', 'y') ])
+        new lists.LIST([ new jot.PUT('x', 'y') ])
             .compose(
-                new lists.LIST([ jot.PUT('x', 'z') ])
+                new lists.LIST([ new jot.PUT('x', 'z') ])
             ),
-        new lists.LIST([ jot.PUT('x', 'y'), jot.PUT('x', 'z') ])
+        new lists.LIST([ new jot.PUT('x', 'y'), new jot.PUT('x', 'z') ])
     )
 
     // (de)serialization
 
     t.deepEqual(
-        jot.deserialize(
+        new jot.deserialize(
             new lists.LIST([
-                jot.APPLY(
-                    'foo', jot.PUT(
+                new jot.APPLY(
+                    'foo', new jot.PUT(
                         'x', 'y'
                     )
                 ),
-                jot.APPLY(
-                    'bar', jot.SPLICE(
+                new jot.APPLY(
+                    'bar', new jot.SPLICE(
                         0, 0, [{baz: 'quux'}]
                     )
                 )
             ]).serialize()
         ),
         new lists.LIST([
-            jot.APPLY(
-                'foo', jot.PUT(
+            new jot.APPLY(
+                'foo', new jot.PUT(
                     'x', 'y'
                 )
             ),
-            jot.APPLY(
-                'bar', jot.SPLICE(
+            new jot.APPLY(
+                'bar', new jot.SPLICE(
                     0, 0, [{baz: 'quux'}]
                 )
             )
@@ -108,101 +108,101 @@ test('lists', function(t) {
     t.deepEqual( // empty list
         new lists.LIST([ ])
             .rebase(
-                jot.PUT('x', 'y')
+                new jot.PUT('x', 'y')
             ),
-        jot.NO_OP()
+        new jot.NO_OP()
     )
 
     t.deepEqual( // unrelated changes, unwrapping of the list
-        new lists.LIST([ jot.PUT('x', 'y') ])
+        new lists.LIST([ new jot.PUT('x', 'y') ])
             .rebase(
-                jot.PUT('a', 'b')
+                new jot.PUT('a', 'b')
             ),
-        jot.PUT('x', 'y')
+        new jot.PUT('x', 'y')
     )
 
     t.deepEqual( // related changes, unwrapping of list
-        new lists.LIST([ jot.APPLY('x', jot.SET('y2')) ])
+        new lists.LIST([ new jot.APPLY('x', new jot.SET('y2')) ])
             .rebase(
-                jot.REN('x', 'a')
+                new jot.REN('x', 'a')
             ),
-        jot.APPLY('a', jot.SET('y2'))
+        new jot.APPLY('a', new jot.SET('y2'))
     )
 
     t.deepEqual( // two on one
         new lists.LIST([
-            jot.APPLY('x', jot.SET('y2')),
-            jot.APPLY('x', jot.SET('y3'))
+            new jot.APPLY('x', new jot.SET('y2')),
+            new jot.APPLY('x', new jot.SET('y3'))
         ])
             .rebase(
-                jot.REN('x', 'a')
+                new jot.REN('x', 'a')
             ),
-        jot.APPLY('a', jot.SET('y3'))
+        new jot.APPLY('a', new jot.SET('y3'))
     )
 
     t.deepEqual( // two on two
         new lists.LIST([
-            jot.APPLY('x', jot.SET('y2')),
-            jot.APPLY('x', jot.SET('y3'))
+            new jot.APPLY('x', new jot.SET('y2')),
+            new jot.APPLY('x', new jot.SET('y3'))
         ])
             .rebase(
                 new lists.LIST([
-                    jot.REN('x', 'a'),
-                    jot.REN('a', 'b')
+                    new jot.REN('x', 'a'),
+                    new jot.REN('a', 'b')
                 ])
             ),
-        jot.APPLY('b', jot.SET('y3'))
+        new jot.APPLY('b', new jot.SET('y3'))
     )
 
     t.deepEqual( // two on two - list is unchanged
         new lists.LIST([
-            jot.REN('x', 'a'),
-            jot.REN('a', 'b')
+            new jot.REN('x', 'a'),
+            new jot.REN('a', 'b')
         ])
             .rebase(
                 new lists.LIST([
-                    jot.APPLY('x', jot.SET('y2')),
-                    jot.APPLY('x', jot.SET('y3'))
+                    new jot.APPLY('x', new jot.SET('y2')),
+                    new jot.APPLY('x', new jot.SET('y3'))
                 ])
             ),
-        jot.REN('x', 'b')
+        new jot.REN('x', 'b')
     )
 
     t.deepEqual( // conflictless (A)
         new lists.LIST([
-            jot.SET('a')
+            new jot.SET('a')
         ])
             .rebase(
                 new lists.LIST([
-                    jot.SET('b')
+                    new jot.SET('b')
                 ]),
                 true
             ),
-        jot.NO_OP()
+        new jot.NO_OP()
     )
 
     t.deepEqual( // conflictless (B)
         new lists.LIST([
-            jot.SET('b')
+            new jot.SET('b')
         ])
             .rebase(
                 new lists.LIST([
-                    jot.SET('a')
+                    new jot.SET('a')
                 ]),
                 true
             ),
-        jot.SET('b')
+        new jot.SET('b')
     )
 
     t.deepEqual( // two on two w/ conflictless (A)
         new lists.LIST([
-            jot.REN('x', 'a'),
-            jot.REN('y', 'b')
+            new jot.REN('x', 'a'),
+            new jot.REN('y', 'b')
         ])
             .rebase(
                 new lists.LIST([
-                    jot.REN('x', 'A'),
-                    jot.REN('y', 'B')
+                    new jot.REN('x', 'A'),
+                    new jot.REN('y', 'B')
                 ])
             ),
         null
@@ -210,13 +210,13 @@ test('lists', function(t) {
 
     t.deepEqual( // two on two w/ conflictless (B)
         new lists.LIST([
-            jot.REN('x', 'A'),
-            jot.REN('y', 'B')
+            new jot.REN('x', 'A'),
+            new jot.REN('y', 'B')
         ])
             .rebase(
                 new lists.LIST([
-                    jot.REN('x', 'a'),
-                    jot.REN('y', 'b')
+                    new jot.REN('x', 'a'),
+                    new jot.REN('y', 'b')
                 ])
             ),
         null

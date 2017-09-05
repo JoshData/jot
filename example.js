@@ -19,9 +19,9 @@ console.log("")
  *
  */
 
-var user1 = jot.LIST([
-	jot.REN("key1", "title"),
-	jot.REN("key2", "count")
+var user1 = new jot.LIST([
+	new jot.REN("key1", "title"),
+	new jot.REN("key2", "count")
 ]);
 
 console.log("User 1")
@@ -35,9 +35,9 @@ console.log("")
  *
  */
 
-var user2 = jot.LIST([
-	jot.APPLY("key1", jot.SET("My Program")),
-	jot.APPLY("key2", jot.MATH('add', 10))
+var user2 = new jot.LIST([
+	new jot.APPLY("key1", new jot.SET("My Program")),
+	new jot.APPLY("key2", new jot.MATH('add', 10))
 ]);
 
 console.log("User 2")

@@ -17,28 +17,22 @@ exports.add_op = function(constructor, module, opname, constructor_args) {
 }
 
 
-// Imports.
+// Expose the operation classes through the jot library.
 var values = require("./values.js");
 var sequences = require("./sequences.js");
 var objects = require("./objects.js");
 var lists = require("./lists.js");
 
-// Define aliases.
-function new_op(op_class, args) {
-	var op = Object.create(op_class.prototype);
-	op_class.apply(op, args);
-	return op;
-}
-exports.NO_OP = function() { return new_op(values.NO_OP, arguments) };
-exports.SET = function() { return new_op(values.SET, arguments) };
-exports.MATH = function() { return new_op(values.MATH, arguments) };
-exports.PATCH = function() { return new_op(sequences.PATCH, arguments) };
-exports.SPLICE = function() { return new_op(sequences.SPLICE, arguments) };
-exports.MAP = function() { return new_op(sequences.MAP, arguments) };
-exports.PUT = function() { return new_op(objects.PUT, arguments) };
-exports.REN = function() { return new_op(objects.REN, arguments) };
-exports.REM = function() { return new_op(objects.REM, arguments) };
-exports.LIST = function() { return new_op(lists.LIST, arguments) };
+exports.NO_OP = values.NO_OP;
+exports.SET = values.SET;
+exports.MATH = values.MATH;
+exports.PATCH = sequences.PATCH;
+exports.SPLICE = sequences.SPLICE;
+exports.MAP = sequences.MAP;
+exports.PUT = objects.PUT;
+exports.REN = objects.REN;
+exports.REM = objects.REM;
+exports.LIST = lists.LIST;
 exports.APPLY = function(pos_or_key) {
 	if (typeof pos_or_key == "number")
 		return new_op(sequences.APPLY, arguments);
@@ -47,6 +41,7 @@ exports.APPLY = function(pos_or_key) {
 	throw new Error("Invalid Argument");
 };
 
+// Expose the diff function too.
 exports.diff = require('./diff.js').diff;
 
 /////////////////////////////////////////////////////////////////////
