@@ -370,6 +370,29 @@ exports.createRandomOp = function(doc, context) {
 		.createRandomOp(doc, context);
 }
 
+exports.createRandomOpSequence = function(value, count) {
+	// Create a random sequence of operations starting with a given value.
+	var ops = [];
+	while (ops.length < count) {
+		// Create random operation.
+		var op = exports.createRandomOp(value);
+
+		// Make the result of applying the op the initial value
+		// for the next operation. createRandomOp sometimes returns
+		// invalid operations, in which case we'll try again.
+		// TODO: Make createRandomOp always return a valid operation
+		// and remove the try block.
+		try {
+			value = op.apply(value);
+		} catch (e) {
+			continue; // retry
+		}
+
+		ops.push(op);
+	}
+	return new lists.LIST(ops);
+}
+
 exports.type_name = function(x) {
 	if (typeof x == 'object') {
 		if (Array.isArray(x))

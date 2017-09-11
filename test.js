@@ -2,37 +2,13 @@ var jot = require("./jot");
 var deepEqual = require("deep-equal");
 var createRandomOp = jot.createRandomOp; // require('./jot/values.js').createRandomOp;
 
-function createRandomOpSequence(value, count) {
-  var ops = [];
-  while (Math.random() > (.4**(Math.sqrt(count)+1))) {
-    // Create random operation.
-    try {
-	    var op = createRandomOp(value);
-	  } catch (e) {
-	  	console.log("error creating random operation for", value);
-	  	console.error(e);
-	  	throw e;
-	  }
-
-    // Check that it is valid.
-    try {
-      value = op.apply(value);
-    } catch (ex) {
-      continue;
-    }
-
-    ops.push(op);
-  }
-  return new jot.LIST(ops);
-}
-
 // Create two complex simultaneous edits.
 var opsize = 1;
 
 while (true) {
 	var initial_value = jot.createRandomValue();
-	var op1 = createRandomOpSequence(initial_value, opsize);
-	var op2 = createRandomOpSequence(initial_value, opsize);
+	var op1 = jot.createRandomOpSequence(initial_value, opsize);
+	var op2 = jot.createRandomOpSequence(initial_value, opsize);
 
 	/*
 	var initial_value = false;
