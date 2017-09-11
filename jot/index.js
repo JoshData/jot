@@ -45,15 +45,36 @@ exports.BaseOperation.prototype.isNoOp = function() {
 	return this instanceof values.NO_OP;
 }
 
-exports.BaseOperation.prototype.toJSON = function() {
+exports.BaseOperation.prototype.toJSON = function(__key__, protocol_version) {
+	// The first argument __key__ is used when this function is called by
+	// JSON.stringify. For reasons unclear, we get the name of the property
+	// that this object is stored in in its parent? Doesn't matter. We
+	// leave a slot so that this function can be correctly called by JSON.
+	// stringify, but we don't use it.
+
 	var repr = { };
+
+	// If protocol_version is unspecified, then this is a top-level call.
+	// Choose the latest (and only) protocol version and write it into
+	// the output data structure, and pass it down recursively.
+	//
+	// If protocol_version was specified, this is a recursive call and
+	// we don't need to write it out. Sanity check it's a valid value.
+	if (typeof protocol_version == "undefined") {
+		protocol_version = 1;
+		repr["_ver"] = protocol_version;
+	} else {
+		if (protocol_version !== 1) throw new Error("Invalid protocol version: " + protocol_version);
+	}
+
 	repr['_type'] = this.type[0] + "." + this.type[1];
+
 	var keys = Object.keys(this);
 	for (var i = 0; i < keys.length; i++) {
 		var value = this[keys[i]];
 		var v;
 		if (value instanceof exports.BaseOperation) {
-			v = value.toJSON();
+			v = value.toJSON(undefined, protocol_version);
         }
 		else if (value === objects.MISSING) {
 			repr[keys[i] + "_missing"] = true;
@@ -61,18 +82,18 @@ exports.BaseOperation.prototype.toJSON = function() {
         }
         else if (keys[i] === 'ops' && Array.isArray(value)) {
             v = value.map(function(ki) {
-                return ki.toJSON();
+                return ki.toJSON(undefined, protocol_version);
             });
         }
         else if (keys[i] === 'ops' && typeof value === "object") {
             v = { };
             for (var key in value)
-            	v[key] = value[key].toJSON();
+            	v[key] = value[key].toJSON(undefined, protocol_version);
         }
         else if (keys[i] === 'hunks') {
             v = value.map(function(hunk) {
             	var ret = shallow_clone(hunk);
-            	ret.op = ret.op.toJSON();
+            	ret.op = ret.op.toJSON(undefined, protocol_version);
                 return ret;
             });
         }
@@ -87,7 +108,27 @@ exports.BaseOperation.prototype.toJSON = function() {
 	return repr;
 }
 
-exports.opFromJSON = function(obj, op_map) {
+exports.opFromJSON = function(obj, protocol_version, op_map) {
+	// Sanity check.
+	if (typeof obj !== "object") throw new Error("Not an operation.");
+
+	// If protocol_version is unspecified, then this is a top-level call.
+	// The version must be encoded in the object, and we pass it down
+	// recursively.
+	//
+	// If protocol_version is specified, this is a recursive call and
+	// we don't need to write it out.
+	if (typeof protocol_version === "undefined") {
+		protocol_version = obj['_ver'];
+		if (protocol_version !== 1)
+			throw new Error("JOT serialized data structure is missing protocol version and one wasn't provided as an argument.");
+	} else {
+		if (protocol_version !== 1)
+			throw new Error("Invalid protocol version provided: " + protocol_version)
+		if ("_ver" in obj)
+			throw new Error("JOT serialized data structure should not have protocol version because it was provided as an argument.");
+	}
+
 	// Create a default mapping from encoded types to constructors
 	// allowing all operations to be deserialized.
 	if (!op_map) {
@@ -122,26 +163,26 @@ exports.opFromJSON = function(obj, op_map) {
 
 		} if (value !== null && typeof value == 'object' && '_type' in value) {
 			// Value is an operation.
-			return exports.opFromJSON(value);
+			return exports.opFromJSON(value, protocol_version, op_map);
         
         } else if (item === 'ops' && Array.isArray(value)) {
         	// Value is an array of operations.
             value = value.map(function(op) {
-                return exports.opFromJSON(op);
+                return exports.opFromJSON(op, protocol_version, op_map);
             });
 
         } else if (item === 'ops' && typeof value === "object") {
         	// Value is a mapping array of operations.
         	var newvalue = { };
         	for (var key in value)
-        		newvalue[key] = exports.opFromJSON(value[key]);
+        		newvalue[key] = exports.opFromJSON(value[key], protocol_version, op_map);
         	value = newvalue;
 
         } else if (item === 'hunks') {
         	// Value is a list of PATCH hunks.
             value = value.map(function(hunk) {
             	var ret = shallow_clone(hunk);
-                ret.op = exports.opFromJSON(hunk.op);
+                ret.op = exports.opFromJSON(hunk.op, protocol_version, op_map);
                 return ret;
             });
         
@@ -157,7 +198,9 @@ exports.opFromJSON = function(obj, op_map) {
 }
 
 exports.BaseOperation.prototype.serialize = function() {
-	return JSON.stringify(this.toJSON());
+	// JSON.stringify will use the object's toJSON method
+	// implicitly.
+	return JSON.stringify(this);
 }
 exports.deserialize = function(op_json) {
 	return exports.opFromJSON(JSON.parse(op_json));
