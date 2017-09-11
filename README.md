@@ -194,7 +194,7 @@ Then use the library in your HTML page (see [the example](browser_example/exampl
 Operations
 ----------
 
-The operations in JOT are...
+The operations in JOT are instantiated as `new jot.OPERATION(arguments)`. The available operations are...
 
 ### General operations
 
@@ -223,12 +223,31 @@ operations plus it adds new operations for non-string data structures!
 
 * `PUT(key, value)`: Adds a new property to an object. `key` is any valid JSON key (a string) and `value` is any valid JSON object.
 * `REM(key)`: Remove a property from an object.
-* `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings. It can also take a mapping from new keys to old keys they are renamed from, as `REN({new_name: key, ...})`, which also allows for the duplication of property values.
+* `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings. It can also take a mapping from new keys to old keys they are renamed from, as `REN({new_name: key, ...})`, which also allows for the duplication of property values. *This operation does not yet support conflictless rebase.*
 * `APPLY(key, operation)`: Apply any operation to a particular property named `key`. `operation` is any operation. The operation can also take a mapping from keys to operations, as `APPLY({key: operation, ...})`.
 
-(Note that internally `PUT` and `REM` are sub-cases of SET that use a special value to signal the absence of an object property.)
+(Note that internally `PUT` and `REM` are sub-cases of `SET`, and `REM` uses a special value to signal the absence of an object property.)
 
-All of these operations are accessed as `new jot.OPERATION(arguments)`.
+Methods
+-------
+
+Each operation provides the following instance methods:
+
+* `op.inspect()` returns a human-readable string representation of the operation. (A helper method so you can do `console.log(op)`.)
+* `op.isNoOp()` returns a boolean indicating whether the operation does nothing.
+* `op.apply(document)` applies the operation to the document and returns the new value of the document. Does not modify `document`.
+* `op.simplify()` attempts to simplify complex operations. Returns a new operation or the operation unchanged. Useful primarily for `LIST`s.
+* `op.inverse(document)` returns the inverse operation, given the document value *before* the operation applied.
+* `op.compose(other)` composes two operations into a single operation instance, sometimes a `LIST` operation.
+* `op.rebase(other)` rebases an operation. Returns null if the operations conflict, otherwise a new operation instance.
+* `op.rebase(other, { document: ... })` rebases an operation in conflictless mode. The document value provided is the value of the document *before* either operation applied. Returns a new operation instance.
+* `op.toJSON()` turns the operation into a JSON-able data structure (made up of objects, arrays, strings, etc). See `jot.opFromJSON()`. (A helper method so you can do `JSON.stringify(op)`.)
+* `op.serialize()` serializes the operation to a string. See `jot.deserialize()`.
+
+The `jot` library itself offers:
+
+* `jot.opFromJSON(opdata)` is the opposite of `op.toJSON()`.
+* `jot.deserialize(string)` is the opposite of `op.serialize()`.
 
 Conflictless Rebase
 -------------------
@@ -257,7 +276,7 @@ the order that these operations apply is significant:
 	    .rebase( new jot.MATH("mult", 2) )
 	null
 
-(10 + 1) * 2 = 22 but (10 * 2) + 1 == 21. `rebase` will return `null` in this case
+(10 + 1) * 2 = 22 but (10 * 2) + 1 == 21. A vanilla `rebase` will return `null` in this case
 to signal that human intervention is needed to choose which operation should apply
 first.
 
