@@ -14,7 +14,7 @@
   },
   "author": "Joshua Tauberer",
   "scripts": {
-    "test": "tap tests/*.js"
+    "test": "tap --cov tests/*.js"
   },
   "devDependencies": {
     "connect": "*",

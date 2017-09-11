@@ -291,6 +291,13 @@ Rebasing the other way around yields a consistent operation:
 In other words, if we're multing by 2 *after the addition has applied*, we should
 continue to multiply by 2. That's the same order as rebase chose above.
 
+Development and Testing
+-----------------------
+
+Run code coverage tests with `npm test` or:
+
+	npm test -- --coverage-report=html
+
 Notes
 -----
 
