@@ -114,6 +114,18 @@ t.deepEqual(
 		1: new jot.LIST([]) }).simplify(),
 	new seqs.ATINDEX(0, new values.SET(1)));
 
+// drilldown
+
+t.deepEqual(
+	new seqs.ATINDEX(1, new values.SET(-1)).drilldown(0),
+	new values.NO_OP());
+t.deepEqual(
+	new seqs.ATINDEX(1, new values.SET(-1)).drilldown(1),
+	new values.SET(-1));
+t.deepEqual(
+	new seqs.MAP(new values.SET(-1)).drilldown(1),
+	new values.SET(-1));
+
 // invert
 
 t.deepEqual(

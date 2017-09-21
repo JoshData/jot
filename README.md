@@ -237,6 +237,7 @@ Each operation provides the following instance methods:
 * `op.isNoOp()` returns a boolean indicating whether the operation does nothing.
 * `op.apply(document)` applies the operation to the document and returns the new value of the document. Does not modify `document`.
 * `op.simplify()` attempts to simplify complex operations. Returns a new operation or the operation unchanged. Useful primarily for `LIST`s.
+* `op.drilldown(index_or_key)` looks inside an operation on a string, array, or object and returns the operation that represents the effect of this operation on a particular index or key.
 * `op.inverse(document)` returns the inverse operation, given the document value *before* the operation applied.
 * `op.compose(other)` composes two operations into a single operation instance, sometimes a `LIST` operation.
 * `op.rebase(other)` rebases an operation. Returns null if the operations conflict, otherwise a new operation instance.

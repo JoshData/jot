@@ -1,6 +1,7 @@
 var test = require('tap').test;
 var jot = require('../jot')
 var values = require("../jot/values.js");
+var MISSING = require("../jot/objects.js").MISSING;
 var LIST = require("../jot/lists.js").LIST;
 
 test('values', function(t) {
@@ -134,6 +135,20 @@ t.deepEqual(
 	new values.MATH("xor", 5).inverse(0),
 	new values.MATH("xor", 5));
 
+// drilldown
+
+t.deepEqual(
+	new values.SET({ 5: "A" }).drilldown('4'),
+	new values.SET(MISSING));
+t.deepEqual(
+	new values.SET({ 5: "A" }).drilldown('5'),
+	new values.SET("A"));
+t.deepEqual(
+	new values.SET([0, -1, -2]).drilldown(3),
+	new values.SET(MISSING));
+t.deepEqual(
+	new values.SET([0, -1, -2]).drilldown(2),
+	new values.SET(-2));
 
 // compose
 

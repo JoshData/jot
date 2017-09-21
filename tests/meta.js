@@ -39,6 +39,18 @@ test('lists', function(t) {
 		new lists.LIST([ new jot.MATH("add", 1), new jot.MATH("mult", 2), new jot.MATH("xor", 1) ]).simplify(),
 		new lists.LIST([ new jot.MATH("add", 1), new jot.MATH("mult", 2), new jot.MATH("xor", 1) ]));
 
+    // drilldown
+
+    t.deepEqual(
+        new lists.LIST([ new jot.PUT("key1", "value1"), new jot.PUT("key2", "value2") ]).drilldown("key"),
+        new jot.NO_OP());
+    t.deepEqual(
+        new lists.LIST([ new jot.PUT("key1", "value1"), new jot.PUT("key2", "value2") ]).drilldown("key1"),
+        new jot.SET("value1"));
+    t.deepEqual(
+        new lists.LIST([ new jot.APPLY("key1", new jot.MATH("add", 1)), new jot.APPLY("key1", new jot.MATH("mult", 2)) ]).drilldown("key1"),
+        new lists.LIST([ new jot.MATH("add", 1), new jot.MATH("mult", 2) ]));
+
     // compose
 
     t.deepEqual(

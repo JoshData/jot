@@ -373,6 +373,20 @@ exports.PATCH.prototype.simplify = function () {
 	return new exports.PATCH(hunks);
 }
 
+exports.PATCH.prototype.drilldown = function(index_or_key) {
+	if (!Number.isInteger(index_or_key) || index_or_key < 0)
+		throw new Error("Cannot drilldown() on sequence with non-negative-integer (" + (typeof index_or_key) + ").");
+	var index = 0;
+	var ret = null;
+	this.hunks.forEach(function(hunk) {
+		index += hunk.offset;
+		if (index <= index_or_key && index_or_key < index+hunk.length)
+			ret = hunk.op.drilldown(index_or_key-index);
+		index += hunk.length;
+	})
+	return ret ? ret : new values.NO_OP();
+}
+
 exports.PATCH.prototype.inverse = function (document) {
 	/* Returns a new atomic operation that is the inverse of this operation,
 	   given the state of the document before this operation applies.
@@ -959,6 +973,12 @@ exports.MAP.prototype.simplify = function () {
 	return this;
 }
 
+exports.MAP.prototype.drilldown = function(index_or_key) {
+	if (!Number.isInteger(index_or_key) || index_or_key < 0)
+		throw new Error("Cannot drilldown() on sequence with non-negative-integer (" + (typeof index_or_key) + ").");
+	return this.op;
+}
+
 exports.MAP.prototype.inverse = function (document) {
 	/* Returns a new atomic operation that is the inverse of this operation. */
 
@@ -1202,18 +1222,6 @@ exports.MAP.prototype.decompose = function (in_out, at_index) {
 	// Since MAP applies to all elements, the decomposition
 	// is trivial.
 	return [this, this];
-}
-
-exports.PATCH.prototype.drilldown = function(index_or_key) {
-	var index = 0;
-	var ret = null;
-	this.hunks.forEach(function(hunk) {
-		index += hunk.offset;
-		if (index == index_or_key && hunk.length == 1)
-			ret = hunk.op;
-		index += hunk.length;
-	})
-	return ret ? ret : new values.NO_OP();
 }
 
 ////

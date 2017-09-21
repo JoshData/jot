@@ -447,6 +447,8 @@ exports.APPLY.prototype.rebase_functions = [
 ]
 
 exports.APPLY.prototype.drilldown = function(index_or_key) {
+	if (typeof index_or_key != "string")
+		throw new Error("Cannot drilldown() on object with non-string (" + (typeof index_or_key) + ").");
 	if (index_or_key in this.ops)
 		return this.ops[index_or_key];
 	return new values.NO_OP();

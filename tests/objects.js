@@ -69,6 +69,15 @@ t.deepEqual(
 		.apply({"a": [0, 0]}),
 	{ "a": [0, 1] });
 
+// drilldown
+
+t.deepEqual(
+	new objs.PUT("key", "value").drilldown("other"),
+	new values.NO_OP());
+t.deepEqual(
+	new objs.PUT("key", "value").drilldown("key"),
+	new values.SET("value"));
+
 // invert
 
 // ...

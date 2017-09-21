@@ -301,10 +301,6 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless, debug) {
 	return null;
 }
 
-exports.BaseOperation.prototype.drilldown = function(index_or_key) {
-	return new values.NO_OP();
-};
-
 exports.createRandomValue = function(depth) {
 	var values = [];
 
