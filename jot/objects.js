@@ -417,7 +417,11 @@ exports.APPLY.prototype.rebase_functions = [
 			if (!conflictless || !("document" in conflictless))
 				return conflictless;
 			var ret = shallow_clone(conflictless);
-			ret.document = conflictless.document[key];
+			if (!(key in conflictless.document))
+				// The key being modified isn't present yet.
+				ret.document = exports.MISSING;
+			else
+				ret.document = conflictless.document[key];
 			return ret;
 		}
 
