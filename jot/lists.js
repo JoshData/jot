@@ -29,6 +29,12 @@ exports.LIST.prototype.inspect = function(depth) {
 		this.ops.map(function(item) { return item.inspect(depth-1) }).join(", "));
 }
 
+exports.LIST.prototype.internalToJSON = function(json, protocol_version) {
+	json.ops = this.ops.map(function(op) {
+		return op.toJSON(undefined, protocol_version);
+	});
+}
+
 exports.LIST.prototype.apply = function (document) {
 	/* Applies the operation to a document.*/
 	for (var i = 0; i < this.ops.length; i++)

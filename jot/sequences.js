@@ -232,6 +232,14 @@ exports.PATCH.prototype.inspect = function(depth) {
 		}).join(","));
 }
 
+exports.PATCH.prototype.internalToJSON = function(json, protocol_version) {
+	json.hunks = this.hunks.map(function(hunk) {
+		var ret = shallow_clone(hunk);
+		ret.op = ret.op.toJSON(undefined, protocol_version);
+		return ret;
+	});
+}
+
 exports.PATCH.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
 		 the same type as document but with the hunks applied. */
@@ -874,6 +882,12 @@ exports.MOVE.prototype.inspect = function(depth) {
 	return util.format("<sequences.MOVE @%dx%d => @%d>", this.pos, this.count, this.new_pos);
 }
 
+exports.MOVE.prototype.internalToJSON = function(json, protocol_version) {
+	json.pos = this.pos;
+	json.count = this.count;
+	json.new_pos = this.new_pos;
+}
+
 exports.MOVE.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
 		 the same type as document but with the subrange moved. */
@@ -933,6 +947,10 @@ exports.MOVE.prototype.rebase_functions = [
 
 exports.MAP.prototype.inspect = function(depth) {
 	return util.format("<sequences.MAP %s>", this.op.inspect(depth-1));
+}
+
+exports.MAP.prototype.internalToJSON = function(json, protocol_version) {
+	json.op = this.op.toJSON(undefined, protocol_version);
 }
 
 exports.MAP.prototype.apply = function (document) {

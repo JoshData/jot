@@ -117,6 +117,10 @@ exports.REN.prototype.inspect = function(depth) {
 	return util.format("<objects.REN %j>", this.map);
 }
 
+exports.REN.prototype.internalToJSON = function(json, protocol_version) {
+	json.map = shallow_clone(this.map);
+}
+
 exports.REN.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new object that is
 	   the same type as document but with the changes made. */
@@ -311,6 +315,12 @@ exports.APPLY.prototype.inspect = function(depth) {
 		inner.push(util.format("%j:%s", key, ops[key].inspect(depth-1)));
 	});
 	return util.format("<objects.APPLY %s>", inner.join(", "));
+}
+
+exports.APPLY.prototype.internalToJSON = function(json, protocol_version) {
+	json.ops = { };
+	for (var key in this.ops)
+		json.ops[key] = this.ops[key].toJSON(undefined, protocol_version);
 }
 
 exports.APPLY.prototype.apply = function (document) {

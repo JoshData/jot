@@ -125,6 +125,10 @@ exports.NO_OP.prototype.inspect = function(depth) {
 	return "<values.NO_OP>"
 }
 
+exports.NO_OP.prototype.internalToJSON = function(json, protocol_version) {
+	// Nothing to set.
+}
+
 exports.NO_OP.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns the document
 	   unchanged. */
@@ -188,6 +192,13 @@ exports.SET.prototype.inspect = function(depth) {
 		return util.format("%j", v);
 	}
 	return util.format("<values.SET %s>", str(this.value));
+}
+
+exports.SET.prototype.internalToJSON = function(json, protocol_version) {
+	if (this.value === MISSING)
+		json.value_missing = true;
+	else
+		json.value = this.value;
 }
 
 exports.SET.prototype.apply = function (document) {
@@ -324,6 +335,11 @@ exports.MATH.prototype.inspect = function(depth) {
 			:
 				util.format("%j", this.operand)
 		);
+}
+
+exports.MATH.prototype.internalToJSON = function(json, protocol_version) {
+	json.operator = this.operator;
+	json.operand = this.operand;
 }
 
 exports.MATH.prototype.apply = function (document) {

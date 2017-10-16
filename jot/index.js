@@ -52,6 +52,7 @@ exports.BaseOperation.prototype.toJSON = function(__key__, protocol_version) {
 	// leave a slot so that this function can be correctly called by JSON.
 	// stringify, but we don't use it.
 
+	// The return value.
 	var repr = { };
 
 	// If protocol_version is unspecified, then this is a top-level call.
@@ -67,44 +68,13 @@ exports.BaseOperation.prototype.toJSON = function(__key__, protocol_version) {
 		if (protocol_version !== 1) throw new Error("Invalid protocol version: " + protocol_version);
 	}
 
+	// Set the module and operation name.
 	repr['_type'] = this.type[0] + "." + this.type[1];
 
-	var keys = Object.keys(this);
-	for (var i = 0; i < keys.length; i++) {
-		var value = this[keys[i]];
-		var v;
-		if (value instanceof exports.BaseOperation) {
-			v = value.toJSON(undefined, protocol_version);
-        }
-		else if (value === objects.MISSING) {
-			repr[keys[i] + "_missing"] = true;
-			continue;
-        }
-        else if (keys[i] === 'ops' && Array.isArray(value)) {
-            v = value.map(function(ki) {
-                return ki.toJSON(undefined, protocol_version);
-            });
-        }
-        else if (keys[i] === 'ops' && typeof value === "object") {
-            v = { };
-            for (var key in value)
-            	v[key] = value[key].toJSON(undefined, protocol_version);
-        }
-        else if (keys[i] === 'hunks') {
-            v = value.map(function(hunk) {
-            	var ret = shallow_clone(hunk);
-            	ret.op = ret.op.toJSON(undefined, protocol_version);
-                return ret;
-            });
-        }
-		else if (typeof value !== 'undefined') {
-			v = value;
-        }
-		else {
-			continue;
-        }
-		repr[keys[i]] = v
-	}
+	// Call the operation's toJSON function.
+	this.internalToJSON(repr, protocol_version);
+
+	// Return.
 	return repr;
 }
 
