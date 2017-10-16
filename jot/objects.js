@@ -76,7 +76,7 @@ exports.REN = function () {
 	Object.freeze(this.map);
 }
 exports.REN.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.REN, exports, 'REN', ['map']);
+jot.add_op(exports.REN, exports, 'REN');
 
 exports.APPLY = function () {
 	if (arguments.length == 1 && typeof arguments[0] == "object") {
@@ -93,7 +93,7 @@ exports.APPLY = function () {
 	Object.freeze(this.ops);
 }
 exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.APPLY, exports, 'APPLY', ['ops']);
+jot.add_op(exports.APPLY, exports, 'APPLY');
 
 // The MISSING object is a sentinel to signal the state of an Object property
 // that does not exist. It is the old_value to SET when adding a new property
@@ -119,6 +119,10 @@ exports.REN.prototype.inspect = function(depth) {
 
 exports.REN.prototype.internalToJSON = function(json, protocol_version) {
 	json.map = shallow_clone(this.map);
+}
+
+exports.REN.internalFromJSON = function(json, protocol_version, op_map) {
+	return new exports.REN(json.map);
 }
 
 exports.REN.prototype.apply = function (document) {
@@ -321,6 +325,13 @@ exports.APPLY.prototype.internalToJSON = function(json, protocol_version) {
 	json.ops = { };
 	for (var key in this.ops)
 		json.ops[key] = this.ops[key].toJSON(undefined, protocol_version);
+}
+
+exports.APPLY.internalFromJSON = function(json, protocol_version, op_map) {
+	var ops = { };
+	for (var key in json.ops)
+		ops[key] = jot.opFromJSON(json.ops[key], protocol_version, op_map);
+	return new exports.APPLY(ops);
 }
 
 exports.APPLY.prototype.apply = function (document) {

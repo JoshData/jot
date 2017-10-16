@@ -22,7 +22,7 @@ exports.LIST = function (ops) {
 	Object.freeze(this);
 }
 exports.LIST.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.LIST, exports, 'LIST', ['ops']);
+jot.add_op(exports.LIST, exports, 'LIST');
 
 exports.LIST.prototype.inspect = function(depth) {
 	return util.format("<lists.LIST [%s]>",
@@ -33,6 +33,13 @@ exports.LIST.prototype.internalToJSON = function(json, protocol_version) {
 	json.ops = this.ops.map(function(op) {
 		return op.toJSON(undefined, protocol_version);
 	});
+}
+
+exports.LIST.internalFromJSON = function(json, protocol_version, op_map) {
+	var ops = json.ops.map(function(op) {
+		return jot.opFromJSON(op, protocol_version, op_map);
+	});
+	return new exports.LIST(ops);
 }
 
 exports.LIST.prototype.apply = function (document) {

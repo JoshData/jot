@@ -7,10 +7,9 @@ var shallow_clone = require('shallow-clone');
 // is available to the operation classes.
 exports.BaseOperation = function() {
 }
-exports.add_op = function(constructor, module, opname, constructor_args) {
+exports.add_op = function(constructor, module, opname) {
 	// utility.
 	constructor.prototype.type = [module.module_name, opname];
-	constructor.prototype.constructor_args = constructor_args;
 	if (!('op_map' in module))
 		module['op_map'] = { };
 	module['op_map'][opname] = constructor;
@@ -87,7 +86,7 @@ exports.opFromJSON = function(obj, protocol_version, op_map) {
 	// recursively.
 	//
 	// If protocol_version is specified, this is a recursive call and
-	// we don't need to write it out.
+	// we don't need to read it from the object.
 	if (typeof protocol_version === "undefined") {
 		protocol_version = obj['_ver'];
 		if (protocol_version !== 1)
@@ -116,55 +115,14 @@ exports.opFromJSON = function(obj, protocol_version, op_map) {
 		extend_op_map(lists);
 	}
 
-	// Fetch the constructor.
+	// Get the operation class.
 	if (typeof obj['_type'] !== "string") throw new Error("Not an operation.");
 	var dottedclassparts = obj._type.split(/\./g, 2);
 	if (dottedclassparts.length != 2) throw new Error("Not an operation.");
-	var constructor = op_map[dottedclassparts[0]][dottedclassparts[1]];
+	var clazz = op_map[dottedclassparts[0]][dottedclassparts[1]];
 
-	// Construct the constructor's arguments by using the class's
-	// constructor_args static field that we require op classes to have.
-	var args = constructor.prototype.constructor_args.map(function(item) {
-		var value = obj[item];
-
-		if (obj[item + "_missing"]) {
-			// Put "missing" values back.
-			value = objects.MISSING;
-
-		} if (value !== null && typeof value == 'object' && '_type' in value) {
-			// Value is an operation.
-			return exports.opFromJSON(value, protocol_version, op_map);
-        
-        } else if (item === 'ops' && Array.isArray(value)) {
-        	// Value is an array of operations.
-            value = value.map(function(op) {
-                return exports.opFromJSON(op, protocol_version, op_map);
-            });
-
-        } else if (item === 'ops' && typeof value === "object") {
-        	// Value is a mapping array of operations.
-        	var newvalue = { };
-        	for (var key in value)
-        		newvalue[key] = exports.opFromJSON(value[key], protocol_version, op_map);
-        	value = newvalue;
-
-        } else if (item === 'hunks') {
-        	// Value is a list of PATCH hunks.
-            value = value.map(function(hunk) {
-            	var ret = shallow_clone(hunk);
-                ret.op = exports.opFromJSON(hunk.op, protocol_version, op_map);
-                return ret;
-            });
-        
-        } else {
-        	// Value is just a raw JSON value.
-        }
-		return value;
-	});
-	
-	var op = Object.create(constructor.prototype);
-	constructor.apply(op, args);
-	return op;
+	// Call the deserializer function on the class.
+	return clazz.internalFromJSON(obj, protocol_version, op_map);
 }
 
 exports.BaseOperation.prototype.serialize = function() {

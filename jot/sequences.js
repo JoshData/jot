@@ -145,7 +145,7 @@ exports.PATCH = function () {
 	Object.freeze(this);
 }
 exports.PATCH.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.PATCH, exports, 'PATCH', ['hunks']);
+jot.add_op(exports.PATCH, exports, 'PATCH');
 
 	// shortcuts
 
@@ -202,7 +202,7 @@ exports.MOVE = function (pos, count, new_pos) {
 	Object.freeze(this);
 }
 exports.MOVE.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.MOVE, exports, 'MOVE', ['pos', 'count', 'new_pos']);
+jot.add_op(exports.MOVE, exports, 'MOVE');
 
 exports.MAP = function (op) {
 	if (op == null) throw new Error("Invalid Argument");
@@ -210,7 +210,7 @@ exports.MAP = function (op) {
 	Object.freeze(this);
 }
 exports.MAP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.MAP, exports, 'MAP', ['op']);
+jot.add_op(exports.MAP, exports, 'MAP');
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -238,6 +238,15 @@ exports.PATCH.prototype.internalToJSON = function(json, protocol_version) {
 		ret.op = ret.op.toJSON(undefined, protocol_version);
 		return ret;
 	});
+}
+
+exports.PATCH.internalFromJSON = function(json, protocol_version, op_map) {
+	var hunks = json.hunks.map(function(hunk) {
+		var ret = shallow_clone(hunk);
+		ret.op = jot.opFromJSON(hunk.op, protocol_version, op_map);
+		return ret;
+	});
+	return new exports.PATCH(hunks);
 }
 
 exports.PATCH.prototype.apply = function (document) {
@@ -888,6 +897,10 @@ exports.MOVE.prototype.internalToJSON = function(json, protocol_version) {
 	json.new_pos = this.new_pos;
 }
 
+exports.MOVE.internalFromJSON = function(json, protocol_version, op_map) {
+	return new exports.MOVE(json.pos, json.count, json.new_pos);
+}
+
 exports.MOVE.prototype.apply = function (document) {
 	/* Applies the operation to a document. Returns a new sequence that is
 		 the same type as document but with the subrange moved. */
@@ -951,6 +964,10 @@ exports.MAP.prototype.inspect = function(depth) {
 
 exports.MAP.prototype.internalToJSON = function(json, protocol_version) {
 	json.op = this.op.toJSON(undefined, protocol_version);
+}
+
+exports.MAP.internalFromJSON = function(json, protocol_version, op_map) {
+	return new exports.MAP(jot.opFromJSON(json.op, protocol_version, op_map));
 }
 
 exports.MAP.prototype.apply = function (document) {

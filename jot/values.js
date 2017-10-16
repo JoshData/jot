@@ -70,7 +70,7 @@ exports.NO_OP = function() {
 	Object.freeze(this);
 }
 exports.NO_OP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.NO_OP, exports, 'NO_OP', []);
+jot.add_op(exports.NO_OP, exports, 'NO_OP');
 
 exports.SET = function(value) {
 	/* An operation that replaces the document with a new (atomic) value. */
@@ -78,7 +78,7 @@ exports.SET = function(value) {
 	Object.freeze(this);
 }
 exports.SET.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.SET, exports, 'SET', ['value']);
+jot.add_op(exports.SET, exports, 'SET');
 
 exports.MATH = function(operator, operand) {
 	/* An operation that applies addition, multiplication, or rotation (modulus addition)
@@ -116,7 +116,7 @@ exports.MATH = function(operator, operand) {
 	Object.freeze(this);
 }
 exports.MATH.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.MATH, exports, 'MATH', ['operator', 'operand']);
+jot.add_op(exports.MATH, exports, 'MATH');
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -127,6 +127,10 @@ exports.NO_OP.prototype.inspect = function(depth) {
 
 exports.NO_OP.prototype.internalToJSON = function(json, protocol_version) {
 	// Nothing to set.
+}
+
+exports.NO_OP.internalFromJSON = function(json, protocol_version, op_map) {
+	return new exports.NO_OP();
 }
 
 exports.NO_OP.prototype.apply = function (document) {
@@ -199,6 +203,13 @@ exports.SET.prototype.internalToJSON = function(json, protocol_version) {
 		json.value_missing = true;
 	else
 		json.value = this.value;
+}
+
+exports.SET.internalFromJSON = function(json, protocol_version, op_map) {
+	if (json.value_missing)
+		return new exports.SET(MISSING);
+	else
+		return new exports.SET(json.value);
 }
 
 exports.SET.prototype.apply = function (document) {
@@ -340,6 +351,10 @@ exports.MATH.prototype.inspect = function(depth) {
 exports.MATH.prototype.internalToJSON = function(json, protocol_version) {
 	json.operator = this.operator;
 	json.operand = this.operand;
+}
+
+exports.MATH.internalFromJSON = function(json, protocol_version, op_map) {
+	return new exports.MATH(json.operator, json.operand);
 }
 
 exports.MATH.prototype.apply = function (document) {
