@@ -178,14 +178,6 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless, debug) {
 	   sensible way but possibly by killing one operation or the other.
 	   Returns the rebased version of this. */
 
-	// Rebasing a NO_OP does nothing.
-	if (this instanceof values.NO_OP)
-		return this;
-
-	// Rebasing on NO_OP leaves the operation unchanged.
-	if (other instanceof values.NO_OP)
-		return this;
-
 	// Run the rebase operation in a's prototype. If a doesn't define it,
 	// check b's prototype. If neither define a rebase operation, then there
 	// is a conflict.
@@ -211,7 +203,7 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless, debug) {
 		}
 	}
 
-	// Everything case rebase against a LIST and vice versa.
+	// Everything can rebase against a LIST and vice versa.
 	// This has higher precedence than the SET fallback.
 	if (this instanceof lists.LIST || other instanceof lists.LIST) {
 		var ret = lists.rebase(other, this, conflictless, debug);

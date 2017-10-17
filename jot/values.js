@@ -162,6 +162,13 @@ exports.NO_OP.prototype.atomic_compose = function (other) {
 	return other;
 }
 
+exports.NO_OP.prototype.rebase_functions = [
+	[jot.BaseOperation, function(other, conflictless) {
+		// NO_OP operations do not affect any other operation.
+		return [this, other];
+	}]
+];
+
 exports.NO_OP.prototype.get_length_change = function (old_length) {
 	// Support routine for sequences.PATCH that returns the change in
 	// length to a sequence if this operation is applied to it.
