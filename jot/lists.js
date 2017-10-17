@@ -272,9 +272,12 @@ function rebase_array(base, ops, conflictless, debug) {
 		// For the remainder operations, we have to adjust the 'conflictless' object.
 		// If it provides the base document state, then we have to advance the document
 		// for the application of op1.
-		var conflictless2 = !conflictless ? null : shallow_clone(conflictless);
-		if ("document" in conflictless2)
-			conflictless2.document = op1[0].apply(conflictless2.document);
+		var conflictless2 = null;
+		if (conflictless) {
+			conflictless2 = shallow_clone(conflictless);
+			if ("document" in conflictless2)
+				conflictless2.document = op1[0].apply(conflictless2.document);
+		}
 
 		var r3 = rebase_array(r2, op2, conflictless2, debug);
 		if (r3 == null) return null; // rebase failed
