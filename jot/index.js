@@ -21,6 +21,7 @@ var values = require("./values.js");
 var sequences = require("./sequences.js");
 var objects = require("./objects.js");
 var lists = require("./lists.js");
+var copy = require("./copy.js");
 
 exports.NO_OP = values.NO_OP;
 exports.SET = values.SET;
@@ -34,6 +35,9 @@ exports.REN = objects.REN;
 exports.REM = objects.REM;
 exports.APPLY = objects.APPLY;
 exports.LIST = lists.LIST;
+exports.CLIPBOARD = copy.CLIPBOARD;
+exports.COPY = copy.COPY;
+exports.PASTE = copy.PASTE;
 
 // Expose the diff function too.
 exports.diff = require('./diff.js').diff;
@@ -154,8 +158,18 @@ exports.BaseOperation.prototype.compose = function(other) {
 	if (other instanceof values.NO_OP)
 		return this;
 
-	// Composing with a SET obliterates this operation.
-	if (other instanceof values.SET)
+	// Composing with a SET obliterates this operation, unless
+	// this operation contains a COPY in which case we have to
+	// preserve it because it has a side effect.
+	function contains_copy(op) {
+		var ret = false;
+		op.visit(function(op) {
+			if (op instanceof copy.COPY)
+				ret = true;
+		});
+		return ret;
+	}
+	if (other instanceof values.SET && !contains_copy(this))
 		return other;
 
 	// Attempt an atomic composition if this defines the method.
@@ -211,23 +225,29 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless, debug) {
 		return ret;
 	}
 
-	// Everything can rebase against a SET in a conflictless way.
-	// Note that to resolve ties, SET rebased against SET is handled
-	// in SET's rebase_functions.
+	// Everything can rebase against SET and PASTE in a conflictless way.
+	// Note that to resolve ties, each rebased against another of the
+	// same type is handled in that class's rebase_functions. Otherwise,
+	// the PASTE always wins, and after that a SET always wins.
 	if (conflictless) {
-		// The SET always wins!
-		if (this instanceof values.SET) {
-			if (debug) debug("rebase", this, "on", other, "=>", this);
-			return this;
-		}
-		if (other instanceof values.SET) {
-			if (debug) debug("rebase", this, "on", other, "=>", new values.NO_OP());
-			return new values.NO_OP();
-		}
+		var ret;
+		if (this instanceof copy.PASTE)
+			ret = this;
+		else if (other instanceof copy.PASTE)
+			ret = new values.NO_OP();
+		else if (this instanceof values.SET)
+			ret = this;
+		else if (other instanceof values.SET)
+			ret = new values.NO_OP();
+		else
+			// If conflictless rebase would fail, raise an error.
+			throw new Error("Rebase failed between " + this.inspect() + " and " + other.inspect() + ".");
 
-		// If conflictless rebase would fail, raise an error.
-		throw new Error("Rebase failed between " + this.inspect() + " and " + other.inspect() + ".");
+		if (debug) debug("rebase", this, "on", other, "=>", ret);
+		return ret;
 	}
+
+			throw new Error("Rebase failed between " + this.inspect() + " and " + other.inspect() + ".");
 
 	return null;
 }

@@ -11,9 +11,6 @@ t.equal(
 	new seqs.SPLICE(0, 1, "4").inspect(),
 	'<sequences.PATCH +0x1 "4">');
 t.equal(
-	new seqs.MOVE(0, 2, 5).inspect(),
-	'<sequences.MOVE @0x2 => @5>');
-t.equal(
 	new seqs.ATINDEX(0, new values.SET(2)).inspect(),
 	'<sequences.PATCH +0 <values.SET 2>>');
 t.equal(
@@ -28,9 +25,6 @@ t.equal(
 t.deepEqual(
 	jot.opFromJSON(new seqs.SPLICE(0, 1, "4").toJSON()),
 	new seqs.SPLICE(0, 1, "4"));
-t.deepEqual(
-	jot.opFromJSON(new seqs.MOVE(0, 2, 5).toJSON()),
-	new seqs.MOVE(0, 2, 5));
 t.deepEqual(
 	jot.opFromJSON(new seqs.ATINDEX(0, new values.SET(2)).toJSON()),
 	new seqs.ATINDEX(0, new values.SET(2)));
@@ -55,13 +49,6 @@ t.equal(
 t.equal(
 	new seqs.SPLICE(3, 0, "44").apply("123"),
 	"12344");
-
-t.equal(
-	new seqs.MOVE(0, 1, 3).apply("123"),
-	"231");
-t.equal(
-	new seqs.MOVE(2, 1, 0).apply("123"),
-	"312");
 
 t.deepEqual(
 	new seqs.ATINDEX(0, new values.SET(4)).apply([1, 2, 3]),
@@ -100,12 +87,6 @@ t.deepEqual(
 	new seqs.SPLICE(3, 3, "456").simplify(),
 	new seqs.SPLICE(3, 3, "456"));
 t.deepEqual(
-	new seqs.MOVE(3, 5, 3).simplify(),
-	new values.NO_OP());
-t.deepEqual(
-	new seqs.MOVE(3, 5, 4).simplify(),
-	new seqs.MOVE(3, 5, 4));
-t.deepEqual(
 	new seqs.ATINDEX(0, new values.SET(2)).simplify(),
 	new seqs.ATINDEX(0, new values.SET(2)));
 t.deepEqual(
@@ -131,12 +112,6 @@ t.deepEqual(
 t.deepEqual(
 	new seqs.SPLICE(3, 3, "456").inverse("xxx123"),
 	new seqs.SPLICE(3, 3, "123"));
-t.deepEqual(
-	new seqs.MOVE(3, 3, 10).inverse("anything here"),
-	new seqs.MOVE(7, 3, 3));
-t.deepEqual(
-	new seqs.MOVE(10, 3, 3).inverse("anything here"),
-	new seqs.MOVE(3, 3, 13));
 t.deepEqual(
 	new seqs.ATINDEX(0, new values.SET(2)).inverse([1]),
 	new seqs.ATINDEX(0, new values.SET(1)));
@@ -200,10 +175,6 @@ t.deepEqual(
 t.deepEqual(
 	new seqs.SPLICE(0, 4, "5678").atomic_compose(new seqs.ATINDEX(4, new values.SET("0"))),
 	new seqs.SPLICE(0, 5, "56780"));
-
-t.deepEqual(
-	new seqs.MOVE(0, 2, 4).atomic_compose(new values.SET("5678")),
-	null);
 
 t.deepEqual(
 	new seqs.ATINDEX(0, new values.SET("0")).atomic_compose(new seqs.SPLICE(0, 4, "5678")),
@@ -336,15 +307,6 @@ t.notOk(
 	new seqs.MAP(new values.MATH("add", 1)).rebase(
 		new seqs.SPLICE(1, 3, [4,5])));
 
-t.deepEqual(
-	new seqs.MOVE(1, 1, 2).rebase(
-		new seqs.MAP(new values.MATH("add", 1))),
-	new seqs.MOVE(1, 1, 2));
-t.deepEqual(
-	new seqs.MAP(new values.MATH("add", 1)).rebase(
-		new seqs.MOVE(1, 1, 2)),
-	new seqs.MAP(new values.MATH("add", 1)));
-
 // apply vs splice
 
 t.deepEqual(
@@ -376,13 +338,6 @@ t.deepEqual(
 		new seqs.ATINDEX({0: new values.SET("y"), 1: new values.SET(" ")}), { }),
 	new seqs.ATINDEX({0: new values.SET("z"), 1: new values.SET("b"), 2: new values.SET("N")})
 	)
-
-// apply vs move
-
-t.deepEqual(
-	new seqs.ATINDEX(555, new values.MATH("add", 3)).rebase(
-		new seqs.MOVE(555, 3, 0)),
-	null);
 
 // apply vs map
 

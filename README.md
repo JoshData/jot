@@ -223,10 +223,18 @@ operations plus it adds new operations for non-string data structures!
 
 * `PUT(key, value)`: Adds a new property to an object. `key` is any valid JSON key (a string) and `value` is any valid JSON object.
 * `REM(key)`: Remove a property from an object.
-* `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings. It can also take a mapping from new keys to old keys they are renamed from, as `REN({new_name: key, ...})`, which also allows for the duplication of property values. *This operation does not yet support conflictless rebase.*
+* `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings.
 * `APPLY(key, operation)`: Apply any operation to a particular property named `key`. `operation` is any operation. The operation can also take a mapping from keys to operations, as `APPLY({key: operation, ...})`.
 
-(Note that internally `PUT` and `REM` are sub-cases of `SET`, and `REM` uses a special value to signal the absence of an object property.)
+(Note that internally `PUT` and `REM` are sub-cases of `SET`, and `REM` uses a special value to signal the absence of an object property. `REN(key, new_name)` is a subcase of `CLIPBOARD` (see below) that wraps `APPLY(key, COPY())`, `REM(key)`, `APPLY(key, PASTE()))`.
+
+### Copy/paste operations
+
+The copy/paste operations create structural changes to a document by moving or cloning content from one part of a document to another part.
+
+* `COPY()` (or `COPY("name")`) copies the document into a memory slot. The `COPY` operation is best used within the `ATINDEX` and `APPLY` operations where it will copy just the portion of the document the outer operation is targeting. The optional name argument is for debugging only.
+* `PASTE(copyop)`, where `copyop` is an instance of a `COPY` operation, replaces the document with the contents of the `COPY` operation's memory slot.
+* `CLIPBOARD(op)`, where `op` is any operation containing `COPY` and `PASTE` operations, creates a memory context for the `COPY` and `PASTE` operations. All `COPY` and `PASTE` operations must be wrapped in a `CLIPBOARD`.
 
 Methods
 -------

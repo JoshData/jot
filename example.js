@@ -52,10 +52,13 @@ console.log("")
 
 /* You must rebase user2's operations before composing them. */
 
-user2 = user2.rebase(user1);
-if (user2 == null) throw new Error("hmm");
+user2 = user2.rebase(user1, null, console.log);
+if (user2 == null)
+	throw new Error("There is a conflict!");
+var ops = user1.compose(user2);
 
 console.log("Merged")
-console.log(user1.compose(user2).apply(doc)); // { title: 'My Program', count: 20 }
+console.log(ops);
+console.log(ops.apply(doc)); // { title: 'My Program', count: 20 }
 console.log("")
 
