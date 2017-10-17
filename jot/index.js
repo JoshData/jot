@@ -143,6 +143,9 @@ exports.deserialize = function(op_json) {
 }
 
 exports.BaseOperation.prototype.compose = function(other) {
+	if (!(other instanceof exports.BaseOperation))
+		throw new Error("Argument must be an operation.");
+
 	// A NO_OP composed with anything just gives the other thing.
 	if (this instanceof values.NO_OP)
 		return other;

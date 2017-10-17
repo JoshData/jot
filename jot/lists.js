@@ -16,8 +16,11 @@ var values = require('./values.js');
 exports.module_name = 'lists'; // for serialization/deserialization
 
 exports.LIST = function (ops) {
-	if (ops == null) throw new Error("Invalid Argument");
-	if (!(ops instanceof Array)) throw new Error("Invalid Argument");
+	if (!Array.isArray(ops)) throw new Error("Argument must be an array.");
+	ops.forEach(function(op) {
+		if (!(op instanceof jot.BaseOperation))
+			throw new Error("Argument must be an array containing operations (found " + op + ").");
+	})
 	this.ops = ops; // TODO: How to ensure this array is immutable?
 	Object.freeze(this);
 }
