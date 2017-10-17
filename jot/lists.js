@@ -29,6 +29,15 @@ exports.LIST.prototype.inspect = function(depth) {
 		this.ops.map(function(item) { return item.inspect(depth-1) }).join(", "));
 }
 
+exports.LIST.prototype.visit = function(visitor) {
+	// A simple visitor paradigm. Replace this operation instance itself
+	// and any operation within it with the value returned by calling
+	// visitor on itself, or if the visitor returns anything falsey
+	// (probably undefined) then return the operation unchanged.
+	var ret = new exports.LIST(this.ops.map(function(op) { return op.visit(visitor); }));
+	return visitor(ret) || ret;
+}
+
 exports.LIST.prototype.internalToJSON = function(json, protocol_version) {
 	json.ops = this.ops.map(function(op) {
 		return op.toJSON(undefined, protocol_version);

@@ -321,6 +321,18 @@ exports.APPLY.prototype.inspect = function(depth) {
 	return util.format("<objects.APPLY %s>", inner.join(", "));
 }
 
+exports.APPLY.prototype.visit = function(visitor) {
+	// A simple visitor paradigm. Replace this operation instance itself
+	// and any operation within it with the value returned by calling
+	// visitor on itself, or if the visitor returns anything falsey
+	// (probably undefined) then return the operation unchanged.
+	var ops = { };
+	for (var key in this.ops)
+		ops[key] = this.ops[key].visit(visitor);
+	var ret = new exports.APPLY(ops);
+	return visitor(ret) || ret;
+}
+
 exports.APPLY.prototype.internalToJSON = function(json, protocol_version) {
 	json.ops = { };
 	for (var key in this.ops)

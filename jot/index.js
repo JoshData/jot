@@ -44,6 +44,14 @@ exports.BaseOperation.prototype.isNoOp = function() {
 	return this instanceof values.NO_OP;
 }
 
+exports.BaseOperation.prototype.visit = function(visitor) {
+	// A simple visitor paradigm. Replace this operation instance itself
+	// and any operation within it with the value returned by calling
+	// visitor on itself, or if the visitor returns anything falsey
+	// (probably undefined) then return the operation unchanged.
+	return visitor(this) || this;
+}
+
 exports.BaseOperation.prototype.toJSON = function(__key__, protocol_version) {
 	// The first argument __key__ is used when this function is called by
 	// JSON.stringify. For reasons unclear, we get the name of the property

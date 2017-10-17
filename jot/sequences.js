@@ -232,6 +232,19 @@ exports.PATCH.prototype.inspect = function(depth) {
 		}).join(","));
 }
 
+exports.PATCH.prototype.visit = function(visitor) {
+	// A simple visitor paradigm. Replace this operation instance itself
+	// and any operation within it with the value returned by calling
+	// visitor on itself, or if the visitor returns anything falsey
+	// (probably undefined) then return the operation unchanged.
+	var ret = new exports.PATCH(this.hunks.map(function(hunk) {
+		var ret = shallow_clone(hunk);
+		ret.op = ret.op.visit(visitor);
+		return ret;
+	}));
+	return visitor(ret) || ret;
+}
+
 exports.PATCH.prototype.internalToJSON = function(json, protocol_version) {
 	json.hunks = this.hunks.map(function(hunk) {
 		var ret = shallow_clone(hunk);
@@ -960,6 +973,15 @@ exports.MOVE.prototype.rebase_functions = [
 
 exports.MAP.prototype.inspect = function(depth) {
 	return util.format("<sequences.MAP %s>", this.op.inspect(depth-1));
+}
+
+exports.MAP.prototype.visit = function(visitor) {
+	// A simple visitor paradigm. Replace this operation instance itself
+	// and any operation within it with the value returned by calling
+	// visitor on itself, or if the visitor returns anything falsey
+	// (probably undefined) then return the operation unchanged.
+	var ret = new exports.MAP(this.op.visit(visitor));
+	return visitor(ret) || ret;
 }
 
 exports.MAP.prototype.internalToJSON = function(json, protocol_version) {
