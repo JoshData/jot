@@ -323,4 +323,4 @@ Notes
 
 Thanks to @konklone for some inspiration and the first pull request.
 
-Similar work: [Apache Wave](http://incubator.apache.org/wave/) (formerly Google Wave), [Substance Operator](https://github.com/substance/operator) (defunct).
+Similar work: [ShareDB](https://github.com/share/sharedb), [ottypes/json0](https://github.com/ottypes/json0), [Apache Wave](http://incubator.apache.org/wave/) (formerly Google Wave), [Substance Operator](https://github.com/substance/operator) (defunct).
