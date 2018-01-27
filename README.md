@@ -36,48 +36,54 @@ users edit the same part of the document.
 
 To illustrate the problem, imagine two users open the following JSON document:
 
-	{ "key1": "Hello world!", "key2": 10 }
+	{ "title": "Hello World!", "count": 10 }
 
-Each user now has a copy of this document in their local memory. The first user renames the properties from `key1` and `key2` to `title` and `count`
-in their copy of the document:
+Each user now has a copy of this document in their local memory. The first user
+modfies their copy by changing the title and incrementing the count:
 
-	{ "title": "Hello world!", "count": 10 }
+ 	{ "title": "It's a Small World!", "count": 20 }
 
-At the same time, the second user changes the values of the properties in their copy of the document from `Hello world!` to `My Program` and from `10` to `20`. Since the second user does not yet have the first user's changes, the resulting document still has the old property names:
+At the same time, the second user changes their copy of the document by changing
+`Hello World!` to `Hello, Small World!` also incrementing the count by 5, yielding:
 
-	{ "key1": "My Program", "key2": 20 }
+ 	{ "title": "Hello, Small World!", "count": 15 }
 
 ### Structured representation of changes
 
-In order to merge these changes, one must have a structured representation of the
-changes being applied to the document. In JOT, it is up to the library user to
-form structured representations of changes. The changes above are represented in pseudocode as:
+In order to merge these changes, there needs to be a structured representation of the
+changes. In the flat land of plain text, you are probably used to diffs and patches
+as structured representations of changes --- e.g. at lines 5 through 10, replace with
+new content. In JOT, it is up to the library user to form structured representations
+of changes using JOT's classes. The changes in the example above are constructed as:
 
-	User 1: RENAME key1 TO title; RENAME key2 TO count
+	var user1 = new jot.LIST([
+		new jot.APPLY("title", new jot.SPLICE(0, 5, "It's a Small")),
+		new jot.APPLY("count", new jot.MATH("add", 10))
+	]);
 
-	User 2: IN key1 SET TO "My Program"; IN key2 INCREMENT BY 10
+	var user2 = new jot.LIST([
+		new jot.APPLY("title", new jot.SPLICE(5, 1, ", Small ")),
+		new jot.APPLY("count", new jot.MATH('add', 5))
+	]);
 
-Using JOT, these changes are represented by "operation" objects as follows:
+In other words, user 1 makes a change to the `title` property by replacing the 5 characters
+starting at position 0 with `It's a Small` and increments the `count` property by 10.
+User 2 makes a change to the `title` property by replacing the 1 character at position 5,
+i.e. the first space, with `, Small ` and increments the `count` property by 5.
 
-	var user1 = new jot.REN({ title: "key1",
-	                          count: "key2" })
+These changes cannot yet be combined. If they were applied in order we would get a corrupted
+document because the character positions that user 2's operation referred to are shifted once
+user 1's changes are applied. After applying user 1's changes, we have the document:
 
-	var user2 = new jot.APPLY({ "key1": new jot.SET("My Program"),
-	                            "key2": new jot.MATH("add", 10)  })
+	{ title: "It's a Small World!", count: 20 }
 
-However these changes cannot yet be combined. If they were applied in order,
-there would be an error. We could start with the original document:
+But then if we apply user 2's changes, which say to replace the character at position 5, we
+would get:
 
-	{ "key1": "Hello world!", "key2": 10 }
+	{ title: "It's , Small  Small World!", count: 25 }
 
-and then apply the first user's change, resulting in:
-
-	{ "title": "Hello world!", "count": 10 }
-
-but when we get to the second user's changes, which say to change the values of `key1` and `key2`, there is a problem --- those properties no longer exist!
-
-The second user's changes must be "transformed" to take into account the changes
-to the property names made by the first user before they can be applied. 
+That's not what user 2 intended. **The second user's changes must be "transformed" to take into
+account the changes to the document made by the first user before they can be applied.**
 
 ### Transformation
 
@@ -89,38 +95,33 @@ they can be applied in sequence after the first user's changes.
 
 Instead of
 
-	User 2: IN key1 SET TO "My Program"; IN key2 INCREMENT BY 10
+	... new jot.APPLY("title", new jot.SPLICE(5, 1, ", Small "))  ...
 
 we want the second user's changes to look like
 
-	User 2: IN title SET TO "My Program"; IN count INCREMENT BY 10
+	... new jot.APPLY("title", new jot.SPLICE(12, 1, ", Small "))  ...
 
-Note how the property names have changed. These changes now _can_ be applied after the first user's changes because they refer to the updated property names.
+Note how the character index has changed. These changes now _can_ be applied after the first
+user's changes and achieve the _intent_ of user 2's change.
 
 JOT provides a `rebase` function on operation objects that can make this
 transformation. (The transformation is named after [git's rebase](https://git-scm.com/book/en/v2/Git-Branching-Rebasing).) The `rebase` function transforms the operation and yields a new operation that should be applied instead, taking as an argument the operations executed by another user concurrently that have already applied to the document:
 
 	user2 = user2.rebase(user1)
 
-The object now holds:
-
-	new jot.APPLY({ "title": new jot.SET("My Program"),
-	                "count": new jot.MATH("add", 10)  })
-
-Note again how the property names have changed. These changes can now be merged using `compose`:
+These changes can now be merged using `compose`:
 
 	var all_changes = user1.compose(user2);
 
 and then applied to the base document:
 
-	var document = { "key1": "Hello world!", "key2": 10 };
 	document = all_changes.apply(document)
 
 after which the base document will include both user's changes:
 
-	{ "title": "My Program", "count": 20 }
+	{ title: "It's a Small, Small World!", count: 25 }
 
-It would also have been possible to rebase `user1` first and then compose the operations in the other order, for the exact same result.
+It would also have been possible to rebase `user1` and then compose the operations in the other order, for the exact same result.
 
 See [example.js](example.js) for the complete example.
 
@@ -223,7 +224,6 @@ operations plus it adds new operations for non-string data structures!
 
 * `PUT(key, value)`: Adds a new property to an object. `key` is any valid JSON key (a string) and `value` is any valid JSON object.
 * `REM(key)`: Remove a property from an object.
-* `REN(key, new_name)`: Rename a property of an object. `key` and `new_name` are strings. It can also take a mapping from new keys to old keys they are renamed from, as `REN({new_name: key, ...})`, which also allows for the duplication of property values. *This operation does not yet support conflictless rebase.*
 * `APPLY(key, operation)`: Apply any operation to a particular property named `key`. `operation` is any operation. The operation can also take a mapping from keys to operations, as `APPLY({key: operation, ...})`.
 
 (Note that internally `PUT` and `REM` are sub-cases of `SET`, and `REM` uses a special value to signal the absence of an object property.)

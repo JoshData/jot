@@ -30,7 +30,6 @@ exports.SPLICE = sequences.SPLICE;
 exports.ATINDEX = sequences.ATINDEX;
 exports.MAP = sequences.MAP;
 exports.PUT = objects.PUT;
-exports.REN = objects.REN;
 exports.REM = objects.REM;
 exports.APPLY = objects.APPLY;
 exports.LIST = lists.LIST;

@@ -280,11 +280,8 @@ function diff_objects(a, b, options) {
 	// keys to see what best lines up with what. Don't
 	// store pairs with nothing in common.
 	var pairs = [ ];
+	/*
 	for (var key1 in a) {
-		// TODO: Since the REN operation is not conflictless
-		// at the moment, don't generate any RENs.
-		break;
-
 		if (key1 in b) continue;
 		for (var key2 in b) {
 			if (key2 in a) continue;
@@ -297,6 +294,7 @@ function diff_objects(a, b, options) {
 			});
 		}
 	}
+	*/
 
 	// Sort the pairs to choose the best matches first.
 	// (This is a greedy approach. May not be optimal.)

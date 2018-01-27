@@ -133,53 +133,6 @@ test('lists', function(t) {
         new jot.PUT('x', 'y')
     )
 
-    t.deepEqual( // related changes, unwrapping of list
-        new lists.LIST([ new jot.APPLY('x', new jot.SET('y2')) ])
-            .rebase(
-                new jot.REN('x', 'a')
-            ),
-        new jot.APPLY('a', new jot.SET('y2'))
-    )
-
-    t.deepEqual( // two on one
-        new lists.LIST([
-            new jot.APPLY('x', new jot.SET('y2')),
-            new jot.APPLY('x', new jot.SET('y3'))
-        ])
-            .rebase(
-                new jot.REN('x', 'a')
-            ),
-        new jot.APPLY('a', new jot.SET('y3'))
-    )
-
-    t.deepEqual( // two on two
-        new lists.LIST([
-            new jot.APPLY('x', new jot.SET('y2')),
-            new jot.APPLY('x', new jot.SET('y3'))
-        ])
-            .rebase(
-                new lists.LIST([
-                    new jot.REN('x', 'a'),
-                    new jot.REN('a', 'b')
-                ])
-            ),
-        new jot.APPLY('b', new jot.SET('y3'))
-    )
-
-    t.deepEqual( // two on two - list is unchanged
-        new lists.LIST([
-            new jot.REN('x', 'a'),
-            new jot.REN('a', 'b')
-        ])
-            .rebase(
-                new lists.LIST([
-                    new jot.APPLY('x', new jot.SET('y2')),
-                    new jot.APPLY('x', new jot.SET('y3'))
-                ])
-            ),
-        new jot.REN('x', 'b')
-    )
-
     t.deepEqual( // conflictless (A)
         new lists.LIST([
             new jot.SET('a')
@@ -205,34 +158,6 @@ test('lists', function(t) {
             ),
         new jot.SET('b')
     )
-
-    t.deepEqual( // two on two w/ conflictless (A)
-        new lists.LIST([
-            new jot.REN('x', 'a'),
-            new jot.REN('y', 'b')
-        ])
-            .rebase(
-                new lists.LIST([
-                    new jot.REN('x', 'A'),
-                    new jot.REN('y', 'B')
-                ])
-            ),
-        null
-    );
-
-    t.deepEqual( // two on two w/ conflictless (B)
-        new lists.LIST([
-            new jot.REN('x', 'A'),
-            new jot.REN('y', 'B')
-        ])
-            .rebase(
-                new lists.LIST([
-                    new jot.REN('x', 'a'),
-                    new jot.REN('y', 'b')
-                ])
-            ),
-        null
-    );
 
     t.end();
 });

@@ -194,16 +194,6 @@ jot.add_op(exports.PATCH, exports, 'PATCH');
 	}
 	exports.ATINDEX.prototype = new exports.PATCH("__hmm__"); // inherit prototype
 
-exports.MOVE = function (pos, count, new_pos) {
-	if (pos == null || count == null || count == 0 || new_pos == null) throw new Error("Invalid Argument");
-	this.pos = pos;
-	this.count = count;
-	this.new_pos = new_pos;
-	Object.freeze(this);
-}
-exports.MOVE.prototype = Object.create(jot.BaseOperation.prototype); // inherit
-jot.add_op(exports.MOVE, exports, 'MOVE');
-
 exports.MAP = function (op) {
 	if (op == null) throw new Error("Invalid Argument");
 	this.op = op;
@@ -880,10 +870,6 @@ exports.PATCH.prototype.rebase_functions = [
 	[exports.PATCH, function(other, conflictless) {
 		// Return the new operations.
 		return rebase_patches(this, other, conflictless);
-	}],
-
-	[exports.MOVE, function(other, conflictless) {
-		// TODO
 	}]
 ];
 
@@ -897,77 +883,6 @@ exports.PATCH.prototype.get_length_change = function (old_length) {
 	});
 	return dlen;
 }
-
-//////////////////////////////////////////////////////////////////////////////
-
-exports.MOVE.prototype.inspect = function(depth) {
-	return util.format("<sequences.MOVE @%dx%d => @%d>", this.pos, this.count, this.new_pos);
-}
-
-exports.MOVE.prototype.internalToJSON = function(json, protocol_version) {
-	json.pos = this.pos;
-	json.count = this.count;
-	json.new_pos = this.new_pos;
-}
-
-exports.MOVE.internalFromJSON = function(json, protocol_version, op_map) {
-	return new exports.MOVE(json.pos, json.count, json.new_pos);
-}
-
-exports.MOVE.prototype.apply = function (document) {
-	/* Applies the operation to a document. Returns a new sequence that is
-		 the same type as document but with the subrange moved. */
-	if (this.pos < this.new_pos)
-		return concat3(document.slice(0, this.pos), document.slice(this.pos+this.count, this.new_pos), document.slice(this.pos, this.pos+this.count) + document.slice(this.new_pos));
-	else
-		return concat3(document.slice(0, this.new_pos), document.slice(this.pos, this.pos+this.count), document.slice(this.new_pos, this.pos), document.slice(this.pos+this.count));
-}
-
-exports.MOVE.prototype.simplify = function () {
-	/* Returns a new atomic operation that is a simpler version
-		 of this operation.*/
-	if (this.pos == this.new_pos)
-		return new values.NO_OP();	   
-	return this;
-}
-
-exports.MOVE.prototype.inverse = function (document) {
-	/* Returns a new atomic operation that is the inverse of this operation */
-	if (this.new_pos > this.pos)
-		return new exports.MOVE(this.new_pos - this.count, this.count, this.pos);
-	else
-		return new exports.MOVE(this.new_pos, this.count, this.pos + this.count);
-}
-
-exports.MOVE.prototype.atomic_compose = function (other) {
-	/* Creates a new atomic operation that has the same result as this
-		 and other applied in sequence (this first, other after). Returns
-		 null if no atomic operation is possible. */
-
-	// The same range moved a second time.
-	if (other instanceof exports.MOVE && this.new_pos == other.pos && this.count == other.count)
-		return new exports.MOVE(this.pos, other.new_pos, a.count)
-
-	// No composition possible.
-	return null;
-}
-
-exports.MOVE.prototype.rebase_functions = [
-	[exports.MOVE, function(other, conflictless) {
-		// moves intersect
-		if (this.pos+this.count >= other.pos && this.pos < other.pos+other.count)
-			return null;
-		return [
-			new exports.MOVE(map_index(this.pos, other), this.count, map_index(this.new_pos, other)),
-			null // second element is not used when the types of the two operations is the same
-		];
-	}],
-	[exports.MAP, function(other, conflictless) {
-		// The MOVE changes the order but not the values and the MAP changes
-		// values but doesn't care about order, so they don't bother each other.
-		return [this, other];
-	}]
-];
 
 //////////////////////////////////////////////////////////////////////////////
 
