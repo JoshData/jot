@@ -122,7 +122,7 @@ jot.add_op(exports.MATH, exports, 'MATH');
 //////////////////////////////////////////////////////////////////////////////
 
 exports.NO_OP.prototype.inspect = function(depth) {
-	return "<values.NO_OP>"
+	return "<NO_OP>"
 }
 
 exports.NO_OP.prototype.internalToJSON = function(json, protocol_version) {
@@ -202,7 +202,7 @@ exports.SET.prototype.inspect = function(depth) {
 		// Render any other value as a JSON string.
 		return util.format("%j", v);
 	}
-	return util.format("<values.SET %s>", str(this.value));
+	return util.format("<SET %s>", str(this.value));
 }
 
 exports.SET.prototype.internalToJSON = function(json, protocol_version) {
@@ -345,7 +345,7 @@ exports.SET.prototype.decompose = function (in_out, at_index) {
 //////////////////////////////////////////////////////////////////////////////
 
 exports.MATH.prototype.inspect = function(depth) {
-	return util.format("<values.MATH %s:%s>",
+	return util.format("<MATH %s:%s>",
 		this.operator,
 			(typeof this.operand == "number" && (this.operator == "and" || this.operator == "or" || this.operator == "xor"))
 			?

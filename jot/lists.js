@@ -28,7 +28,7 @@ exports.LIST.prototype = Object.create(jot.BaseOperation.prototype); // inherit
 jot.add_op(exports.LIST, exports, 'LIST');
 
 exports.LIST.prototype.inspect = function(depth) {
-	return util.format("<lists.LIST [%s]>",
+	return util.format("<LIST [%s]>",
 		this.ops.map(function(item) { return item.inspect(depth-1) }).join(", "));
 }
 

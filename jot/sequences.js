@@ -205,7 +205,7 @@ jot.add_op(exports.MAP, exports, 'MAP');
 //////////////////////////////////////////////////////////////////////////////
 
 exports.PATCH.prototype.inspect = function(depth) {
-	return util.format("<sequences.PATCH%s>",
+	return util.format("<PATCH%s>",
 		this.hunks.map(function(hunk) {
 			if ((hunk.length == 1) && (hunk.op instanceof exports.MAP))
 				// special format
@@ -887,7 +887,7 @@ exports.PATCH.prototype.get_length_change = function (old_length) {
 //////////////////////////////////////////////////////////////////////////////
 
 exports.MAP.prototype.inspect = function(depth) {
-	return util.format("<sequences.MAP %s>", this.op.inspect(depth-1));
+	return util.format("<MAP %s>", this.op.inspect(depth-1));
 }
 
 exports.MAP.prototype.visit = function(visitor) {

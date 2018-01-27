@@ -92,7 +92,7 @@ exports.APPLY.prototype.inspect = function(depth) {
 	Object.keys(ops).forEach(function(key) {
 		inner.push(util.format("%j:%s", key, ops[key].inspect(depth-1)));
 	});
-	return util.format("<objects.APPLY %s>", inner.join(", "));
+	return util.format("<APPLY %s>", inner.join(", "));
 }
 
 exports.APPLY.prototype.visit = function(visitor) {
