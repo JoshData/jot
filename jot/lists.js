@@ -1,6 +1,6 @@
-/*  A library of lists-operations.
+/*  This module defines one operation:
 	
-	LIST(array_of_operations)
+	LIST([op1, op2, ...])
 	
 	A composition of zero or more operations, given as an array.
 

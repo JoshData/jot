@@ -21,6 +21,7 @@ var values = require("./values.js");
 var sequences = require("./sequences.js");
 var objects = require("./objects.js");
 var lists = require("./lists.js");
+var copies = require("./copies.js");
 
 exports.NO_OP = values.NO_OP;
 exports.SET = values.SET;
@@ -33,6 +34,7 @@ exports.PUT = objects.PUT;
 exports.REM = objects.REM;
 exports.APPLY = objects.APPLY;
 exports.LIST = lists.LIST;
+exports.COPY = copies.COPY;
 
 // Expose the diff function too.
 exports.diff = require('./diff.js').diff;
@@ -120,6 +122,7 @@ exports.opFromJSON = function(obj, protocol_version, op_map) {
 		extend_op_map(sequences);
 		extend_op_map(objects);
 		extend_op_map(lists);
+		extend_op_map(copies);
 	}
 
 	// Get the operation class.
@@ -203,17 +206,27 @@ exports.BaseOperation.prototype.rebase = function(other, conflictless, debug) {
 	}
 
 	// Everything can rebase against a LIST and vice versa.
-	// This has higher precedence than the SET fallback.
+	// This has higher precedence than the this instanceof SET fallback.
 	if (this instanceof lists.LIST || other instanceof lists.LIST) {
 		var ret = lists.rebase(other, this, conflictless, debug);
 		if (debug) debug("rebase", this, "on", other, "=>", ret);
 		return ret;
 	}
 
-	// Everything can rebase against a SET in a conflictless way.
-	// Note that to resolve ties, SET rebased against SET is handled
-	// in SET's rebase_functions.
 	if (conflictless) {
+		// Everything can rebase against a COPY in conflictless mode when
+		// a previous document content is given --- the document is needed
+		// to parse a JSONPointer and know whether the path components are
+		// for objects or arrays. If this's operation affects a path that
+		// is copied, the operation is cloned to the target path.
+		// This has higher precedence than the this instanceof SET fallback.
+		if (other instanceof copies.COPY && typeof conflictless.document != "undefined")
+			return other.clone_operation(this, conflictless.document);
+
+		// Everything can rebase against a SET in a conflictless way.
+		// Note that to resolve ties, SET rebased against SET is handled
+		// in SET's rebase_functions.
+
 		// The SET always wins!
 		if (this instanceof values.SET) {
 			if (debug) debug("rebase", this, "on", other, "=>", this);
@@ -280,12 +293,16 @@ exports.createRandomOp = function(doc, context) {
 	modules.push(values);
 
 	// sequences applies to strings and arrays.
-	if (typeof doc === "string" || Array.isArray(doc))
+	if (typeof doc === "string" || Array.isArray(doc)) {
 		modules.push(sequences);
+		modules.push(copies);
+	}
 
 	// objects applies to objects (but not Array objects or null)
-	else if (typeof doc === "object" && doc !== null)
+	else if (typeof doc === "object" && doc !== null) {
 		modules.push(objects);
+		modules.push(copies);
+	}
 
 	// the lists module only defines LIST which can also
 	// be applied to any data type but gives us stack

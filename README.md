@@ -222,11 +222,13 @@ operations plus it adds new operations for non-string data structures!
 
 ### Operations on objects
 
-* `PUT(key, value)`: Adds a new property to an object. `key` is any valid JSON key (a string) and `value` is any valid JSON object.
-* `REM(key)`: Remove a property from an object.
+* `PUT(key, value)`: Adds a new property to an object. `key` is any valid JSON key (a string) and `value` is any valid JSON object. Equivalent to `APPLY(key, SET(value))`.
+* `REM(key)`: Remove a property from an object. Equivalent to `APPLY(key, SET(~))` where `~` is a special internal value.
 * `APPLY(key, operation)`: Apply any operation to a particular property named `key`. `operation` is any operation. The operation can also take a mapping from keys to operations, as `APPLY({key: operation, ...})`.
 
-(Note that internally `PUT` and `REM` are sub-cases of `SET`, and `REM` uses a special value to signal the absence of an object property.)
+### Operations that affect document structure
+
+* `COPY([ [source1, target1], [source2, target2], ... ])`: Copies a value from one location in the document to another. The source and target parameters are [JSON Pointer](https://tools.ietf.org/html/rfc6901) strings (but `/-` is not allowed). Use in combination with other operations to move parts of the document, e.g. a `COPY` plus a `REM` can be used to rename an object property.
 
 Methods
 -------
