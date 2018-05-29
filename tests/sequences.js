@@ -188,8 +188,12 @@ t.deepEqual(
 	new seqs.ATINDEX(555, new values.SET("C")));
 t.deepEqual(
 	new seqs.ATINDEX(555, new values.MATH("add", 1))
-		.atomic_compose(new seqs.ATINDEX(555, new values.MATH("mult", 1))),
+		.atomic_compose(new seqs.ATINDEX(555, new values.MATH("mult", 2))),
 	null);
+t.deepEqual(
+	new seqs.ATINDEX(555, new values.MATH("add", 1))
+		.atomic_compose(new seqs.ATINDEX(555, new values.SET(2))),
+	new seqs.ATINDEX(555, new values.SET(2)));
 t.deepEqual(
 	new seqs.ATINDEX(0, new values.SET("d")).atomic_compose(new seqs.ATINDEX(1, new values.SET("e"))),
 	new seqs.ATINDEX({ 0: new values.SET("d"), 1: new values.SET("e") }));

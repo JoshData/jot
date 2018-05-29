@@ -516,6 +516,9 @@ function compose_patches(a, b) {
 
 			// Try an atomic composition.
 			var ab = a_state.hunks[0].op.atomic_compose(b_op);
+			if (!ab && dx_start == 0 && dx_end == 0 && b_op instanceof exports.MAP && b_op.op instanceof values.SET)
+				ab = b_op;
+
 			if (ab) {
 				// Replace the 'a' operation with itself composed with b's operation.
 				// Don't take it yet because there could be more coming on b's
