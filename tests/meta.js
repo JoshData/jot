@@ -7,15 +7,15 @@ test('lists', function(t) {
 
     t.deepEqual(
         new lists.LIST([]).inspect(),
-        "<lists.LIST []>");
+        "<LIST []>");
 
     t.deepEqual(
         new lists.LIST([new jot.SET("X")]).inspect(),
-        "<lists.LIST [<values.SET \"X\">]>");
+        "<LIST [<SET \"X\">]>");
 
     t.deepEqual(
         new lists.LIST([new jot.SET("X"), new jot.SET("Y")]).inspect(),
-        "<lists.LIST [<values.SET \"X\">, <values.SET \"Y\">]>");
+        "<LIST [<SET \"X\">, <SET \"Y\">]>");
 
 	// simplify
 

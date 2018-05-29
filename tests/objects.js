@@ -11,13 +11,13 @@ test('objects', function(t) {
 
 t.equal(
 	new objs.PUT("0", "1").inspect(),
-	'<objects.APPLY "0":<values.SET "1">>');
+	'<APPLY "0":<SET "1">>');
 t.equal(
 	new objs.REM("0", "1").inspect(),
-	'<objects.APPLY "0":<values.SET ~>>');
+	'<APPLY "0":<SET ~>>');
 t.equal(
 	new objs.APPLY("0", new values.SET(2)).inspect(),
-	'<objects.APPLY "0":<values.SET 2>>');
+	'<APPLY "0":<SET 2>>');
 
 // serialization
 

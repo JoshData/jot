@@ -9,16 +9,16 @@ test('sequences', function(t) {
 
 t.equal(
 	new seqs.SPLICE(0, 1, "4").inspect(),
-	'<sequences.PATCH +0x1 "4">');
+	'<PATCH +0x1 "4">');
 t.equal(
 	new seqs.ATINDEX(0, new values.SET(2)).inspect(),
-	'<sequences.PATCH +0 <values.SET 2>>');
+	'<PATCH +0 <SET 2>>');
 t.equal(
 	new seqs.ATINDEX({ 0: new values.SET(2), 4: new values.SET(10) }).inspect(),
-	'<sequences.PATCH +0 <values.SET 2>, +3 <values.SET 10>>');
+	'<PATCH +0 <SET 2>, +3 <SET 10>>');
 t.equal(
 	new seqs.MAP(new values.MATH('add', 1)).inspect(),
-	'<sequences.MAP <values.MATH add:1>>');
+	'<MAP <MATH add:1>>');
 
 // serialization
 

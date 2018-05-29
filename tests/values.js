@@ -10,13 +10,13 @@ test('values', function(t) {
 
 t.equal(
 	new values.NO_OP().inspect(),
-	"<values.NO_OP>");
+	"<NO_OP>");
 t.equal(
 	new values.SET(4).inspect(),
-	'<values.SET 4>');
+	'<SET 4>');
 t.equal(
 	new values.MATH('add', 4).inspect(),
-	'<values.MATH add:4>');
+	'<MATH add:4>');
 
 // serialization
 
