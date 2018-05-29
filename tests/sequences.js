@@ -130,7 +130,7 @@ t.deepEqual(
 	new seqs.SPLICE(0, 8, "1234EFGH"));
 t.deepEqual(
 	new seqs.SPLICE(0, 4, "1234").atomic_compose(new seqs.SPLICE(2, 4, "CDEF")),
-	null);  // This isn't good.
+	new seqs.SPLICE(0, 6, "12CDEF"));  // This isn't good.
 t.deepEqual(
 	new seqs.SPLICE(0, 4, "1234").atomic_compose(new seqs.SPLICE(2, 2, "CD")),
 	new seqs.SPLICE(0, 4, "12CD"));
@@ -145,10 +145,13 @@ t.deepEqual(
 	new seqs.SPLICE(0, 4, "AB34"));
 t.deepEqual(
 	new seqs.SPLICE(0, 4, "1234").atomic_compose(new seqs.SPLICE(0, 6, "ABCDEF")),
-	null); // This isn't good.
+	new seqs.SPLICE(0, 6, "ABCDEF"));
 t.deepEqual(
 	new seqs.SPLICE(2, 4, "1234").atomic_compose(new seqs.SPLICE(0, 8, "YZABCDEF")),
-	null); // This isn't good.
+	new seqs.SPLICE(0, 8, "YZABCDEF"));
+t.deepEqual(
+	new seqs.SPLICE(2, 2, "1234").atomic_compose(new seqs.SPLICE(0, 8, "YZABCDEF")),
+	new seqs.SPLICE(0, 6, "YZABCDEF"));
 t.deepEqual(
 	new seqs.SPLICE(2, 4, "1234").atomic_compose(new seqs.SPLICE(0, 6, "YZABCD")),
 	new seqs.SPLICE(0, 6, "YZABCD"));
@@ -178,7 +181,7 @@ t.deepEqual(
 
 t.deepEqual(
 	new seqs.ATINDEX(0, new values.SET("0")).atomic_compose(new seqs.SPLICE(0, 4, "5678")),
-	null);
+	new seqs.SPLICE(0, 4, "5678"));
 t.deepEqual(
 	new seqs.ATINDEX(555, new values.SET("B"))
 		.atomic_compose(new seqs.ATINDEX(555, new values.SET("C"))),

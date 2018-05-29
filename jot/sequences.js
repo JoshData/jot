@@ -600,6 +600,25 @@ function compose_patches(a, b) {
 
 		// The two hunks start at the same location but have different
 		// lengths.
+		if (dx_end > 0) {
+			// 'b' wholly encompasses 'a'.
+			if (b_state.hunks[0].op instanceof values.SET) {
+				// 'b' is replacing everything 'a' touched with
+				// new elements, so the changes in 'a' can be
+				// dropped. But b's length has to be updated
+				// if 'a' changed the length of its subsequence.
+				var dx = a_state.hunks[0].op.get_length_change(a_state.hunks[0].length);
+				b_state.hunks[0] = {
+					offset: b_state.hunks[0].offset,
+					length: b_state.hunks[0].length - dx,
+					op: b_state.hunks[0].op
+				};
+				a_state.skip();
+				a_state.index -= dx;
+				continue;
+			}
+		}
+
 		// TODO.
 
 		// There is no atomic composition.
