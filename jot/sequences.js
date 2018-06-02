@@ -553,13 +553,13 @@ function compose_patches(a, b) {
 			// But we need to know the length of the original hunk so that
 			// the operation causes its final length to be dx_start.
 			var alen0;
-			if (decomp[0].get_length_change(dx_start) == 0)
+			if (a_state.hunks[0].op.get_length_change(a_state.hunks[0].length) == 0)
 				// This is probably a MAP. If the hunk's length is dx_start
 				// and the operation causes no length change, then that's
 				// the right length!
 				alen0 = dx_start;
 			else
-				throw new Error("Not sure what to do in this case.")
+				return null;
 
 			// Take the left part of the decomposition.
 			hunks.push({
