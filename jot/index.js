@@ -295,13 +295,13 @@ exports.createRandomOp = function(doc, context) {
 	// sequences applies to strings and arrays.
 	if (typeof doc === "string" || Array.isArray(doc)) {
 		modules.push(sequences);
-		modules.push(copies);
+		//modules.push(copies);
 	}
 
 	// objects applies to objects (but not Array objects or null)
 	else if (typeof doc === "object" && doc !== null) {
 		modules.push(objects);
-		modules.push(copies);
+		//modules.push(copies);
 	}
 
 	// the lists module only defines LIST which can also
