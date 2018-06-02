@@ -18,7 +18,6 @@ var JSONPointer = require('jsonpatch').JSONPointer;
 exports.module_name = 'copies'; // for serialization/deserialization
 
 exports.COPY = function (pathpairs) {
-	console.log(pathpairs);
 	if (!Array.isArray(pathpairs)) throw new Error("argument must be a list");
 	this.pathpairs = pathpairs.map(function(pathpair) {
 		if (!Array.isArray(pathpair) || pathpair.length != 2)
