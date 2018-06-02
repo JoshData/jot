@@ -242,7 +242,7 @@ exports.SET.prototype.drilldown = function(index_or_key) {
 			return new exports.SET(MISSING);   // because MISSING is only used for objects
 		return new exports.SET(this.value[index_or_key]);
 	}
-	if (typeof this.value == "object" && !Array.isArray(this.value)) {
+	if (typeof this.value == "object" && !Array.isArray(this.value) && this.value !== null) {
 		if (typeof index_or_key != "string")
 			throw new Error("Cannot drilldown() on object with non-string (" + (typeof index_or_key) + ").");
 		if (!(index_or_key in this.value)) // property is gone
