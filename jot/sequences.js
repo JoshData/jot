@@ -395,7 +395,7 @@ exports.PATCH.prototype.simplify = function () {
 
 exports.PATCH.prototype.drilldown = function(index_or_key) {
 	if (!Number.isInteger(index_or_key) || index_or_key < 0)
-		throw new Error("Cannot drilldown() on sequence with non-negative-integer (" + (typeof index_or_key) + ").");
+		return new values.NO_OP();
 	var index = 0;
 	var ret = null;
 	this.hunks.forEach(function(hunk) {
@@ -969,7 +969,7 @@ exports.MAP.prototype.simplify = function () {
 
 exports.MAP.prototype.drilldown = function(index_or_key) {
 	if (!Number.isInteger(index_or_key) || index_or_key < 0)
-		throw new Error("Cannot drilldown() on sequence with non-negative-integer (" + (typeof index_or_key) + ").");
+		new values.NO_OP();
 	return this.op;
 }
 

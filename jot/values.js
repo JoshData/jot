@@ -235,21 +235,16 @@ exports.SET.prototype.simplify = function () {
 exports.SET.prototype.drilldown = function(index_or_key) {
 	// If the SET sets an array or object value, then drilling down
 	// sets the inner value to the element or property value.
-	if (typeof this.value == "object" && Array.isArray(this.value)) {
-		if (!Number.isInteger(index_or_key) || index_or_key < 0)
-			throw new Error("Cannot drilldown() on array with non-negative-integer (" + (typeof index_or_key) + ").");
-		if (index_or_key >= this.value.length) // this does not quite make sense
-			return new exports.SET(MISSING);   // because MISSING is only used for objects
-		return new exports.SET(this.value[index_or_key]);
-	}
-	if (typeof this.value == "object" && !Array.isArray(this.value) && this.value !== null) {
-		if (typeof index_or_key != "string")
-			throw new Error("Cannot drilldown() on object with non-string (" + (typeof index_or_key) + ").");
-		if (!(index_or_key in this.value)) // property is gone
-			return new exports.SET(MISSING);
-		return new exports.SET(this.value[index_or_key]);
-	}
-	throw new Error("Cannot drilldown() because document data type changed to " + (typeof this.value) + ".");
+	if (typeof this.value == "object" && Array.isArray(this.value))
+		if (Number.isInteger(index_or_key) && index_or_key < this.value.length)
+			return new exports.SET(this.value[index_or_key]);
+	if (typeof this.value == "object" && !Array.isArray(this.value) && this.value !== null)
+		if (typeof index_or_key == "string" && index_or_key in this.value)
+			return new exports.SET(this.value[index_or_key]);
+
+	// Signal that anything that used to be an array element or
+	// object property is now nonexistent.
+	return new exports.SET(MISSING);
 };
 
 exports.SET.prototype.inverse = function (document) {
@@ -426,7 +421,10 @@ exports.MATH.prototype.simplify = function () {
 }
 
 exports.MATH.prototype.drilldown = function(index_or_key) {
-	throw new Error("Cannot drilldown() because document data type changed (MATH operation implies the wrong data type).");
+	// MATH operations only apply to scalars, so drilling down
+	// doesn't make any sense. But we can say a MATH operation
+	// doesn't affect any sub-components of the value.
+	return new exports.NO_OP();
 };
 
 exports.MATH.prototype.inverse = function (document) {
