@@ -81,7 +81,7 @@ exports.LIST.prototype.simplify = function (aggressive) {
 			if (op.isNoOp())
 				break;
 
-			var c = new_ops[new_ops.length-1].atomic_compose(op);
+			var c = new_ops[new_ops.length-1].compose(op, true);
 
 			// If there is no atomic composition, there's nothing more we can do.
 			if (!c)

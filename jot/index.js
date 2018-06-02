@@ -144,7 +144,7 @@ exports.deserialize = function(op_json) {
 	return exports.opFromJSON(JSON.parse(op_json));
 }
 
-exports.BaseOperation.prototype.compose = function(other) {
+exports.BaseOperation.prototype.compose = function(other, no_list) {
 	if (!(other instanceof exports.BaseOperation))
 		throw new Error("Argument must be an operation.");
 
@@ -166,6 +166,9 @@ exports.BaseOperation.prototype.compose = function(other) {
 		if (op != null)
 			return op;
 	}
+
+	if (no_list)
+		return null;
 
 	// Fall back to creating a LIST. Call simplify() to weed out
 	// anything equivalent to a NO_OP.
