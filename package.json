@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "JSON Operational Transformation",
   "dependencies": {
-    "deep-equal": "^2.0.1",
+    "deep-equal": "^2.0.3",
     "diff": "^4.0.2",
     "generic-diff": "*",
     "jsonpatch": "*",
@@ -19,6 +19,6 @@
   },
   "devDependencies": {
     "connect": "*",
-    "tap": "*"
+    "tap": "^14.10.7"
   }
 }
