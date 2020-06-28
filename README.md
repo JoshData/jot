@@ -233,7 +233,9 @@ operations plus it adds new operations for non-string data structures!
 Methods
 -------
 
-Each operation provides the following instance methods:
+### Instance Methods
+
+Each operation object provides the following instance methods:
 
 * `op.inspect()` returns a human-readable string representation of the operation. (A helper method so you can do `console.log(op)`.)
 * `op.isNoOp()` returns a boolean indicating whether the operation does nothing.
@@ -243,14 +245,17 @@ Each operation provides the following instance methods:
 * `op.inverse(document)` returns the inverse operation, given the document value *before* the operation applied.
 * `op.compose(other)` composes two operations into a single operation instance, sometimes a `LIST` operation.
 * `op.rebase(other)` rebases an operation. Returns null if the operations conflict, otherwise a new operation instance.
-* `op.rebase(other, { document: ... })` rebases an operation in conflictless mode. The document value provided is the value of the document *before* either operation applied. Returns a new operation instance.
+* `op.rebase(other, { document: ... })` rebases an operation in conflictless mode. The document value provided is the value of the document *before* either operation applied. Returns a new operation instance. See further documentation below.
 * `op.toJSON()` turns the operation into a JSON-able data structure (made up of objects, arrays, strings, etc). See `jot.opFromJSON()`. (A helper method so you can do `JSON.stringify(op)`.)
 * `op.serialize()` serializes the operation to a string. See `jot.deserialize()`.
 
-The `jot` library itself offers:
+### Global Methods
 
-* `jot.opFromJSON(opdata)` is the opposite of `op.toJSON()`.
-* `jot.deserialize(string)` is the opposite of `op.serialize()`.
+The `jot` library itself offers several global methods:
+
+* `jot.diff(a, b, options)` compares two documents, `a` and `b`, and returns a JOT operation that when applied to `a` gives `b`.  `options`, if given, is an object that controls how the diff is performed. Any data type that can be a JOT document (i.e. any JSON-like data type) can be compared, and the comparison follows the document structure recursively. If the keys `words`, `lines`, or `sentences` is set to a truthy value, then strings are compared word-by-word, line-by-line, or sentence-by-sentence, instead of character-by-character. There is no general purpose structured diff algorithm that works well on all documents --- this one probably works fine on relatively small structured data.
+* `jot.opFromJSON(opdata)` is the inverse of `op.toJSON()`.
+* `jot.deserialize(string)` is the inverse of `op.serialize()`.
 
 Conflictless Rebase
 -------------------
