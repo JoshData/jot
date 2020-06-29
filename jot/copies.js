@@ -38,7 +38,7 @@ exports.COPY = function (pathpairs) {
 	});
 	Object.freeze(this);
 }
-exports.COPY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.COPY.prototype = Object.create(jot.Operation.prototype); // inherit
 jot.add_op(exports.COPY, exports, 'COPY');
 
 function serialize_pointer(jp) {

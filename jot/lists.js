@@ -18,13 +18,13 @@ exports.module_name = 'lists'; // for serialization/deserialization
 exports.LIST = function (ops) {
 	if (!Array.isArray(ops)) throw new Error("Argument must be an array.");
 	ops.forEach(function(op) {
-		if (!(op instanceof jot.BaseOperation))
+		if (!(op instanceof jot.Operation))
 			throw new Error("Argument must be an array containing operations (found " + op + ").");
 	})
 	this.ops = ops; // TODO: How to ensure this array is immutable?
 	Object.freeze(this);
 }
-exports.LIST.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.LIST.prototype = Object.create(jot.Operation.prototype); // inherit
 jot.add_op(exports.LIST, exports, 'LIST');
 
 exports.LIST.prototype.inspect = function(depth) {

@@ -69,7 +69,7 @@ exports.NO_OP = function() {
 	/* An operation that makes no change to the document. */
 	Object.freeze(this);
 }
-exports.NO_OP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.NO_OP.prototype = Object.create(jot.Operation.prototype); // inherit
 jot.add_op(exports.NO_OP, exports, 'NO_OP');
 
 exports.SET = function(value) {
@@ -77,7 +77,7 @@ exports.SET = function(value) {
 	this.value = value;
 	Object.freeze(this);
 }
-exports.SET.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.SET.prototype = Object.create(jot.Operation.prototype); // inherit
 jot.add_op(exports.SET, exports, 'SET');
 
 exports.MATH = function(operator, operand) {
@@ -115,7 +115,7 @@ exports.MATH = function(operator, operand) {
 
 	Object.freeze(this);
 }
-exports.MATH.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.MATH.prototype = Object.create(jot.Operation.prototype); // inherit
 jot.add_op(exports.MATH, exports, 'MATH');
 
 
@@ -163,7 +163,7 @@ exports.NO_OP.prototype.atomic_compose = function (other) {
 }
 
 exports.NO_OP.prototype.rebase_functions = [
-	[jot.BaseOperation, function(other, conflictless) {
+	[jot.Operation, function(other, conflictless) {
 		// NO_OP operations do not affect any other operation.
 		return [this, other];
 	}]

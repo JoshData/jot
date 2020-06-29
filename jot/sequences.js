@@ -133,7 +133,7 @@ exports.PATCH = function () {
 			throw new Error("Invalid Argument (hunk length is not a number)");
 		if (hunk.length < 0)
 			throw new Error("Invalid Argument (hunk length is negative)");
-		if (!(hunk.op instanceof jot.BaseOperation))
+		if (!(hunk.op instanceof jot.Operation))
 			throw new Error("Invalid Argument (hunk operation is not an operation)");
 		if (typeof hunk.op.get_length_change != "function")
 			throw new Error("Invalid Argument (hunk operation " + hunk.op.inspect() + " does not support get_length_change)");
@@ -144,7 +144,7 @@ exports.PATCH = function () {
 
 	Object.freeze(this);
 }
-exports.PATCH.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.PATCH.prototype = Object.create(jot.Operation.prototype); // inherit
 jot.add_op(exports.PATCH, exports, 'PATCH');
 
 	// shortcuts
@@ -199,7 +199,7 @@ exports.MAP = function (op) {
 	this.op = op;
 	Object.freeze(this);
 }
-exports.MAP.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.MAP.prototype = Object.create(jot.Operation.prototype); // inherit
 jot.add_op(exports.MAP, exports, 'MAP');
 
 //////////////////////////////////////////////////////////////////////////////

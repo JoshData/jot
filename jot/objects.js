@@ -65,7 +65,7 @@ exports.APPLY = function () {
 	Object.freeze(this);
 	Object.freeze(this.ops);
 }
-exports.APPLY.prototype = Object.create(jot.BaseOperation.prototype); // inherit
+exports.APPLY.prototype = Object.create(jot.Operation.prototype); // inherit
 jot.add_op(exports.APPLY, exports, 'APPLY');
 
 // The MISSING object is a sentinel to signal the state of an Object property

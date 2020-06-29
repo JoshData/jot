@@ -5,7 +5,7 @@ var shallow_clone = require('shallow-clone');
 
 // Must define this ahead of any imports below so that this constructor
 // is available to the operation classes.
-exports.BaseOperation = function() {
+exports.Operation = function() {
 }
 exports.add_op = function(constructor, module, opname) {
 	// utility.
@@ -41,11 +41,11 @@ exports.diff = require('./diff.js').diff;
 
 /////////////////////////////////////////////////////////////////////
 
-exports.BaseOperation.prototype.isNoOp = function() {
+exports.Operation.prototype.isNoOp = function() {
 	return this instanceof values.NO_OP;
 }
 
-exports.BaseOperation.prototype.visit = function(visitor) {
+exports.Operation.prototype.visit = function(visitor) {
 	// A simple visitor paradigm. Replace this operation instance itself
 	// and any operation within it with the value returned by calling
 	// visitor on itself, or if the visitor returns anything falsey
@@ -53,7 +53,7 @@ exports.BaseOperation.prototype.visit = function(visitor) {
 	return visitor(this) || this;
 }
 
-exports.BaseOperation.prototype.toJSON = function(__key__, protocol_version) {
+exports.Operation.prototype.toJSON = function(__key__, protocol_version) {
 	// The first argument __key__ is used when this function is called by
 	// JSON.stringify. For reasons unclear, we get the name of the property
 	// that this object is stored in in its parent? Doesn't matter. We
@@ -135,7 +135,7 @@ exports.opFromJSON = function(obj, protocol_version, op_map) {
 	return clazz.internalFromJSON(obj, protocol_version, op_map);
 }
 
-exports.BaseOperation.prototype.serialize = function() {
+exports.Operation.prototype.serialize = function() {
 	// JSON.stringify will use the object's toJSON method
 	// implicitly.
 	return JSON.stringify(this);
@@ -144,8 +144,8 @@ exports.deserialize = function(op_json) {
 	return exports.opFromJSON(JSON.parse(op_json));
 }
 
-exports.BaseOperation.prototype.compose = function(other, no_list) {
-	if (!(other instanceof exports.BaseOperation))
+exports.Operation.prototype.compose = function(other, no_list) {
+	if (!(other instanceof exports.Operation))
 		throw new Error("Argument must be an operation.");
 
 	// A NO_OP composed with anything just gives the other thing.
@@ -175,7 +175,7 @@ exports.BaseOperation.prototype.compose = function(other, no_list) {
 	return new lists.LIST([this, other]).simplify();
 }
 
-exports.BaseOperation.prototype.rebase = function(other, conflictless, debug) {
+exports.Operation.prototype.rebase = function(other, conflictless, debug) {
 	/* Transforms this operation so that it can be composed *after* the other
 	   operation to yield the same logical effect as if it had been executed
 	   in parallel (rather than in sequence). Returns null on conflict.
