@@ -711,7 +711,14 @@ function rebase_patches(a, b, conflictless) {
 				return null;
 
 			// Or we can resolve the conflict.
-			if (jot.cmp(a_state.old_hunks[0].op, b_state.old_hunks[0].op) < 0) {
+			if (jot.cmp(a_state.old_hunks[0].op, b_state.old_hunks[0].op) == 0) {
+				// If the inserted values are identical, we can't make a decision
+				// about which goes first, so we only take one. Which one we take
+				// doesn't matter because the document comes out the same either way.
+				// This logic is actually required to get complex merges to work.
+				b_state.take(b_state);
+				a_state.skip();
+			} else if (jot.cmp(a_state.old_hunks[0].op, b_state.old_hunks[0].op) < 0) {
 				a_state.take(b_state);
 			} else {
 				b_state.take(a_state);
